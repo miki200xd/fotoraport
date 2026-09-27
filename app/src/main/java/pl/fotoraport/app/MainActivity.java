@@ -6,6 +6,10 @@ import android.content.ClipData;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -32,6 +36,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Foto Raport – aplikacja w WebView (plik assets/index.html) + natywne dodatki:
@@ -54,6 +60,9 @@ public class MainActivity extends Activity {
     private volatile String captureSubdir = "";
     private volatile String captureName = "";
     private volatile String lastBackup = "";
+    // jakość kopii w galerii: 0 = oryginał, >0 = dłuższy bok w px, -1 = bez kopii
+    private volatile int backupMaxSide = 0;
+    private final ExecutorService backupExecutor = Executors.newSingleThreadExecutor();
 
     // pliki zapisywane kawałkami z JavaScriptu
     private final Map<String, Uri> openUris = new HashMap<>();
@@ -197,7 +206,10 @@ public class MainActivity extends Activity {
 
         if (requestCode == REQ_CAMERA) {
             if (resultCode == RESULT_OK && cameraFile != null && cameraFile.length() > 0) {
-                backupCameraPhoto(cameraFile);
+                final File src = cameraFile;
+                final String sd = captureSubdir, nm = captureName;
+                final int max = backupMaxSide;
+                if (max >= 0) backupExecutor.execute(() -> backupCameraPhoto(src, sd, nm, max));
                 result = new Uri[]{cameraUri};
             }
         } else if (requestCode == REQ_FILE) {
@@ -219,10 +231,10 @@ public class MainActivity extends Activity {
         filePathCallback = null;
     }
 
-    /** Kopia oryginalnego zdjęcia z aparatu do galerii: Pictures/FotoRaport/<stacja>/<nazwa>.jpg */
-    private void backupCameraPhoto(File src) {
-        String subdir = clean(captureSubdir);
-        String name = clean(captureName);
+    /** Kopia zdjęcia z aparatu do galerii: Pictures/FotoRaport/<stacja>/<nazwa>.jpg (działa w tle). */
+    private void backupCameraPhoto(File src, String captureSubdirValue, String captureNameValue, int maxSide) {
+        String subdir = clean(captureSubdirValue);
+        String name = clean(captureNameValue);
         if (name.isEmpty()) name = "zdjecie_" + System.currentTimeMillis();
         String rel = Environment.DIRECTORY_PICTURES + "/FotoRaport" + (subdir.isEmpty() ? "" : "/" + subdir);
         ContentResolver cr = getContentResolver();
@@ -235,22 +247,61 @@ public class MainActivity extends Activity {
         try {
             uri = cr.insert(MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), cv);
             if (uri == null) throw new Exception("brak dostępu do galerii");
-            try (InputStream in = new FileInputStream(src); OutputStream out = cr.openOutputStream(uri)) {
+            try (OutputStream out = cr.openOutputStream(uri)) {
                 if (out == null) throw new Exception("brak dostępu do galerii");
-                byte[] buf = new byte[65536];
-                int n;
-                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                if (maxSide > 0) {
+                    writeScaled(src, out, maxSide);
+                } else {
+                    try (InputStream in = new FileInputStream(src)) {
+                        byte[] buf = new byte[65536];
+                        int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    }
+                }
             }
             ContentValues done = new ContentValues();
             done.put(MediaStore.Images.Media.IS_PENDING, 0);
             cr.update(uri, done, null, null);
             lastBackup = rel + "/" + name + ".jpg";
-        } catch (Exception e) {
+        } catch (Throwable e) {
             lastBackup = "";
             if (uri != null) {
                 try { cr.delete(uri, null, null); } catch (Exception ignored) { }
             }
             toast("Nie udało się zapisać kopii w galerii: " + e.getMessage());
+        }
+    }
+
+    /** Pomniejszona kopia (dłuższy bok = maxSide), obrócona zgodnie z EXIF. */
+    private static void writeScaled(File src, OutputStream out, int maxSide) throws Exception {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(src.getAbsolutePath(), bounds);
+        int w = bounds.outWidth, h = bounds.outHeight;
+        if (w <= 0 || h <= 0) throw new Exception("nie można odczytać zdjęcia");
+        int sample = 1;
+        while (Math.max(w, h) / (sample * 2) >= maxSide) sample *= 2;
+        BitmapFactory.Options opts = new BitmapFactory.Options();
+        opts.inSampleSize = sample;
+        Bitmap bmp = BitmapFactory.decodeFile(src.getAbsolutePath(), opts);
+        if (bmp == null) throw new Exception("nie można odczytać zdjęcia");
+        float scale = Math.min(1f, (float) maxSide / Math.max(bmp.getWidth(), bmp.getHeight()));
+        Matrix m = new Matrix();
+        if (scale < 1f) m.postScale(scale, scale);
+        int rot = 0;
+        try {
+            int o = new ExifInterface(src.getAbsolutePath()).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            if (o == ExifInterface.ORIENTATION_ROTATE_90) rot = 90;
+            else if (o == ExifInterface.ORIENTATION_ROTATE_180) rot = 180;
+            else if (o == ExifInterface.ORIENTATION_ROTATE_270) rot = 270;
+        } catch (Exception ignored) { }
+        if (rot != 0) m.postRotate(rot);
+        Bitmap outBmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), m, true);
+        try {
+            outBmp.compress(Bitmap.CompressFormat.JPEG, 88, out);
+        } finally {
+            if (outBmp != bmp) outBmp.recycle();
+            bmp.recycle();
         }
     }
 
@@ -291,6 +342,11 @@ public class MainActivity extends Activity {
         public void setCaptureTarget(String subdir, String name) {
             captureSubdir = subdir == null ? "" : subdir;
             captureName = name == null ? "" : name;
+        }
+
+        @JavascriptInterface
+        public void setBackupQuality(int maxSide) {
+            backupMaxSide = maxSide;
         }
 
         @JavascriptInterface
