@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script>window.FR_LOCAL_LIBS=true;</script>
 <style>html,body{margin:0}img{max-width:100%}</style>
-<title>Zdjęcia PLUS-DOC</title>
+<title>Cellnex-Nokia</title>
 <script src="jszip.min.js"></script>
 <style>
 :root{
@@ -531,13 +531,13 @@ function vHome(){
   return `
   <header class="stack" style="padding-block:8px 16px">
     <div class="eyebrow">Dokumentacja zdjęciowa · Cellnex / Nokia ECLIPSE</div>
-    <h1>Zdjęcia PLUS-DOC</h1>
+    <h1>Cellnex-Nokia</h1>
     <p class="muted">Aplikacja prowadzi Cię przez listę zdjęć wg wytycznych RFA i od razu nazywa pliki. Na koniec pobierasz ZIP z folderami 01_ANTENY … 06_WIDOK_OGOLNY, jak ZDJECIA w folderze stacji.</p>
   </header>
   ${S.dbError?`<div class="notice" style="margin-bottom:12px">Ta przeglądarka nie pozwala zapisywać zdjęć w pamięci (${esc(S.dbError)}). Otwórz stronę w zwykłym oknie przeglądarki, nie w trybie prywatnym.</div>`:''}
   <button class="btn btn-primary btn-big btn-block" data-act="new" data-eclipse="1">+ Nowa stacja</button>
   <button class="btn-ghost" style="margin-top:6px" data-act="import-new">Wczytaj stację z ZIP-a (kopii)</button>
-  ${NATIVE?'<p class="notice info" style="margin-top:8px">Każde zdjęcie z aparatu ma kopię w galerii: album <b>ZdjeciaPlusDoc › numer stacji</b> (Pictures/ZdjeciaPlusDoc). ZIP-y zapisują się w Pobrane/ZdjeciaPlusDoc.</p>':''}
+  ${NATIVE?'<p class="notice info" style="margin-top:8px">Każde zdjęcie z aparatu ma kopię w galerii: album <b>CellnexNokia › numer stacji</b> (Pictures/CellnexNokia). ZIP-y zapisują się w Pobrane/CellnexNokia.</p>':''}
   <div class="stack" style="margin-top:18px">
     ${list.length? `<div class="eyebrow">Stacje na tym telefonie</div>` + list.map(p=>{
       const s=totalStats(p); const pct=s.total?Math.round(100*s.done/s.total):0;
@@ -565,7 +565,7 @@ function vHome(){
       <p class="muted small">Zdjęcia są obracane zgodnie z orientacją telefonu przed zapisem, więc nie zapiszą się bokiem.</p>
       <div class="cfgrow"><div><b>Po zdjęciu od razu następne</b><div class="muted small">Aplikacja sama przechodzi do kolejnego numeru. Powtórki robisz przyciskiem „Wstecz”.</div></div>
         <div class="seg" role="group" aria-label="Auto dalej">${[[false,'Nie'],[true,'Tak']].map(([v,l])=>`<button data-act="autonext" data-v="${v}" aria-pressed="${S.autoNext===v}">${l}</button>`).join('')}</div></div>
-      ${NATIVE?`<div class="cfgrow"><div><b>Kopia w galerii</b><div class="muted small">Jakość kopii w albumie ZdjeciaPlusDoc. Mniejsza = szybciej i mniej miejsca.</div></div>
+      ${NATIVE?`<div class="cfgrow"><div><b>Kopia w galerii</b><div class="muted small">Jakość kopii w albumie CellnexNokia. Mniejsza = szybciej i mniej miejsca.</div></div>
         <div class="seg" role="group" aria-label="Kopia w galerii">${[[0,'Oryginał'],[2400,'2400'],[1600,'1600'],[-1,'Wył.']].map(([v,l])=>`<button data-act="backupq" data-v="${v}" aria-pressed="${S.backupQ===v}">${l}</button>`).join('')}</div></div>`:''}
       <p class="muted small">Wersja aplikacji ${APP_VERSION}</p>
       <p class="muted small" id="storage"></p>
@@ -1019,7 +1019,7 @@ async function doExport(){
     if(NATIVE){
       const path=await nativeSaveZip(zip,root);
       busy(false); toast('ZIP zapisany');
-      show(`Zapisano w telefonie: ${path}. Plik znajdziesz w aplikacji Pliki → Pobrane → ZdjeciaPlusDoc.`);
+      show(`Zapisano w telefonie: ${path}. Plik znajdziesz w aplikacji Pliki → Pobrane → CellnexNokia.`);
       const sb=document.getElementById('shareBtn'); if(sb) sb.hidden=false;
       return;
     }
@@ -1060,7 +1060,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='1.0';
+const APP_VERSION='1.1';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){

@@ -30,14 +30,14 @@ jobs:
       - name: Nazwy plików
         run: |
           cp app/build/outputs/apk/fotoraport/release/app-fotoraport-release.apk FotoRaport.apk
-          cp app/build/outputs/apk/plusdoc/release/app-plusdoc-release.apk ZdjeciaPlusDoc.apk
+          cp app/build/outputs/apk/plusdoc/release/app-plusdoc-release.apk CellnexNokia.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: apk
           path: |
             FotoRaport.apk
-            ZdjeciaPlusDoc.apk
+            CellnexNokia.apk
 
       - name: Publikacja w „Releases” (stały link do pobrania)
         uses: softprops/action-gh-release@v2
@@ -46,5 +46,5 @@ jobs:
           name: Foto Raport – wersja ${{ github.run_number }}
           files: |
             FotoRaport.apk
-            ZdjeciaPlusDoc.apk
+            CellnexNokia.apk
           make_latest: true
