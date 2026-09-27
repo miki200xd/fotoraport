@@ -12,7 +12,7 @@ android {
         targetSdk 34
         // numer wersji ustawia GitHub przy każdym budowaniu (patrz .github/workflows/build.yml)
         versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
-        versionName "1." + (System.getenv("VERSION_CODE") ?: "0")
+        versionName "1.2"
     }
 
     // Stały klucz podpisu: dzięki niemu nowa wersja instaluje się na starą i nie kasuje zdjęć w aplikacji.
