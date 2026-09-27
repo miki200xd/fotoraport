@@ -29,7 +29,7 @@ android {
         plusdoc {
             dimension "app"
             applicationId "pl.plusdoc.zdjecia"
-            versionName "1.1"
+            versionName "1.2"
             resValue "string", "app_name", "Cellnex-Nokia"
             resValue "string", "media_dir", "CellnexNokia"
         }

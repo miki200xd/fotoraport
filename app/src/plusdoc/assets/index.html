@@ -216,10 +216,10 @@ function buildCatalog(raw,ver){
 }
 const CATALOGS={v1:buildCatalog(RAW.v1,'v1'), v3:buildCatalog(RAW.v3,'v3')};
 /* ===== Katalog ECLIPSE (Cellnex / Nokia): foldery jak ZDJECIA/01–06 w folderze stacji ===== */
-const E_MAXS=6, E_MAXA=3, E_MAXR=3;
+const E_MAXS=6, E_MAXA=3, E_MAXR=3, E_MAXR4=4;
 function buildEclipse(){
   const E={}; let F=null;
-  const add=(o,k=1)=>{ for(let i=0;i<k;i++){ const it={desc:'',extra:false,opt:false,phase:'',deinst:false,share:null,...o,tags:{...(o.tags||{})}}; it.n=E[F].length+1; E[F].push(it); } };
+  const add=(o,k=1)=>{ for(let i=0;i<k;i++){ const it={desc:'',extra:false,opt:false,phase:'',deinst:false,share:null,...o,tags:{...(o.tags||{})}}; it.n=E[F].length+1; it.o=it.o!=null?it.o:it.n; E[F].push(it); } };
   const folder=f=>{ F=f; E[f]=[]; };
   const extras=k=>add({title:'Dodatkowe zdjęcie',desc:'Coś spoza listy: usterka, nietypowy montaż, ważny szczegół.',extra:true,opt:true},k);
   folder('01_ANTENY');
@@ -244,6 +244,15 @@ function buildEclipse(){
     add({title:`S${s} – połączenia MHA / diplekser / spliter`,desc:'Każde połączenie jumpera z MHA, diplekserem lub spliterem.',cond:'mha',tags:{sec:s}});
   }
   extras(3);
+  // RF4 dopisane na końcu (numery wcześniejszych zdjęć bez zmian), a na liście stoją zaraz po RF3 swojego sektora
+  for(let s=1;s<=E_MAXS;s++){
+    const after=E[F].filter(x=>x.tags.sec===s&&x.tags.rru===E_MAXR).pop().o;
+    const m=E_MAXR4;
+    add({title:`S${s} RF${m} – moduł i mocowanie`,desc:'Cały moduł RF z mocowaniem do konstrukcji.',tags:{sec:s,rru:m},o:after+0.1});
+    add({title:`S${s} RF${m} – tabliczka modułu`,desc:'Typ i numer seryjny czytelne.',tags:{sec:s,rru:m},o:after+0.2});
+    add({title:`S${s} RF${m} – złącza RF moduł–jumper`,desc:'Złącza RF i RET, opisy na jumperach i opisy portów modułu.',warn:true,tags:{sec:s,rru:m},o:after+0.3});
+    add({title:`S${s} RF${m} – DC, FO i uziemienie modułu`,desc:'Wtyczka DC, wkładka SFP i kabel FO z opisami, przewód uziemiający modułu.',tags:{sec:s,rru:m},o:after+0.4});
+  }
   folder('03_JUMPERY_FO_DC_UZIEMIENIA');
   for(let s=1;s<=E_MAXS;s++){
     add({title:`S${s} – droga jumperów antena → moduł`,desc:'Cała droga jumperów, najlepiej w jednym kadrze.',tags:{sec:s}});
@@ -304,6 +313,7 @@ function buildEclipse(){
   add({title:'Połączenia alarmowe 112 / 997 / 998 / 999',desc:'Zrzut rejestru połączeń. Rozłóż je na sektory wg wzoru Site Test.',screen:true});
   add({title:'Aligner – podsumowanie azymutów',desc:'Zrzut z Alignera. Sam plik raportu i tak wrzuć na dysk (AZIMUTHS).',screen:true});
   extras(2);
+  for(const f in E) E[f].sort((x,y)=>x.o-y.o);
   for(const f in E){ const a=E[f]; let i=0;
     while(i<a.length){ let j=i; while(j+1<a.length && !a[i].extra && a[j+1].title===a[i].title) j++;
       const mm=j-i+1; if(mm>1) for(let k=i;k<=j;k++) a[k].ser={k:k-i+1,m:mm}; i=j+1; } }
@@ -686,7 +696,7 @@ function vFormE(p,segs,segi){
       ${Array.from({length:p.cfg.sectors},(_,i)=>`<div class="secbox stack">
         <b class="num" style="font-size:22px">S${i+1}</b>
         <div class="cfgrow"><span>Anteny</span>${segi('secAnt',i,3)}</div>
-        <div class="cfgrow"><span>Moduły RF</span>${segi('secRru',i,3)}</div>
+        <div class="cfgrow"><span>Moduły RF</span>${segi('secRru',i,4)}</div>
       </div>`).join('')}
       <div class="secbox stack"><b>Na stacji jest</b>
         <div class="chips">${E_OPTS.map(([k,l])=>`<button type="button" class="chip" data-act="eopt" data-k="${k}" aria-pressed="${!!p.cfg.opts[k]}">${esc(l)}</button>`).join('')}</div>
@@ -1060,7 +1070,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='1.1';
+const APP_VERSION='1.2';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
