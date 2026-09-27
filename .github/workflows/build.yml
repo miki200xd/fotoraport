@@ -27,18 +27,24 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
         run: gradle :app:assembleRelease --no-daemon --stacktrace
 
-      - name: Nazwa pliku
-        run: cp app/build/outputs/apk/release/app-release.apk FotoRaport.apk
+      - name: Nazwy plików
+        run: |
+          cp app/build/outputs/apk/fotoraport/release/app-fotoraport-release.apk FotoRaport.apk
+          cp app/build/outputs/apk/plusdoc/release/app-plusdoc-release.apk ZdjeciaPlusDoc.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FotoRaport-apk
-          path: FotoRaport.apk
+          name: apk
+          path: |
+            FotoRaport.apk
+            ZdjeciaPlusDoc.apk
 
       - name: Publikacja w „Releases” (stały link do pobrania)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: wersja-${{ github.run_number }}
           name: Foto Raport – wersja ${{ github.run_number }}
-          files: FotoRaport.apk
+          files: |
+            FotoRaport.apk
+            ZdjeciaPlusDoc.apk
           make_latest: true

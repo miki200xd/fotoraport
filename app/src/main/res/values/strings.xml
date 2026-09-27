@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Foto Raport</string>
+    <!-- app_name i media_dir ustawia wariant aplikacji w app/build.gradle (productFlavors) -->
 </resources>

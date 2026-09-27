@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script>window.FR_LOCAL_LIBS=true;</script>
 <style>html,body{margin:0}img{max-width:100%}</style>
-<title>Foto Raport Stacji</title>
+<title>Zdjęcia PLUS-DOC</title>
 <script src="jszip.min.js"></script>
 <style>
 :root{
   --bg:#EEF2F0; --surface:#FFFFFF; --sunk:#E3E9E6; --ink:#14201C; --muted:#56665F; --line:#CFD9D4;
-  --accent:#D9500B; --accent-ink:#FFFFFF; --accent-soft:#FBE3D5;
+  --accent:#1F5FAF; --accent-ink:#FFFFFF; --accent-soft:#DCE8F7;
   --ok:#1D7F46; --ok-soft:#D8EFE1; --warn:#9A6400; --warn-soft:#F6E8C8; --danger:#B42318;
   --shadow:0 1px 2px rgba(20,32,28,.08),0 4px 14px rgba(20,32,28,.06);
   --display:"Barlow Condensed","Roboto Condensed","sans-serif-condensed","Arial Narrow",sans-serif;
@@ -20,7 +20,7 @@
   :root:not([data-theme="light"]){
     color-scheme:dark;
     --bg:#0E1412; --surface:#17201D; --sunk:#111916; --ink:#E6EEEA; --muted:#93A59D; --line:#2A3632;
-    --accent:#FF7A2F; --accent-ink:#1A0C03; --accent-soft:#3A2114;
+    --accent:#6AA8F0; --accent-ink:#06121F; --accent-soft:#15263A;
     --ok:#4CC27F; --ok-soft:#163324; --warn:#E3B04B; --warn-soft:#352A12; --danger:#FF7B6E;
     --shadow:0 1px 2px rgba(0,0,0,.4);
   }
@@ -28,7 +28,7 @@
 :root[data-theme="dark"]{
   color-scheme:dark;
   --bg:#0E1412; --surface:#17201D; --sunk:#111916; --ink:#E6EEEA; --muted:#93A59D; --line:#2A3632;
-  --accent:#FF7A2F; --accent-ink:#1A0C03; --accent-soft:#3A2114;
+  --accent:#6AA8F0; --accent-ink:#06121F; --accent-soft:#15263A;
   --ok:#4CC27F; --ok-soft:#163324; --warn:#E3B04B; --warn-soft:#352A12; --danger:#FF7B6E;
   --shadow:0 1px 2px rgba(0,0,0,.4);
 }
@@ -108,7 +108,7 @@ select.secsel{font:inherit;font-size:15px;min-height:44px;padding:8px;border:1px
 .marker.done .big{background:var(--ok);color:#fff}
 .preview{width:100%;max-width:100%;aspect-ratio:3/4;max-height:58vh;border-radius:12px;background:var(--sunk);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-inline:auto}
 .preview img{width:100%;height:100%;object-fit:contain}
-.preview .ph{color:var(--muted);text-align:center;padding:24px;font-size:15px}
+.preview .ph{color:var(--muted);text-align:center;padding:24px;font-size:15px;overflow-wrap:anywhere;min-width:0;max-width:100%}
 .takes{display:flex;gap:10px;overflow-x:auto;padding-block:4px}
 .take{position:relative;flex:0 0 auto;padding:0;border:3px solid transparent;border-radius:10px;background:none;min-height:0}
 .take img{width:72px;height:96px;object-fit:cover;border-radius:7px;display:block}
@@ -149,12 +149,24 @@ const REPORTS = [
   {f:'Radiolinia', name:'Radiolinia', short:'Radiolinia'},
   {f:'System zasilania-szafa sprzet', name:'Zasilanie / szafa sprzętowa', short:'Zasilanie'},
   {f:'Wezel TRM', name:'Węzeł TRM', short:'Węzeł TRM'},
-  {f:'Inne', name:'Inne', short:'Inne'}
+  {f:'Inne', name:'Inne', short:'Inne'},
+  {f:'01_ANTENY', name:'01 Anteny', short:'Anteny', tpl:'eclipse'},
+  {f:'02_MODULY_RF', name:'02 Moduły RF', short:'Moduły RF', tpl:'eclipse'},
+  {f:'03_JUMPERY_FO_DC_UZIEMIENIA', name:'03 Jumpery, FO/DC, uziemienia', short:'Jumpery/FO/DC', tpl:'eclipse'},
+  {f:'04_SZAFA', name:'04 Szafa', short:'Szafa', tpl:'eclipse'},
+  {f:'05_GPS', name:'05 GPS', short:'GPS', tpl:'eclipse'},
+  {f:'06_WIDOK_OGOLNY', name:'06 Widok ogólny', short:'Widok ogólny', tpl:'eclipse'},
+  {f:'07_SILOWNIA', name:'07 Siłownia (POWER)', short:'Siłownia', tpl:'eclipse'},
+  {f:'08_TESTY_S25', name:'08 Testy S25 (zrzuty ekranu)', short:'Testy S25', tpl:'eclipse'}
 ];
+const isE = p => tplOf(p)==='eclipse';
+function reportsFor(tpl){ return REPORTS.filter(r=>tpl==='eclipse'?r.tpl==='eclipse':!r.tpl); }
+const E_DEFAULT=['01_ANTENY','02_MODULY_RF','03_JUMPERY_FO_DC_UZIEMIENIA','04_SZAFA','05_GPS','06_WIDOK_OGOLNY','08_TESTY_S25'];
+const E_OPTS=[['feeder','Feedery'],['mha','MHA / diplekser / spliter'],['dcbox','DC Power Box'],['mw','Radiolinia / rack MW'],['deinst','Demontaż starego sprzętu']];
 const RMAP = Object.fromEntries(REPORTS.map(r=>[r.f,r]));
 
 // ===== Katalogi zdjęć: V1 (stary szablon) i V3.1 (od 2026) =====
-const TPL = {v3:{name:'V3.1', label:'Foto raport V3.1 (nowy)'}, v1:{name:'V1', label:'Foto raport V1 (stary)'}};
+const TPL = {eclipse:{name:'ECLIPSE', label:'Cellnex / Nokia ECLIPSE'}, v3:{name:'V3.1', label:'Networks V3.1 (nowy)'}, v1:{name:'V1', label:'Networks V1 (stary)'}};
 function phaseOf(s){ if(/przed (rozpoczęciem|wykonaniem) prac|przed deinstalacją/i.test(s)) return 'przed'; if(/po (zakończeniu|wykonaniu|wykonanych) prac|po deinstalacji/i.test(s)) return 'po'; return ''; }
 function shortV3(s,phase){
   if(/^Zdeinstalowany sprzęt/i.test(s)) return 'Zdeinstalowany sprzęt i materiały – '+(phase==='przed'?'przed deinstalacją':'po deinstalacji');
@@ -203,8 +215,104 @@ function buildCatalog(raw,ver){
   return cat;
 }
 const CATALOGS={v1:buildCatalog(RAW.v1,'v1'), v3:buildCatalog(RAW.v3,'v3')};
+/* ===== Katalog ECLIPSE (Cellnex / Nokia): foldery jak ZDJECIA/01–06 w folderze stacji ===== */
+const E_MAXS=6, E_MAXA=3, E_MAXR=3;
+function buildEclipse(){
+  const E={}; let F=null;
+  const add=(o,k=1)=>{ for(let i=0;i<k;i++){ const it={desc:'',extra:false,opt:false,phase:'',deinst:false,share:null,...o,tags:{...(o.tags||{})}}; it.n=E[F].length+1; E[F].push(it); } };
+  const folder=f=>{ F=f; E[f]=[]; };
+  const extras=k=>add({title:'Dodatkowe zdjęcie',desc:'Coś spoza listy: usterka, nietypowy montaż, ważny szczegół.',extra:true,opt:true},k);
+  folder('01_ANTENY');
+  for(let s=1;s<=E_MAXS;s++){
+    add({title:`S${s} – kartka z oznaczeniem sektora`,desc:`Pierwsze zdjęcie sektora: kartka lub napis „S${s} + azymut” na tle anten. Po nim widać, gdzie zaczyna się seria sektora.`,tags:{sec:s}});
+    add({title:`S${s} – widok ogólny anten sektora`,desc:'Wszystkie anteny sektora z mocowaniami, z dołu albo z boku.',tags:{sec:s}});
+    for(let a=1;a<=E_MAXA;a++){
+      add({title:`S${s} ANT${a} – widok anteny z mocowaniem`,desc:'Cała antena, mocowanie i podłączone jumpery.',tags:{sec:s,ant:a}});
+      add({title:`S${s} ANT${a} – tabliczka znamionowa`,desc:'Tył anteny. Typ i numer seryjny muszą być czytelne bez powiększania, więc podejdź blisko.',tags:{sec:s,ant:a}});
+      add({title:`S${s} ANT${a} – złącza antena–jumper od dołu`,desc:'Zbliżenie: złącza RF i RET, opis na każdym jumperze, opis portu na antenie, opis na kablu RET.',warn:true,tags:{sec:s,ant:a}});
+    }
+  }
+  extras(3);
+  folder('02_MODULY_RF');
+  for(let s=1;s<=E_MAXS;s++){
+    for(let m=1;m<=E_MAXR;m++){
+      add({title:`S${s} RF${m} – moduł i mocowanie`,desc:'Cały moduł RF z mocowaniem do konstrukcji.',tags:{sec:s,rru:m}});
+      add({title:`S${s} RF${m} – tabliczka modułu`,desc:'Typ i numer seryjny czytelne.',tags:{sec:s,rru:m}});
+      add({title:`S${s} RF${m} – złącza RF moduł–jumper`,desc:'Złącza RF i RET, opisy na jumperach i opisy portów modułu.',warn:true,tags:{sec:s,rru:m}});
+      add({title:`S${s} RF${m} – DC, FO i uziemienie modułu`,desc:'Wtyczka DC, wkładka SFP i kabel FO z opisami, przewód uziemiający modułu.',tags:{sec:s,rru:m}});
+    }
+    add({title:`S${s} – połączenia MHA / diplekser / spliter`,desc:'Każde połączenie jumpera z MHA, diplekserem lub spliterem.',cond:'mha',tags:{sec:s}});
+  }
+  extras(3);
+  folder('03_JUMPERY_FO_DC_UZIEMIENIA');
+  for(let s=1;s<=E_MAXS;s++){
+    add({title:`S${s} – droga jumperów antena → moduł`,desc:'Cała droga jumperów, najlepiej w jednym kadrze.',tags:{sec:s}});
+    add({title:`S${s} – droga jumperów, druga część`,desc:'Tylko gdy jumper ma ponad 10 m: jedno zdjęcie przy antenie (poprzednie), drugie przy module (to).',opt:true,tags:{sec:s}});
+    add({title:`S${s} – zagięcia, krzyżowania, wejście na drabinkę`,desc:'Promienie gięcia, krzyżowania kabli, wejście i zejście z drabinki kablowej.',tags:{sec:s}});
+    add({title:`S${s} – złącze jumper–feeder zaizolowane`,desc:'Widoczne oznaczenia jumpera i feedera z numerem sektora.',cond:'feeder',tags:{sec:s}});
+    add({title:`S${s} – droga feedera do drabinki pionowej`,desc:'Przy nietypowej instalacji cała droga.',cond:'feeder',tags:{sec:s}});
+  }
+  add({title:'Pionowa droga FO i DC – w górę',desc:'Ze środka drabinki kablowej, obiektyw w górę.'});
+  add({title:'Pionowa droga FO i DC – w dół',desc:'Ze środka drabinki kablowej, obiektyw w dół.'});
+  add({title:'Droga kabli zasilających DC',desc:'Dwa kierunki ze środka drabinki, mocowania kabli.'},2);
+  add({title:'DC Power Box – obie strony kabla',desc:'Wejście i wyjście kabla DC, opisy.',cond:'dcbox'},2);
+  add({title:'Uziemienia na wieży',desc:'Listwy i kowadełka uziemiające na wieży, podłączone przewody.'});
+  add({title:'Uziemienia przy modułach RF',desc:'Punkt uziemienia modułów, przewody i opisy.'});
+  add({title:'Uziemienie u podstawy wieży / szyna główna',desc:'Szyna uziemiająca przy wejściu kabli do szafy.'});
+  extras(3);
+  folder('04_SZAFA');
+  add({title:'Szafa – sprzęt przy otwartych drzwiach',desc:'Zdjęte osłony, widać cały zainstalowany sprzęt.'},2);
+  add({title:'AirScale – połączenia i oznaczenia',desc:'Karty, FO do modułów RF, zasilanie, opisy kabli.'},2);
+  add({title:'Zasilanie DC w szafie – zabezpieczenia i opisy',desc:'Bezpieczniki / OVP, opisy na kablach DC i tabliczce.'});
+  add({title:'Moduł alarmowy FSEB / FSEE',desc:'Miejsce i mocowanie, widoczne rozszycie alarmów.'});
+  add({title:'DDF / EDF / ODF',desc:'Rozszycie, opisy, mocowania.'});
+  add({title:'Nadmiar kabla FO',desc:'Gdzie i jak podczepiony zapas FO.'});
+  add({title:'Przepust kablowy / Roxtec – od zewnątrz',desc:'Wskaż zajęte otwory. Jeśli nie ma przepustu, stuknij „Pomiń” (N/A).'});
+  add({title:'Przepust kablowy / Roxtec – od wewnątrz',desc:'Bez lampy błyskowej, wskaż zajęte otwory. Brak przepustu = „Pomiń” (N/A).'});
+  add({title:'Tabliczki sprzętu w szafie',desc:'Numery seryjne czytelne.'},2);
+  add({title:'Rack MW / szafa transmisyjna',desc:'Rack, w którym stoi sprzęt transmisyjny.',cond:'mw'});
+  add({title:'Szafy zamknięte po pracach',desc:'Każda szafa outdoor z zamkniętymi pokrywami.'});
+  extras(3);
+  folder('05_GPS');
+  add({title:'Antena GPS – widok i mocowanie',desc:'Antena z mocowaniem, widać otoczenie (brak zasłonięcia nieba).'});
+  add({title:'Kabel GPS – złącze, opis, uziemienie',desc:'Złącze przy antenie, opis kabla, uziemienie jeśli jest.'});
+  add({title:'Droga kabla GPS',desc:'Prowadzenie i mocowanie kabla do szafy.'});
+  extras(2);
+  folder('06_WIDOK_OGOLNY');
+  add({title:'Widok ogólny stacji',desc:'Z kilku stron, z ogrodzeniem i wejściem.'},3);
+  add({title:'Wieża / maszt – całość',desc:'Cała konstrukcja z antenami.'});
+  add({title:'Stary sprzęt przed demontażem',desc:'Sprzęt do zdjęcia, zanim zaczniesz prace. Później nie da się go zrobić.',phase:'przed',cond:'deinst'});
+  add({title:'Zdemontowany sprzęt',desc:'Cały zdjęty sprzęt w jednym miejscu. Potrzebne do listu przewozowego.',cond:'deinst'});
+  add({title:'Miejsce niezgodne z projektem (ABD scen. 3)',desc:'Tylko gdy montaż różni się od DTF/M2. Z tych zdjęć powstaje red-pen na DTF.',opt:true},3);
+  extras(3);
+  folder('07_SILOWNIA');
+  add({title:'Widok ogólny szaf siłowni',desc:''});
+  add({title:'Tabliczka z numerem seryjnym siłowni',desc:''});
+  add({title:'Kable w zaciskach siłowni i w RT',desc:'Z drogą prowadzenia i mocowaniem.'},2);
+  add({title:'Uziemienie siłowni',desc:'Od strony szafy i szyny uziemiającej.'});
+  add({title:'Panel zabezpieczeń z oznaczeniami',desc:'Oznaczenia na kablach i tabliczce.'});
+  add({title:'Baterie z numerami seryjnymi',desc:''},2);
+  add({title:'Przepusty kabli zewnętrznych',desc:''});
+  add({title:'Wyświetlacz: prąd i napięcie',desc:'Odczyt obciążenia po uruchomieniu sprzętu.'});
+  extras(3);
+  folder('08_TESTY_S25');
+  for(let s=1;s<=E_MAXS;s++){
+    add({title:`S${s} – test DL, UL, ping`,desc:'Zrzut ekranu z Samsunga S25 po teście przepływności w tym sektorze. Wynik czytelny.',screen:true,tags:{sec:s}});
+    add({title:`S${s} – parametry radiowe`,desc:'Zrzut z ARFCN, PCI i RSRP (5G) oraz EARFCN i PCI (4G). Z niego wpisujesz Site Test.',screen:true,tags:{sec:s}});
+    add({title:`S${s} – pozycja GPS przy pomiarze`,desc:'Współrzędne dziesiętne, np. 52.4203 / 19.5582. Nie 52.25 / 19.33 (to stopnie i minuty).',warn:true,screen:true,tags:{sec:s}});
+  }
+  add({title:'Połączenia alarmowe 112 / 997 / 998 / 999',desc:'Zrzut rejestru połączeń. Rozłóż je na sektory wg wzoru Site Test.',screen:true});
+  add({title:'Aligner – podsumowanie azymutów',desc:'Zrzut z Alignera. Sam plik raportu i tak wrzuć na dysk (AZIMUTHS).',screen:true});
+  extras(2);
+  for(const f in E){ const a=E[f]; let i=0;
+    while(i<a.length){ let j=i; while(j+1<a.length && !a[i].extra && a[j+1].title===a[i].title) j++;
+      const mm=j-i+1; if(mm>1) for(let k=i;k<=j;k++) a[k].ser={k:k-i+1,m:mm}; i=j+1; } }
+  return E;
+}
+CATALOGS.eclipse=buildEclipse();
+
 const CATIDX={}; for(const v in CATALOGS){ CATIDX[v]={}; for(const f in CATALOGS[v]){ CATIDX[v][f]={}; for(const it of CATALOGS[v][f]) CATIDX[v][f][it.n]=it; } }
-function tplOf(p){ const t=p&&p.tpl; return (t&&CATALOGS[t])?t:'v1'; }
+function tplOf(p){ return (p&&p.tpl)||'eclipse'; }
 
 /* ======================= Pamięć (IndexedDB) ======================= */
 const DB = {
@@ -356,6 +464,12 @@ function hiddenByCfg(p,f,it){
   const c=p.cfg, t=it.tags;
   if(t.sec && t.sec>c.sectors) return true;
   const si=(t.sec||1)-1;
+  if(isE(p)){
+    if(it.cond && !(c.opts&&c.opts[it.cond])) return true;
+    if(t.ant && t.ant>((c.secAnt&&c.secAnt[si])||c.ant)) return true;
+    if(t.rru && t.rru>((c.secRru&&c.secRru[si])||c.rru)) return true;
+    return false;
+  }
   if(f==='BTS' && t.rru && t.rru>((c.secRru&&c.secRru[si])||c.rru)) return true;
   if(f==='System Antenowy' && t.ant && t.ant>((c.secAnt&&c.secAnt[si])||c.ant)) return true;
   if(f==='Radiolinia' && t.odu && t.odu>c.odu) return true;
@@ -416,17 +530,14 @@ function vHome(){
   const list = S.projects.slice().sort((a,b)=>b.updated-a.updated);
   return `
   <header class="stack" style="padding-block:8px 16px">
-    <div class="eyebrow">Raport zdjęciowy · OPL / TMPL</div>
-    <h1>Foto Raport Stacji</h1>
-    <p class="muted">Aplikacja prowadzi Cię przez listę zdjęć z szablonu Foto_raport i od razu nadaje im numery. Na koniec pobierasz ZIP z folderami BTS, System Antenowy itd., gotowy do makra „Wstaw zdjęcia”.</p>
+    <div class="eyebrow">Dokumentacja zdjęciowa · Cellnex / Nokia ECLIPSE</div>
+    <h1>Zdjęcia PLUS-DOC</h1>
+    <p class="muted">Aplikacja prowadzi Cię przez listę zdjęć wg wytycznych RFA i od razu nazywa pliki. Na koniec pobierasz ZIP z folderami 01_ANTENY … 06_WIDOK_OGOLNY, jak ZDJECIA w folderze stacji.</p>
   </header>
   ${S.dbError?`<div class="notice" style="margin-bottom:12px">Ta przeglądarka nie pozwala zapisywać zdjęć w pamięci (${esc(S.dbError)}). Otwórz stronę w zwykłym oknie przeglądarki, nie w trybie prywatnym.</div>`:''}
-  <div class="row" style="flex-wrap:nowrap">
-    <button class="btn btn-primary btn-big" style="flex:1.3" data-act="new" data-g5="1">+ Nowa z G5</button>
-    <button class="btn btn-big" style="flex:1" data-act="new">Bez G5</button>
-  </div>
+  <button class="btn btn-primary btn-big btn-block" data-act="new" data-eclipse="1">+ Nowa stacja</button>
   <button class="btn-ghost" style="margin-top:6px" data-act="import-new">Wczytaj stację z ZIP-a (kopii)</button>
-  ${NATIVE?'<p class="notice info" style="margin-top:8px">Każde zdjęcie z aparatu ma kopię w galerii: album <b>FotoRaport › numer stacji</b> (Pictures/FotoRaport). ZIP-y zapisują się w Pobrane/FotoRaport.</p>':''}
+  ${NATIVE?'<p class="notice info" style="margin-top:8px">Każde zdjęcie z aparatu ma kopię w galerii: album <b>ZdjeciaPlusDoc › numer stacji</b> (Pictures/ZdjeciaPlusDoc). ZIP-y zapisują się w Pobrane/ZdjeciaPlusDoc.</p>':''}
   <div class="stack" style="margin-top:18px">
     ${list.length? `<div class="eyebrow">Stacje na tym telefonie</div>` + list.map(p=>{
       const s=totalStats(p); const pct=s.total?Math.round(100*s.done/s.total):0;
@@ -435,7 +546,7 @@ function vHome(){
         <div class="st">
           <div style="min-width:0">
             <h3>${esc(p.nr||'—')} ${esc(p.nazwa||'')}</h3>
-            <div class="muted small">${esc(p.data)} · ${esc(p.firma||'bez wykonawcy')} · ${p.reports.map(f=>RMAP[f].short).join(', ')}</div>
+            <div class="muted small">${esc(p.data)} · ${esc(p.firma||'bez wykonawcy')} · ${isE(p)?p.reports.length+' folderów':p.reports.map(f=>RMAP[f].short).join(', ')}</div>
           </div>
           <div class="num" style="font-size:22px">${s.done}/${s.total}</div>
         </div>
@@ -444,17 +555,17 @@ function vHome(){
           <button class="btn-primary" data-act="open" data-id="${p.id}" style="flex:1">Otwórz</button>
           <button class="${conf?'btn-danger':'btn-ghost'}" data-act="delp" data-id="${p.id}">${conf?'Na pewno usunąć?':'Usuń'}</button>
         </div>
-      </div>`}).join('') : `<div class="card empty-state muted">Nie masz jeszcze żadnej stacji. Dodaj pierwszą: numer, data, wykonawca i zakres raportów.</div>`}
+      </div>`}).join('') : `<div class="card empty-state muted">Nie masz jeszcze żadnej stacji. Dodaj pierwszą: numer, nazwa, zleceniodawca i sektory.</div>`}
   </div>
   <div class="stack" style="margin-top:22px">
     <div class="eyebrow">Ustawienia zdjęć</div>
     <div class="card stack">
       <div class="cfgrow"><div><b>Rozdzielczość zapisu</b><div class="muted small">Dłuższy bok. Wytyczne: min. 1200×1600, pionowo 3:4.</div></div>
         <div class="seg" role="group" aria-label="Rozdzielczość">${[1600,2400,3200].map(q=>`<button data-act="quality" data-v="${q}" aria-pressed="${S.quality===q}">${q}</button>`).join('')}</div></div>
-      <p class="muted small">Zdjęcia są obracane zgodnie z orientacją telefonu przed zapisem, więc w Excelu nie wejdą bokiem.</p>
+      <p class="muted small">Zdjęcia są obracane zgodnie z orientacją telefonu przed zapisem, więc nie zapiszą się bokiem.</p>
       <div class="cfgrow"><div><b>Po zdjęciu od razu następne</b><div class="muted small">Aplikacja sama przechodzi do kolejnego numeru. Powtórki robisz przyciskiem „Wstecz”.</div></div>
         <div class="seg" role="group" aria-label="Auto dalej">${[[false,'Nie'],[true,'Tak']].map(([v,l])=>`<button data-act="autonext" data-v="${v}" aria-pressed="${S.autoNext===v}">${l}</button>`).join('')}</div></div>
-      ${NATIVE?`<div class="cfgrow"><div><b>Kopia w galerii</b><div class="muted small">Jakość kopii w albumie FotoRaport. Mniejsza = szybciej i mniej miejsca.</div></div>
+      ${NATIVE?`<div class="cfgrow"><div><b>Kopia w galerii</b><div class="muted small">Jakość kopii w albumie ZdjeciaPlusDoc. Mniejsza = szybciej i mniej miejsca.</div></div>
         <div class="seg" role="group" aria-label="Kopia w galerii">${[[0,'Oryginał'],[2400,'2400'],[1600,'1600'],[-1,'Wył.']].map(([v,l])=>`<button data-act="backupq" data-v="${v}" aria-pressed="${S.backupQ===v}">${l}</button>`).join('')}</div></div>`:''}
       <p class="muted small">Wersja aplikacji ${APP_VERSION}</p>
       <p class="muted small" id="storage"></p>
@@ -467,6 +578,10 @@ function normCfg(c){ c={...CFG_DEF,...(c||{})};
   if(!Array.isArray(c.secAnt)) c.secAnt=[0,1,2,3].map(()=>c.ant);
   if(!Array.isArray(c.secRru)) c.secRru=[0,1,2,3].map(()=>c.rru);
   if(!Array.isArray(c.map)) c.map=[null,null,null,null];
+  while(c.secAnt.length<6) c.secAnt.push(c.ant);
+  while(c.secRru.length<6) c.secRru.push(c.rru);
+  while(c.map.length<6) c.map.push(null);
+  c.opts={...(c.opts||{})};
   return c; }
 function secLabel(s){ return `${s.name} · ${s.az}° · ${s.height} m`; }
 const ACT_PL={'No change':'','INSTALLATION':'montaż','DEINSTALLATION':'demontaż','MODIFICATION':'modyfikacja','RELOCATION':'przeniesienie'};
@@ -494,6 +609,7 @@ function vForm(){
   const segi=(key,i,max)=>`<div class="seg" role="group" aria-label="${key==='secAnt'?'Anteny':'RRU'} S${i+1}">${Array.from({length:max},(_,k)=>k+1).map(v=>`<button type="button" data-act="cfgs" data-k="${key}" data-i="${i}" data-v="${v}" aria-pressed="${p.cfg[key][i]===v}">${v}</button>`).join('')}</div>`;
   const g=p.g5;
   const has=f=>p.reports.includes(f);
+  if(tplOf(p)==='eclipse') return vFormE(p,segs,segi);
   return `
   <div class="topbar spread"><button class="btn-ghost" data-act="${S.p?'back-station':'home'}">← Wróć</button><span class="eyebrow">${S.p?'Edycja stacji':'Nowa stacja'}</span><span style="width:60px"></span></div>
   <form id="pform" class="stack" autocomplete="off">
@@ -515,12 +631,12 @@ function vForm(){
     </div>
     <div class="card stack">
       <h3>Szablon raportu</h3>
-      <div class="chips">${['v3','v1'].map(v=>`<button type="button" class="chip" data-act="tpl" data-v="${v}" aria-pressed="${(p.tpl||'v1')===v}" ${S.p&&Object.keys(S.p.slots||{}).some(k=>S.p.slots[k].takes.length)&&(S.p.tpl||'v1')!==v?'disabled':''}>${TPL[v].label}</button>`).join('')}</div>
+      <div class="chips">${['eclipse','v3','v1'].map(v=>`<button type="button" class="chip" data-act="tpl" data-v="${v}" aria-pressed="${(p.tpl||'v1')===v}" ${S.p&&Object.keys(S.p.slots||{}).some(k=>S.p.slots[k].takes.length)&&(S.p.tpl||'v1')!==v?'disabled':''}>${TPL[v].label}</button>`).join('')}</div>
       ${S.p&&Object.keys(S.p.slots||{}).some(k=>S.p.slots[k].takes.length)?'<p class="muted small">Stacja ma już zdjęcia, więc szablonu nie da się zmienić (numeracja jest inna).</p>':'<p class="muted small">V3.1 ma zdjęcia przed i po pracach, uziemienia z dwóch stron, nadruki kabli DC/FO i prąd poboru siłowni.</p>'}
     </div>
     <div class="card stack">
       <h3>Raporty do wykonania</h3>
-      <div class="chips">${REPORTS.map(r=>`<button type="button" class="chip" data-act="rep" data-f="${esc(r.f)}" aria-pressed="${has(r.f)}">${esc(r.name)}</button>`).join('')}</div>
+      <div class="chips">${reportsFor(tplOf(p)).map(r=>`<button type="button" class="chip" data-act="rep" data-f="${esc(r.f)}" aria-pressed="${has(r.f)}">${esc(r.name)}</button>`).join('')}</div>
     </div>
     <div class="card stack">
       <h3>Konfiguracja stacji</h3>
@@ -542,6 +658,45 @@ function vForm(){
   </form>`;
 }
 
+function vFormE(p,segs,segi){
+  const has=f=>p.reports.includes(f);
+  const locked=S.p&&Object.keys(S.p.slots||{}).some(k=>S.p.slots[k].takes.length);
+  return `
+  <div class="topbar spread"><button class="btn-ghost" data-act="${S.p?'back-station':'home'}">← Wróć</button><span class="eyebrow">${S.p?'Edycja stacji':'Nowa stacja'}</span><span style="width:60px"></span></div>
+  <form id="pform" class="stack" autocomplete="off">
+    <div class="card stack">
+      <div class="grid2">
+        <label class="field">Numer stacji<input type="text" id="f_nr" autocapitalize="characters" value="${esc(p.nr)}" placeholder="np. BT18295" required></label>
+        <label class="field">Data wykonania<input type="date" id="f_data" value="${esc(p.data)}" required></label>
+      </div>
+      <label class="field">Nazwa stacji<input type="text" id="f_nazwa" autocapitalize="characters" value="${esc(p.nazwa)}" placeholder="np. BIELAWY"></label>
+      <label class="field">Zleceniodawca <span class="hint">AGMK, ATEM albo ECS</span><input type="text" id="f_firma" list="firmy" value="${esc(p.firma)}" placeholder="np. AGMK"><datalist id="firmy"><option>AGMK</option><option>ATEM</option><option>ECS</option></datalist></label>
+      <label class="field">Zakres prac<input type="text" id="f_zakres" value="${esc(p.zakres)}" placeholder="np. 5G n78, 3 sektory"></label>
+      <label class="field">Numer PO (RAN) <span class="hint">Opcjonalnie. Trafi do nazwy ZIP i info.txt.</span><input type="text" id="f_zam" value="${esc(p.zam)}"></label>
+    </div>
+    <div class="card stack">
+      <h3>Foldery</h3>
+      <div class="chips">${reportsFor('eclipse').map(r=>`<button type="button" class="chip" data-act="rep" data-f="${esc(r.f)}" aria-pressed="${has(r.f)}">${esc(r.name)}</button>`).join('')}</div>
+      <p class="muted small">01–06 to foldery ZDJECIA stacji. Siłownię włącz, gdy robicie też POWER. Testy S25 to zrzuty ekranu do Site Testu.</p>
+    </div>
+    <div class="card stack">
+      <h3>Konfiguracja stacji</h3>
+      <p class="muted small">Ukrywa zdjęcia sektorów, anten i modułów, których na tej stacji nie ma.</p>
+      <div class="cfgrow"><b>Sektory</b>${segs('sectors',6)}</div>
+      ${Array.from({length:p.cfg.sectors},(_,i)=>`<div class="secbox stack">
+        <b class="num" style="font-size:22px">S${i+1}</b>
+        <div class="cfgrow"><span>Anteny</span>${segi('secAnt',i,3)}</div>
+        <div class="cfgrow"><span>Moduły RF</span>${segi('secRru',i,3)}</div>
+      </div>`).join('')}
+      <div class="secbox stack"><b>Na stacji jest</b>
+        <div class="chips">${E_OPTS.map(([k,l])=>`<button type="button" class="chip" data-act="eopt" data-k="${k}" aria-pressed="${!!p.cfg.opts[k]}">${esc(l)}</button>`).join('')}</div>
+      </div>
+    </div>
+    <p class="notice" id="formErr" hidden></p>
+    <button class="btn-primary btn-big btn-block" type="submit">${S.p?'Zapisz zmiany':'Zacznij zdjęcia'}</button>
+  </form>`;
+}
+
 function vStation(){
   const p=S.p; if(!S.tab||!p.reports.includes(S.tab)) S.tab=p.reports[0];
   const f=S.tab; const s=totalStats(p); const pct=s.total?Math.round(100*s.done/s.total):0;
@@ -550,12 +705,12 @@ function vStation(){
   if(S.filter==='done') items=items.filter(it=>isDone(p,f,it.n));
   if(S.filter==='przed') items=items.filter(it=>it.phase==='przed');
   S.mode=null; const next = sequence(p).find(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n)));
-  const przedLeft = tplOf(p)==='v3' ? (()=>{S.mode='przed'; const l=sequence(p).filter(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n))); S.mode=null; return l;})() : [];
+  const przedLeft = tplOf(p)!=='v1' ? (()=>{S.mode='przed'; const l=sequence(p).filter(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n))); S.mode=null; return l;})() : [];
   return `
   <div class="topbar stack" style="gap:8px">
     <div class="spread"><button class="btn-ghost" data-act="home">← Stacje</button>
       <button class="btn-ghost" data-act="edit">Edytuj dane</button></div>
-    <div class="spread"><div style="min-width:0"><h2>${esc(p.nr)} ${esc(p.nazwa||'')}</h2><div class="muted small">${esc(p.data)} · ${esc(p.firma||'')} ${p.zakres?'· '+esc(p.zakres):''} · szablon ${TPL[tplOf(p)].name}</div></div>
+    <div class="spread"><div style="min-width:0"><h2>${esc(p.nr)} ${esc(p.nazwa||'')}</h2><div class="muted small">${esc(p.data)} · ${esc(p.firma||'')} ${p.zakres?'· '+esc(p.zakres):''} </div></div>
       <div class="num" style="font-size:24px;white-space:nowrap">${s.done}/${s.total}</div></div>
     <div class="progress"><i style="width:${pct}%"></i></div>
     <div class="tabs" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.done}/${st.total}</span></button>`}).join('')}</div>
@@ -568,14 +723,14 @@ function vStation(){
         ${(p.g5.equipment&&p.g5.equipment.deinstall.length)?`<dt>Demontaż</dt><dd style="font-weight:400">${p.g5.equipment.deinstall.map(e=>esc(e.name)+' ×'+e.qty).join('<br>')}</dd>`:''}
         ${(p.g5.bbu||[]).map(b=>`<dt>${esc(b.name)}</dt><dd>${esc(b.type)}: ${b.slots.map(s=>`slot ${s.slot} ${esc(s.card)}${s.action==='No action'?'':' ('+esc(s.action.toLowerCase())+')'}`).join(', ')}</dd>`).join('')}
       </dl></details>`:''}
-    ${przedLeft.length?`<div class="card stack" style="border-color:var(--warn);gap:8px"><b>Zanim zaczniesz prace: ${przedLeft.length} zdjęć PRZED</b><p class="muted small">Widok obiektu, szafy, przebieg jumperów i drogi kablowej, sprzęt do demontażu. Później nie da się ich zrobić.</p><button class="btn-primary" data-act="go-przed">Rób zdjęcia przed pracami</button></div>`:''}
+    ${przedLeft.length?`<div class="card stack" style="border-color:var(--warn);gap:8px"><b>Zanim zaczniesz prace: ${przedLeft.length} zdjęć PRZED</b><p class="muted small">${isE(p)?'Stary sprzęt przed demontażem.':'Widok obiektu, szafy, przebieg jumperów i drogi kablowej, sprzęt do demontażu.'} Później nie da się ich zrobić.</p><button class="btn-primary" data-act="go-przed">Rób zdjęcia przed pracami</button></div>`:''}
     <div class="row">
       <button class="btn-primary" style="flex:1" data-act="go-next" ${next?'':'disabled'}>${next?`Rób po kolei · od nr ${next.n}${next.f!==f?' ('+esc(RMAP[next.f].short)+')':''}`:'Wszystkie wymagane zdjęcia są zrobione'}</button>
       <button data-act="export">Pobierz ZIP</button>
     </div>
     <div class="row" style="justify-content:space-between"><span class="muted small">Masz zdjęcia z innego telefonu albo kopię?</span><button class="btn-ghost" data-act="import">Wczytaj ZIP</button></div>
     <div class="spread">
-      <div class="chips">${[['all','Wszystkie'],['todo','Brakujące'],['przed','Przed pracami'],['done','Zrobione']].map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
+      <div class="chips">${[['all','Wszystkie'],['todo','Brakujące']].concat(isE(p)?[]:[['przed','Przed pracami']]).concat([['done','Zrobione']]).map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
       <label class="row small muted" style="gap:6px"><input type="checkbox" id="extra" ${S.showExtra?'checked':''} style="width:20px;height:20px"> Dodatkowe</label>
     </div>
     <div class="items">
@@ -585,7 +740,7 @@ function vStation(){
           <span class="plate">${it.n}</span>
           <span style="min-width:0"><span class="t">${esc(it.title)}</span>
             ${it.desc?`<span class="d">${esc(it.desc)}</span>`:''}
-            <span class="row" style="gap:4px;margin-top:4px">${it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it.share&&p.reports.length>1?'<span class="tag acc">wspólne dla raportów</span>':''}${it.ser?`<span class="tag">ujęcie ${it.ser.k} z ${it.ser.m}</span>`:''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${skip?'<span class="tag warn">pominięte</span>':''}</span></span>
+            <span class="row" style="gap:4px;margin-top:4px">${it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it.share&&p.reports.length>1?'<span class="tag acc">wspólne dla raportów</span>':''}${it.ser?`<span class="tag">ujęcie ${it.ser.k} z ${it.ser.m}</span>`:''}${it.warn?'<span class="tag warn">częsty powód odrzucenia</span>':''}${it.screen?'<span class="tag">zrzut ekranu</span>':''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${skip?`<span class="tag warn">${isE(p)?'N/A':'pominięte'}</span>`:''}</span></span>
           <span>${pd.length?`<img class="thumb" alt="" src="${pd[pd.length-1].url}">`:done?`<img class="thumb" alt="" src="${photoURL(sl.chosen)}">`:`<span class="thumb empty"></span>`}${sl.takes.length>1?`<div class="cnt-badge">${sl.takes.length} ujęcia</div>`:''}</span>
         </button>`}).join(''):`<div class="empty-state muted">Brak pozycji w tym filtrze.</div>`}
     </div>
@@ -609,8 +764,8 @@ function vShoot(){
   const seq=sequence(p); const idx=seq.findIndex(x=>slotKey(x.f,x.n)===k);
   const pend = pendingOf(k); const pendLast = pend.length ? pend[pend.length-1] : null;
   const chosen = !pendLast && sl.chosen && S.photos.get(sl.chosen);
-  const land = chosen && chosen.w>chosen.h;
-  const small = chosen && Math.min(chosen.w,chosen.h)<1200;
+  const land = chosen && chosen.w>chosen.h && !(it&&it.screen);
+  const small = chosen && Math.min(chosen.w,chosen.h)<1200 && !(it&&it.screen);
   const conf = S.confirm;
   return `
   <div class="topbar spread"><button class="btn-ghost" data-act="back-station">← Lista</button>
@@ -626,15 +781,15 @@ function vShoot(){
     ${it&&it.ser?`<p class="notice info" style="font-weight:600">Ujęcie ${it.ser.k} z ${it.ser.m} tego samego elementu (nr ${n-it.ser.k+1}–${n-it.ser.k+it.ser.m}).</p>`:''}
     ${it&&it.desc?`<p style="font-size:17px">${esc(it.desc)}</p>`:''}
     ${shootG5(p,f,it)}
-    <div class="row" style="gap:6px">${it&&it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}<span class="tag">pionowo 3:4</span>${isOpt(p,it)?'<span class="tag">opcja</span>':''}${sl.skip?'<span class="tag warn">pominięte</span>':''}${it&&it.share&&p.reports.length>1?`<span class="tag acc">zapisze się w każdym folderze jako ${n}.jpg</span>`:''}</div>
-    <div class="preview">${pendLast?`<img alt="Zapisywane zdjęcie ${n}" src="${pendLast.url}"><span class="pendtag">Zapisuję w tle…</span>`:chosen?`<img alt="Wybrane ujęcie zdjęcia ${n}" src="${photoURL(sl.chosen,false)}">`:`<div class="ph">Brak zdjęcia.<br>Zrób je aparatem albo wybierz z galerii. Zapisze się jako <b>${esc(f)}/${n}.jpg</b>.</div>`}</div>
+    <div class="row" style="gap:6px">${it&&it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it&&it.screen?'<span class="tag">zrzut ekranu z galerii</span>':'<span class="tag">pionowo 3:4</span>'}${it&&it.warn?'<span class="tag warn">częsty powód odrzucenia</span>':''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${sl.skip?`<span class="tag warn">${isE(p)?'N/A':'pominięte'}</span>`:''}${it&&it.share&&p.reports.length>1?`<span class="tag acc">zapisze się w każdym folderze jako ${n}.jpg</span>`:''}</div>
+    <div class="preview">${pendLast?`<img alt="Zapisywane zdjęcie ${n}" src="${pendLast.url}"><span class="pendtag">Zapisuję w tle…</span>`:chosen?`<img alt="Wybrane ujęcie zdjęcia ${n}" src="${photoURL(sl.chosen,false)}">`:`<div class="ph">Brak zdjęcia.<br>Zrób je aparatem albo wybierz z galerii. Zapisze się jako <b>${esc(f)}/${esc(fileName(p,f,it,n))}</b>.</div>`}</div>
     ${S.lastError?`<p class="notice" role="alert">${esc(S.lastError)}</p>`:''}
     ${land?`<p class="notice">To zdjęcie jest poziome. Wytyczne wymagają zdjęć pionowych 3:4.</p>`:''}
     ${small?`<p class="notice">Rozdzielczość poniżej 1200×1600 wymaganych w wytycznych.</p>`:''}
     ${sl.takes.length?`<div class="stack" style="gap:6px">
       <div class="spread"><span class="eyebrow">Ujęcia (${sl.takes.length}) · stuknij, żeby wybrać</span>
         ${sl.chosen?`<button class="${conf==='deltake'?'btn-danger':'btn-ghost'}" data-act="deltake">${conf==='deltake'?'Na pewno usunąć?':'Usuń wybrane'}</button>`:''}</div>
-      <div class="takes">${sl.takes.map((id,i)=>`<button class="take" data-act="choose" data-id="${id}" aria-pressed="${id===sl.chosen}" aria-label="Ujęcie ${i+1}"><img alt="" src="${photoURL(id)}"><span class="lbl">${id===sl.chosen?'✓ '+n+'.jpg':'#'+(i+1)}</span></button>`).join('')}</div>
+      <div class="takes">${sl.takes.map((id,i)=>`<button class="take" data-act="choose" data-id="${id}" aria-pressed="${id===sl.chosen}" aria-label="Ujęcie ${i+1}"><img alt="" src="${photoURL(id)}"><span class="lbl">${id===sl.chosen?'✓ '+(isE(p)?'wybrane':n+'.jpg'):'#'+(i+1)}</span></button>`).join('')}</div>
     </div>`:''}
   </div>
   <div class="sticky-actions stack" style="gap:8px">
@@ -644,13 +799,20 @@ function vShoot(){
     </div>
     <div class="navrow">
       <button data-act="prev" ${idx<=0?'disabled':''}>← Wstecz</button>
-      <button data-act="skip">${sl.skip?'Przywróć':'Pomiń'}</button>
+      <button data-act="skip">${sl.skip?'Przywróć':(isE(p)?'Brak (N/A)':'Pomiń')}</button>
       <button class="${sl.chosen||sl.skip||pend.length?'btn-primary':''}" data-act="next">${idx>=seq.length-1?'Koniec ✓':'Dalej →'}</button>
     </div>
   </div>`;
 }
 
-function zipName(p){ return [p.nr||'stacja', (p.data||'').replace(/-/g,''), p.zam].filter(Boolean).join('_').replace(/[\\/:*?"<>|\s]+/g,'_'); }
+function zipName(p){
+  if(isE(p)) return [p.nr||'stacja', p.nazwa, 'ZDJECIA', (p.data||'').replace(/-/g,''), p.zam].filter(Boolean).join('_').replace(/[\\/:*?"<>|\s]+/g,'_');
+  return [p.nr||'stacja', (p.data||'').replace(/-/g,''), p.zam].filter(Boolean).join('_').replace(/[\\/:*?"<>|\s]+/g,'_'); }
+function slug(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l').replace(/Ł/g,'L').replace(/→/g,'-').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,60); }
+function fileName(p,f,it,n,v){
+  if(!isE(p)) return v?`${n}_v${v}.jpg`:`${n}.jpg`;
+  const t=it?(it.ser?it.title+' '+it.ser.k:it.title):'zdjecie';
+  return String(n).padStart(3,'0')+(v?'_v'+v:'')+'_'+slug(t)+'.jpg'; }
 function vExport(){
   const p=S.p; let count=0, alt=0; const miss=[];
   for(const f of p.reports){
@@ -673,16 +835,21 @@ function vExport(){
     </div>
     <div class="card stack">
       <b>Co jest w środku</b>
-      <p class="small muted" style="font-family:ui-monospace,Menlo,monospace;line-height:1.6">${esc(zipName(p))}/<br>${p.reports.map(f=>`&nbsp;&nbsp;${esc(f)}/1.jpg, 2.jpg…`).join('<br>')}<br>&nbsp;&nbsp;info.txt${p.reports.includes('Inne')?'<br>&nbsp;&nbsp;Inne/opisy.txt':''}${S.includeAlt?'<br>&nbsp;&nbsp;_inne_ujecia/…':''}</p>
+      <p class="small muted" style="font-family:ui-monospace,Menlo,monospace;line-height:1.6;overflow-wrap:anywhere">${esc(zipName(p))}/<br>${p.reports.map(f=>`&nbsp;&nbsp;${esc(f)}/${isE(p)?'001_S1_…jpg':'1.jpg, 2.jpg…'}`).join('<br>')}<br>&nbsp;&nbsp;info.txt${isE(p)?'<br>&nbsp;&nbsp;lista_zdjec.txt':''}${p.reports.includes('Inne')?'<br>&nbsp;&nbsp;Inne/opisy.txt':''}${S.includeAlt?'<br>&nbsp;&nbsp;_inne_ujecia/…':''}</p>
       <label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="alt" ${S.includeAlt?'checked':''} style="width:22px;height:22px"> Dołącz niewybrane ujęcia (${alt})</label>
       <p class="muted small">Niewybrane ujęcia trafiają do osobnego folderu _inne_ujecia, więc makro ich nie wstawi.</p>
     </div>
-    <div class="card stack">
+    ${isE(p)?`<div class="card stack">
+      <b>Co dalej</b>
+      <ol class="small" style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
+        <li>Rozpakuj ZIP.</li><li>Foldery 01–06 wrzuć do ZDJECIA w folderze stacji na dysku (NOKIA CELLNEX › firma › numer stacji).</li><li>Zrzuty z 08_TESTY_S25 służą do wypełnienia Site Test.</li><li>lista_zdjec.txt pokazuje, co zrobione, a co N/A. Przyda się przy Check Liście.</li>
+      </ol>
+    </div>`:`<div class="card stack">
       <b>Na komputerze</b>
       <ol class="small" style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
         <li>Rozpakuj ZIP.</li><li>Wrzuć Foto_raport.xlsm do folderu ${esc(zipName(p))}.</li><li>Uzupełnij „Site info” danymi z info.txt.</li><li>Kliknij „Wstaw zdjęcia”, potem „Utwórz PDF”.</li>
       </ol>
-    </div>
+    </div>`}
     <p id="expMsg" class="notice info" hidden></p>
     <button class="btn-primary btn-big btn-block" data-act="do-export" ${count?'':'disabled'}>${NATIVE?'Zapisz ZIP w telefonie':'Pobierz ZIP'}</button>
     ${NATIVE?'<button id="shareBtn" class="btn-block" data-act="share" hidden>Wyślij ZIP (WhatsApp, mail, Dysk…)</button>':''}
@@ -817,11 +984,28 @@ async function doExport(){
       for(const it of itemsFor(p,f,{all:true})){
         if(hiddenByCfg(p,f,it)) continue;
         const sl=peek(p,slotKey(f,it.n,p)); if(!sl.chosen) continue;
-        const ph=S.photos.get(sl.chosen); if(ph) fd.file(it.n+'.jpg',ph.blob);
-        if(S.includeAlt && !(altDone.has(slotKey(f,it.n,p)))){ altDone.add(slotKey(f,it.n,p)); let v=1; for(const id of sl.takes){ if(id===sl.chosen) continue; v++; const a=S.photos.get(id); if(a) dir.folder('_inne_ujecia').folder(f).file(`${it.n}_v${v}.jpg`,a.blob);} }
+        const ph=S.photos.get(sl.chosen); if(ph) fd.file(fileName(p,f,it,it.n),ph.blob);
+        if(S.includeAlt && !(altDone.has(slotKey(f,it.n,p)))){ altDone.add(slotKey(f,it.n,p)); let v=1; for(const id of sl.takes){ if(id===sl.chosen) continue; v++; const a=S.photos.get(id); if(a) dir.folder('_inne_ujecia').folder(f).file(fileName(p,f,it,it.n,v),a.blob);} }
       }
     }
-    dir.file('info.txt',[
+    if(isE(p)){
+      const L=[];
+      for(const f of p.reports){ L.push('', RMAP[f].name.toUpperCase());
+        for(const it of itemsFor(p,f,{all:true})){ if(hiddenByCfg(p,f,it)) continue; const sl=peek(p,slotKey(f,it.n,p));
+          if(it.extra && !sl.chosen) continue;
+          L.push((sl.chosen?'OK   ':sl.skip?'N/A  ':isOpt(p,it)?'—    ':'BRAK ')+String(it.n).padStart(3,'0')+'  '+it.title+(it.ser?' ('+it.ser.k+'/'+it.ser.m+')':'')); } }
+      dir.file('lista_zdjec.txt',['Lista zdjęć '+(p.nr||'')+' '+(p.nazwa||'')+' · '+(p.data||''),'OK = jest zdjęcie, N/A = brak elementu na stacji, BRAK = nie zrobione'].concat(L).join('\r\n'));
+    }
+    dir.file('info.txt',isE(p)?[
+      'Projekt: ECLIPSE (Cellnex / Nokia)',
+      'Numer stacji: '+(p.nr||''),
+      'Nazwa stacji: '+(p.nazwa||''),
+      'Zleceniodawca: '+(p.firma||''),
+      'Zakres prac: '+(p.zakres||''),
+      'Data wykonania: '+(p.data||''),
+      p.zam?'PO: '+p.zam:'',
+      'Sektory: '+p.cfg.sectors
+    ].filter(Boolean).join('\r\n'):[
       'Nazwa obiektu OPL / TMP: '+(p.nazwaOp||''),
       'Nazwa obiektu Networks: '+(p.nr?p.nr+' ':'')+(p.nazwa||''),
       'Numer stacji Networks: '+(p.nr?p.nr+' ':'')+(p.nazwa||''),
@@ -835,7 +1019,7 @@ async function doExport(){
     if(NATIVE){
       const path=await nativeSaveZip(zip,root);
       busy(false); toast('ZIP zapisany');
-      show(`Zapisano w telefonie: ${path}. Plik znajdziesz w aplikacji Pliki → Pobrane → FotoRaport.`);
+      show(`Zapisano w telefonie: ${path}. Plik znajdziesz w aplikacji Pliki → Pobrane → ZdjeciaPlusDoc.`);
       const sb=document.getElementById('shareBtn'); if(sb) sb.hidden=false;
       return;
     }
@@ -876,7 +1060,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='1.4';
+const APP_VERSION='1.0';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -910,12 +1094,16 @@ document.addEventListener('click',async ev=>{
   switch(a){
     case 'home': S.view='home'; S.p=null; await loadProjects(); render(); showStorage(); break;
     case 'new':
-      S.p=null; S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('firma',''),zakres:'',zam:'',reports:['BTS','System Antenowy'],cfg:normCfg({...ls.get('cfg',{}),map:null}),g5:null,tpl:ls.get('tpl','v3')};
+      if(d.eclipse){ S.p=null; const c=normCfg({...ls.get('ecfg',{}),map:null}); S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('efirma',''),zakres:'',zam:'',reports:E_DEFAULT.slice(),cfg:c,g5:null,tpl:'eclipse'}; S.view='form'; render(); break; }
+      S.p=null; S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('firma',''),zakres:'',zam:'',reports:['BTS','System Antenowy'],cfg:normCfg({...ls.get('cfg',{}),map:null}),g5:null,tpl:(t=>t==='eclipse'?'v3':t)(ls.get('tpl','v3'))};
       S.view='form'; render(); if(d.g5) document.getElementById('g5file').click(); break;
     case 'edit': S.draft=JSON.parse(JSON.stringify({nr:S.p.nr,nazwa:S.p.nazwa,nazwaOp:S.p.nazwaOp||'',data:S.p.data,firma:S.p.firma,zakres:S.p.zakres,zam:S.p.zam,reports:S.p.reports,cfg:normCfg(S.p.cfg),g5:S.p.g5||null,tpl:S.p.tpl||'v1'})); S.view='form'; render(); break;
-    case 'rep': { syncDraft(); const r=S.draft.reports; const i=r.indexOf(d.f); if(i>=0) r.splice(i,1); else r.push(d.f); S.draft.reports=REPORTS.map(x=>x.f).filter(x=>r.includes(x)); keepScroll(render); break; }
+    case 'rep': { syncDraft(); const r=S.draft.reports; const i=r.indexOf(d.f); if(i>=0) r.splice(i,1); else r.push(d.f); S.draft.reports=reportsFor(tplOf(S.draft)).map(x=>x.f).filter(x=>r.includes(x)); keepScroll(render); break; }
     case 'cfg': syncDraft(); S.draft.cfg[d.k]=+d.v; keepScroll(render); break;
-    case 'tpl': syncDraft(); S.draft.tpl=d.v; ls.set('tpl',d.v); keepScroll(render); break;
+    case 'tpl': { syncDraft(); const was=tplOf(S.draft)==='eclipse'; S.draft.tpl=d.v; if(d.v!=='eclipse') ls.set('tpl',d.v);
+      if(was!==(d.v==='eclipse')) S.draft.reports = d.v==='eclipse' ? E_DEFAULT.slice() : ['BTS','System Antenowy'];
+      keepScroll(render); break; }
+    case 'eopt': syncDraft(); S.draft.cfg.opts[d.k]=!S.draft.cfg.opts[d.k]; keepScroll(render); break;
     case 'cfgs': syncDraft(); S.draft.cfg[d.k][+d.i]=+d.v; keepScroll(render); break;
     case 'open': openProject(d.id); break;
     case 'delp':
@@ -973,8 +1161,9 @@ document.addEventListener('submit',async ev=>{
   if(ev.target.id!=='pform') return; ev.preventDefault(); syncDraft();
   const d=S.draft, err=document.getElementById('formErr');
   if(!d.nr){ err.hidden=false; err.textContent='Wpisz numer stacji.'; return; }
-  if(!d.reports.length){ err.hidden=false; err.textContent='Wybierz przynajmniej jeden raport.'; return; }
-  ls.set('firma',d.firma); ls.set('cfg',d.cfg);
+  if(!d.reports.length){ err.hidden=false; err.textContent=isE(d)?'Wybierz przynajmniej jeden folder.':'Wybierz przynajmniej jeden raport.'; return; }
+  if(isE(d)){ d.nr=d.nr.toUpperCase(); d.nazwa=(d.nazwa||'').toUpperCase(); ls.set('efirma',d.firma); ls.set('ecfg',d.cfg); }
+  else { ls.set('firma',d.firma); ls.set('cfg',d.cfg); }
   if(S.p){ Object.assign(S.p,d); await saveP(); S.view='station'; render(); toast('Zapisano'); return; }
   const p={id:uid(),...d,slots:{},inne:[],created:Date.now(),updated:Date.now()};
   try{ await DB.put('projects',p); }catch(e){ err.hidden=false; err.textContent='Nie udało się zapisać stacji w pamięci telefonu.'; return; }
@@ -1050,12 +1239,12 @@ document.getElementById('zipfile').addEventListener('change',async ev=>{
   const p=S.p; const tpl=tplOf(p);
   const files=[];
   for(const n of names){
-    const m=n.match(/(?:^|\/)(_inne_ujecia\/)?([^\/]+)\/(\d+)(?:_v(\d+))?\.jpe?g$/i); if(!m) continue;
+    const m=n.match(/(?:^|\/)(_inne_ujecia\/)?([^\/]+)\/(\d+)(?:_v(\d+))?(?:_[^\/]*)?\.jpe?g$/i); if(!m) continue;
     const folder=FOLDERS.find(f=>f.toLowerCase()===m[2].toLowerCase()); if(!folder) continue;
     files.push({name:n,f:folder,n:+m[3],alt:!!m[1],v:+(m[4]||0)});
   }
   files.sort((a,b)=>a.alt-b.alt);
-  if(!files.length){ busy(false); render(); toast('Nie znalazłem zdjęć w folderach BTS, System Antenowy itd.'); return; }
+  if(!files.length){ busy(false); render(); toast('Nie znalazłem zdjęć w folderach tej stacji (np. 01_ANTENY albo BTS).'); return; }
   let added=0, skipped=0, same=0; const seenSlot=new Set();
   for(let i=0;i<files.length;i++){
     const x=files[i]; document.getElementById('busyText').textContent=`Wczytuję zdjęcia… ${i+1}/${files.length}`;

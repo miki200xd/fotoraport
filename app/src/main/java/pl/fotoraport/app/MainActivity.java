@@ -236,7 +236,7 @@ public class MainActivity extends Activity {
         String subdir = clean(captureSubdirValue);
         String name = clean(captureNameValue);
         if (name.isEmpty()) name = "zdjecie_" + System.currentTimeMillis();
-        String rel = Environment.DIRECTORY_PICTURES + "/FotoRaport" + (subdir.isEmpty() ? "" : "/" + subdir);
+        String rel = Environment.DIRECTORY_PICTURES + "/" + getString(R.string.media_dir) + (subdir.isEmpty() ? "" : "/" + subdir);
         ContentResolver cr = getContentResolver();
         ContentValues cv = new ContentValues();
         cv.put(MediaStore.Images.Media.DISPLAY_NAME, name + ".jpg");
@@ -366,10 +366,10 @@ public class MainActivity extends Activity {
                 Uri collection;
                 if ("photo".equals(kind)) {
                     String sd = clean(subdir);
-                    rel = Environment.DIRECTORY_PICTURES + "/FotoRaport" + (sd.isEmpty() ? "" : "/" + sd);
+                    rel = Environment.DIRECTORY_PICTURES + "/" + getString(R.string.media_dir) + (sd.isEmpty() ? "" : "/" + sd);
                     collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
                 } else {
-                    rel = Environment.DIRECTORY_DOWNLOADS + "/FotoRaport";
+                    rel = Environment.DIRECTORY_DOWNLOADS + "/" + getString(R.string.media_dir);
                     collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
                 }
                 String fname = clean(name);
