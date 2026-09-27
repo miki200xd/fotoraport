@@ -137,6 +137,7 @@ select.secsel{font:inherit;font-size:15px;min-height:44px;padding:8px;border:1px
 <input id="gal" class="hidden-input" type="file" accept="image/*" multiple aria-label="Galeria">
 <input id="zipfile" class="hidden-input" type="file" accept=".zip,application/zip,application/x-zip-compressed" aria-label="Plik ZIP ze zdjęciami">
 <input id="g5file" class="hidden-input" type="file" accept="application/pdf,.pdf" aria-label="Plik G5 PDF">
+<input id="pnfile" class="hidden-input" type="file" accept="application/pdf,.pdf" aria-label="Plik PRENOSS PDF">
 <div id="toast" class="toast" hidden></div>
 <div id="busy" class="busy" hidden><div id="busyText">Zapisywanie…</div></div>
 
@@ -545,7 +546,10 @@ function vHome(){
     <p class="muted">Aplikacja prowadzi Cię przez listę zdjęć wg wytycznych RFA i od razu nazywa pliki. Na koniec pobierasz ZIP z folderami 01_ANTENY … 06_WIDOK_OGOLNY, jak ZDJECIA w folderze stacji.</p>
   </header>
   ${S.dbError?`<div class="notice" style="margin-bottom:12px">Ta przeglądarka nie pozwala zapisywać zdjęć w pamięci (${esc(S.dbError)}). Otwórz stronę w zwykłym oknie przeglądarki, nie w trybie prywatnym.</div>`:''}
-  <button class="btn btn-primary btn-big btn-block" data-act="new" data-eclipse="1">+ Nowa stacja</button>
+  <div class="row" style="flex-wrap:nowrap">
+    <button class="btn btn-primary btn-big" style="flex:1.4" data-act="new" data-eclipse="1" data-pn="1">+ Nowa z PRENOSS</button>
+    <button class="btn btn-big" style="flex:1" data-act="new" data-eclipse="1">Bez PRENOSS</button>
+  </div>
   <button class="btn-ghost" style="margin-top:6px" data-act="import-new">Wczytaj stację z ZIP-a (kopii)</button>
   ${NATIVE?'<p class="notice info" style="margin-top:8px">Każde zdjęcie z aparatu ma kopię w galerii: album <b>CellnexNokia › numer stacji</b> (Pictures/CellnexNokia). ZIP-y zapisują się w Pobrane/CellnexNokia.</p>':''}
   <div class="stack" style="margin-top:18px">
@@ -668,12 +672,93 @@ function vForm(){
   </form>`;
 }
 
+/* ===== Parser PRENOSS RF (PDF od Nokii, tekst linia po linii) ===== */
+function dmsToDec(s){ const m=String(s||'').match(/(\d+)-(\d+)-([\d.]+)\s*([NSEW])/i); if(!m) return null; let v=+m[1]+m[2]/60+m[3]/3600; if(/[SW]/i.test(m[4])) v=-v; return Math.round(v*1e6)/1e6; }
+function parsePrenoss(rawLines){
+  const L=rawLines.map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
+  const all=L.join('\n');
+  if(!/PreNoSS/i.test(all) || !/Antenna id/i.test(all)) return null;
+  const g=(re)=>{ const m=all.match(re); return m?m[1].trim():''; };
+  const siteCode=g(/Site(?: Code)?:?\s+(BT\d+[A-Z0-9-]*)/i);
+  const node=g(/\bNode:?\s+(BT\d+)/i);
+  const r={ site:siteCode, nr:(node||siteCode.replace(/-[A-Z]$/,'')).toUpperCase(), nazwa:g(/Site Name:?\s+(.+?)(?:\n|$)/i).toUpperCase(),
+    date:g(/Date:?\s+(\d{2}\/\d{2}\/\d{4})/), ext:g(/Extension Id:?\s+(\d+)/i), rf:g(/RF Engineer:?\s+(.+?)(?:\n|$)/i),
+    structure:g(/Structure Type:?\s+(.+?)(?:\n|$)/i), lon:dmsToDec(g(/Longitude:?\s+([\d.-]+\s*[EW])/i)), lat:dmsToDec(g(/Latitude:?\s+([\d.-]+\s*[NS])/i)),
+    systems:[], antennas:[], sectors:[], rruModels:[], gps:false, gpsInfo:'', deinst:[], feeder:false, mha:false, warn:[] };
+  // SYSTEMS
+  const iSys=L.findIndex(x=>/^SYSTEMS$/i.test(x)), iAnt=L.findIndex(x=>/^ANTENNAS$/i.test(x));
+  if(iSys>=0) for(const x of L.slice(iSys+1,iAnt>iSys?iAnt:undefined)){ const m=x.match(/^(2G|3G|4G|5G|IoT)\s+(\d+(?: TDD)?)\b/); if(m) r.systems.push(m[1]+' '+m[2]); }
+  // bloki anten
+  const iBBU=L.findIndex(x=>/^BASEBAND UNITS/i.test(x));
+  const starts=[]; L.forEach((x,i)=>{ if(/Antenna id:?\s*\d+/i.test(x) && (iBBU<0||i<iBBU)) starts.push(i); });
+  starts.forEach((st,k)=>{
+    const end=k+1<starts.length?starts[k+1]:(iBBU>0?iBBU:L.length);
+    const blk=L.slice(Math.max(0,st-1),end); const t=blk.join('\n'); const own=L.slice(st,end).join('\n');
+    const id=+((L[st].match(/Antenna id:?\s*(\d+)/i)||[])[1]||k+1);
+    const az=+((t.match(/Mechanical Azimuth:?\s*(\d+)/i)||[])[1]||0);
+    const mm=own.match(/Model:?\s+([A-Z0-9][^\s|]*)/i) || t.match(/Model:?\s+([A-Z0-9][^\s|]*)/i);
+    const h=(own.match(/Height:?\s*([\d.,]+)/i)||[])[1]||'';
+    const rrus=[]; for(const m of own.matchAll(/(?:^|\s)(\d{1,2})-([A-Z]{2,6}\d?[A-Z]?(?: \(\d{3}\))?)(?=\s|$)/g)){ const key=m[1]; if(!rrus.some(x=>x.id===key)) rrus.push({id:key,model:m[2]}); }
+    if(/\b(LCF|7\/8"?|1 5\/8|1-5\/8|Feeder \d)/i.test(own)) r.feeder=true;
+    if(/\b(MHA|TMA|DIPLEX|TRIPLEX|SPLITTER|COMBINER)/i.test(own)) r.mha=true;
+    r.antennas.push({id,az,model:mm?mm[1]:'',height:h.replace(',','.'),rrus});
+  });
+  // RRUs (tabela zbiorcza)
+  const iR=L.findIndex(x=>/^RRUs$/i.test(x)), iO=L.findIndex(x=>/^OTHER$/i.test(x));
+  if(iR>=0) for(const x of L.slice(iR+1,iO>iR?iO:iR+20)){ const m=x.match(/^(.+?)\s+(\d+)\s+(\d+)$/); if(m && !/Model/i.test(m[1])) r.rruModels.push({model:m[1],old:+m[2],new:+m[3]}); }
+  // OTHER: GPS
+  if(iO>=0){ for(const x of L.slice(iO+1,iO+8)){ const m=x.match(/^\d+\s+GPS\b\s*(.*)$/i); if(m){ r.gpsInfo=m[1]; r.gps=!/nie zamawiamy/i.test(m[1]); } if(/^REMARKS/i.test(x)) break; } }
+  const iRem=L.findIndex(x=>/^REMARKS/i.test(x)), iD=L.findIndex(x=>/^DEINSTALLATION$/i.test(x));
+  r.remarks=iRem>=0?L.slice(iRem+1,iD>iRem?iD:undefined).join(' ').replace(/^:\s*/,''):'';
+  if(iD>=0) for(const x of L.slice(iD+1)){ if(/Hardware Type|^Page|^\d+$/i.test(x)) continue; const m=x.match(/^(RRU|Antenna|ANT|BBU|Module|Card|Other|[A-Z]+)\s+(.+?)\s+(\d+)$/i); if(m) r.deinst.push({type:m[1],model:m[2],qty:+m[3]}); }
+  // sektory fizyczne = anteny o zbliżonym azymucie mechanicznym (do 45°)
+  const dist=(a,b)=>{ const d=Math.abs(a-b)%360; return Math.min(d,360-d); };
+  const groups=[];
+  for(const a of r.antennas.slice().sort((x,y)=>x.az-y.az)){ let gr=groups.find(g=>dist(g.az,a.az)<=45); if(!gr){ gr={az:a.az,ants:[]}; groups.push(gr); } gr.ants.push(a); }
+  // połącz grupę z końca koła z pierwszą (np. 350° i 10°)
+  groups.sort((x,y)=>x.az-y.az);
+  const used=new Set();
+  r.sectors=groups.map(gr=>{ const rr=[]; for(const a of gr.ants) for(const u of a.rrus) if(!used.has(u.id)){ used.add(u.id); rr.push(u); }
+    const az=[...new Set(gr.ants.map(a=>a.az))]; const hs=[...new Set(gr.ants.map(a=>a.height).filter(Boolean))];
+    return {az, height:hs.join(' / '), ants:gr.ants.map(a=>({id:a.id,model:a.model,az:a.az,height:a.height})), rrus:rr}; });
+  if(r.sectors.length>E_MAXS) r.warn.push(`PRENOSS ma ${r.sectors.length} kierunków anten, aplikacja pokazuje ${E_MAXS}.`);
+  r.sectors.forEach((x,i)=>{ if(x.ants.length>E_MAXA) r.warn.push(`S${i+1}: ${x.ants.length} anten, lista zdjęć ma ${E_MAXA}.`); if(x.rrus.length>E_MAXR4) r.warn.push(`S${i+1}: ${x.rrus.length} modułów RF, lista zdjęć ma ${E_MAXR4}.`); });
+  if(!r.nr || !r.sectors.length) return null;
+  return r;
+}
+function applyPrenoss(d,r){
+  d.pn=r; d.nr=r.nr||d.nr; d.nazwa=r.nazwa||d.nazwa;
+  if(!d.zakres) d.zakres=r.systems.join(', ');
+  const c=d.cfg=normCfg(d.cfg);
+  c.sectors=Math.max(1,Math.min(E_MAXS,r.sectors.length));
+  r.sectors.slice(0,E_MAXS).forEach((x,i)=>{ c.secAnt[i]=Math.max(1,Math.min(E_MAXA,x.ants.length)); c.secRru[i]=Math.max(1,Math.min(E_MAXR4,x.rrus.length)); });
+  c.opts={...c.opts, feeder:r.feeder, mha:r.mha, deinst:r.deinst.length>0};
+  const rep=new Set(d.reports); if(r.gps) rep.add('05_GPS'); else rep.delete('05_GPS');
+  d.reports=reportsFor('eclipse').map(x=>x.f).filter(f=>rep.has(f));
+}
+function pnSecLine(s,i){ return `<b>S${i+1}</b> · az ${s.az.join('/')}° · ${esc(s.height)} m · ${s.ants.map((a,k)=>`ANT${k+1} ${esc(a.model)}`).join(', ')} · ${s.rrus.map((u,k)=>`RF${k+1} ${esc(u.model)}`).join(', ')}`; }
+function shootPN(p,f,it){
+  const r=p.pn; if(!r||!it||!it.tags||!it.tags.sec) return '';
+  const s=r.sectors[it.tags.sec-1]; if(!s) return '';
+  let x=`<b>S${it.tags.sec}</b> · azymut ${s.az.join('/')}° · ${esc(s.height)} m`;
+  if(it.tags.ant){ const a=s.ants[it.tags.ant-1]; if(a) x+=` · <b>ANT${it.tags.ant} = ${esc(a.model)}</b> (id ${a.id}, az ${a.az}°)`; }
+  if(it.tags.rru){ const u=s.rrus[it.tags.rru-1]; if(u) x+=` · <b>RF${it.tags.rru} = ${esc(u.model)}</b> (nr ${esc(u.id)})`; }
+  return `<div class="card small" style="padding:10px 12px">${x}</div>`;
+}
+
 function vFormE(p,segs,segi){
   const has=f=>p.reports.includes(f);
   const locked=S.p&&Object.keys(S.p.slots||{}).some(k=>S.p.slots[k].takes.length);
   return `
   <div class="topbar spread"><button class="btn-ghost" data-act="${S.p?'back-station':'home'}">← Wróć</button><span class="eyebrow">${S.p?'Edycja stacji':'Nowa stacja'}</span><span style="width:60px"></span></div>
   <form id="pform" class="stack" autocomplete="off">
+    <div class="card stack g5card">
+      <div><h3>PRENOSS RF</h3><p class="muted small">${p.pn?`Wczytano: <b>${esc(p.pn.nr)} ${esc(p.pn.nazwa)}</b> · ${p.pn.sectors.length} sekt. · ${p.pn.antennas.length} anten · z dnia ${esc(p.pn.date)}`:'Wczytaj PDF PRENOSS RF, a numer, nazwa, sektory, anteny i moduły RF uzupełnią się same.'}</p></div>
+      ${p.pn?`<dl class="facts">${p.pn.sectors.map((s,i)=>`<dt>S${i+1}</dt><dd style="font-weight:400">${pnSecLine(s,i).replace(/^<b>S\d+<\/b> · /,'')}</dd>`).join('')}</dl>`:''}
+      ${p.pn&&p.pn.warn.length?`<p class="notice">${p.pn.warn.map(esc).join('<br>')}</p>`:''}
+      <label for="pnfile" class="btn ${p.pn?'':'btn-primary'}" role="button" tabindex="0">${p.pn?'Wczytaj inny PRENOSS':'Wczytaj PRENOSS (PDF)'}</label>
+      <p class="notice" id="pnErr" hidden></p>
+    </div>
     <div class="card stack">
       <div class="grid2">
         <label class="field">Numer stacji<input type="text" id="f_nr" autocapitalize="characters" value="${esc(p.nr)}" placeholder="np. BT18295" required></label>
@@ -726,6 +811,15 @@ function vStation(){
     <div class="tabs" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.done}/${st.total}</span></button>`}).join('')}</div>
   </div>
   <div class="stack">
+    ${p.pn?`<details class="card"><summary style="cursor:pointer;font-weight:600">Dane z PRENOSS · ${esc(p.pn.site)} · ${esc(p.pn.date)}</summary>
+      <dl class="facts" style="margin-top:10px">
+        ${p.pn.sectors.map((s,i)=>`<dt>S${i+1}</dt><dd style="font-weight:400">${pnSecLine(s,i).replace(/^<b>S\d+<\/b> · /,'')}</dd>`).join('')}
+        <dt>Systemy</dt><dd style="font-weight:400">${esc(p.pn.systems.join(', '))}</dd>
+        ${p.pn.lat?`<dt>GPS</dt><dd style="font-weight:400">${p.pn.lat} / ${p.pn.lon}</dd>`:''}
+        <dt>Antena GPS</dt><dd style="font-weight:400">${p.pn.gps?'tak':esc(p.pn.gpsInfo||'brak')}</dd>
+        ${p.pn.deinst.length?`<dt>Demontaż</dt><dd style="font-weight:400">${p.pn.deinst.map(x=>esc(x.model)+' ×'+x.qty).join(', ')}</dd>`:''}
+        ${p.pn.remarks?`<dt>Uwagi</dt><dd style="font-weight:400">${esc(p.pn.remarks)}</dd>`:''}
+      </dl></details>`:''}
     ${p.g5?`<details class="card"><summary style="cursor:pointer;font-weight:600">Dane z G5 · ${esc(p.g5.task||'')} · ${esc(p.g5.klass||'')} ${p.g5.height?esc(p.g5.height)+' m':''}</summary>
       <dl class="facts" style="margin-top:10px">
         ${Array.from({length:p.cfg.sectors},(_,i)=>{const s=g5Sector(p,i);return `<dt>S${i+1}</dt><dd>${s?esc(secLabel(s))+'<br><span class="muted" style="font-weight:400">'+esc(secEquip(s))+'</span>':'—'}</dd>`}).join('')}
@@ -790,7 +884,7 @@ function vShoot(){
     </div>
     ${it&&it.ser?`<p class="notice info" style="font-weight:600">Ujęcie ${it.ser.k} z ${it.ser.m} tego samego elementu (nr ${n-it.ser.k+1}–${n-it.ser.k+it.ser.m}).</p>`:''}
     ${it&&it.desc?`<p style="font-size:17px">${esc(it.desc)}</p>`:''}
-    ${shootG5(p,f,it)}
+    ${shootG5(p,f,it)}${shootPN(p,f,it)}
     <div class="row" style="gap:6px">${it&&it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it&&it.screen?'<span class="tag">zrzut ekranu z galerii</span>':'<span class="tag">pionowo 3:4</span>'}${it&&it.warn?'<span class="tag warn">częsty powód odrzucenia</span>':''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${sl.skip?`<span class="tag warn">${isE(p)?'N/A':'pominięte'}</span>`:''}${it&&it.share&&p.reports.length>1?`<span class="tag acc">zapisze się w każdym folderze jako ${n}.jpg</span>`:''}</div>
     <div class="preview">${pendLast?`<img alt="Zapisywane zdjęcie ${n}" src="${pendLast.url}"><span class="pendtag">Zapisuję w tle…</span>`:chosen?`<img alt="Wybrane ujęcie zdjęcia ${n}" src="${photoURL(sl.chosen,false)}">`:`<div class="ph">Brak zdjęcia.<br>Zrób je aparatem albo wybierz z galerii. Zapisze się jako <b>${esc(f)}/${esc(fileName(p,f,it,n))}</b>.</div>`}</div>
     ${S.lastError?`<p class="notice" role="alert">${esc(S.lastError)}</p>`:''}
@@ -1014,7 +1108,10 @@ async function doExport(){
       'Zakres prac: '+(p.zakres||''),
       'Data wykonania: '+(p.data||''),
       p.zam?'PO: '+p.zam:'',
-      'Sektory: '+p.cfg.sectors
+      'Sektory: '+p.cfg.sectors,
+      p.pn?'PRENOSS: '+p.pn.site+' z '+p.pn.date:'',
+      p.pn&&p.pn.lat?'GPS: '+p.pn.lat+' / '+p.pn.lon:'',
+      ...(p.pn?p.pn.sectors.map((s,i)=>('S'+(i+1)+': az '+s.az.join('/')+'°, '+s.height+' m, anteny: '+s.ants.map(a=>a.model).join(', ')+', RF: '+s.rrus.map(u=>u.model).join(', '))):[])
     ].filter(Boolean).join('\r\n'):[
       'Nazwa obiektu OPL / TMP: '+(p.nazwaOp||''),
       'Nazwa obiektu Networks: '+(p.nr?p.nr+' ':'')+(p.nazwa||''),
@@ -1024,7 +1121,7 @@ async function doExport(){
       'Data wykonania: '+(p.data||''),
       p.zam?'Numer zamówienia: '+p.zam:''
     ].filter(Boolean).join('\r\n'));
-    dir.file('_fotoraport_dane.json',JSON.stringify({app:'fotoraport',v:1,project:{nr:p.nr,nazwa:p.nazwa,nazwaOp:p.nazwaOp,data:p.data,firma:p.firma,zakres:p.zakres,zam:p.zam,reports:p.reports,cfg:p.cfg,g5:p.g5||null,tpl:tplOf(p),inne:p.inne||[]},skip:Object.keys(p.slots).filter(k=>p.slots[k].skip)}));
+    dir.file('_fotoraport_dane.json',JSON.stringify({app:'fotoraport',v:1,project:{nr:p.nr,nazwa:p.nazwa,nazwaOp:p.nazwaOp,data:p.data,firma:p.firma,zakres:p.zakres,zam:p.zam,reports:p.reports,cfg:p.cfg,g5:p.g5||null,pn:p.pn||null,tpl:tplOf(p),inne:p.inne||[]},skip:Object.keys(p.slots).filter(k=>p.slots[k].skip)}));
     if(p.reports.includes('Inne') && (p.inne||[]).length) dir.folder('Inne').file('opisy.txt',p.inne.map(x=>`Zdjęcie ${x.n}: ${x.opis}`).join('\r\n'));
     if(NATIVE){
       const path=await nativeSaveZip(zip,root);
@@ -1070,7 +1167,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='1.2';
+const APP_VERSION='1.3';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -1104,10 +1201,10 @@ document.addEventListener('click',async ev=>{
   switch(a){
     case 'home': S.view='home'; S.p=null; await loadProjects(); render(); showStorage(); break;
     case 'new':
-      if(d.eclipse){ S.p=null; const c=normCfg({...ls.get('ecfg',{}),map:null}); S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('efirma',''),zakres:'',zam:'',reports:E_DEFAULT.slice(),cfg:c,g5:null,tpl:'eclipse'}; S.view='form'; render(); break; }
+      if(d.eclipse){ S.p=null; const c=normCfg({...ls.get('ecfg',{}),map:null}); S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('efirma',''),zakres:'',zam:'',reports:E_DEFAULT.slice(),cfg:c,g5:null,tpl:'eclipse',pn:null}; S.view='form'; render(); if(d.pn) document.getElementById('pnfile').click(); break; }
       S.p=null; S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('firma',''),zakres:'',zam:'',reports:['BTS','System Antenowy'],cfg:normCfg({...ls.get('cfg',{}),map:null}),g5:null,tpl:(t=>t==='eclipse'?'v3':t)(ls.get('tpl','v3'))};
       S.view='form'; render(); if(d.g5) document.getElementById('g5file').click(); break;
-    case 'edit': S.draft=JSON.parse(JSON.stringify({nr:S.p.nr,nazwa:S.p.nazwa,nazwaOp:S.p.nazwaOp||'',data:S.p.data,firma:S.p.firma,zakres:S.p.zakres,zam:S.p.zam,reports:S.p.reports,cfg:normCfg(S.p.cfg),g5:S.p.g5||null,tpl:S.p.tpl||'v1'})); S.view='form'; render(); break;
+    case 'edit': S.draft=JSON.parse(JSON.stringify({nr:S.p.nr,nazwa:S.p.nazwa,nazwaOp:S.p.nazwaOp||'',data:S.p.data,firma:S.p.firma,zakres:S.p.zakres,zam:S.p.zam,reports:S.p.reports,cfg:normCfg(S.p.cfg),g5:S.p.g5||null,pn:S.p.pn||null,tpl:S.p.tpl||'v1'})); S.view='form'; render(); break;
     case 'rep': { syncDraft(); const r=S.draft.reports; const i=r.indexOf(d.f); if(i>=0) r.splice(i,1); else r.push(d.f); S.draft.reports=reportsFor(tplOf(S.draft)).map(x=>x.f).filter(x=>r.includes(x)); keepScroll(render); break; }
     case 'cfg': syncDraft(); S.draft.cfg[d.k]=+d.v; keepScroll(render); break;
     case 'tpl': { syncDraft(); const was=tplOf(S.draft)==='eclipse'; S.draft.tpl=d.v; if(d.v!=='eclipse') ls.set('tpl',d.v);
@@ -1207,6 +1304,17 @@ async function pdfLines(file){
   }
   return lines;
 }
+document.getElementById('pnfile').addEventListener('change',async ev=>{
+  const file=ev.target.files[0]; ev.target.value=''; if(!file||!S.draft) return;
+  if(S.view==='form') syncDraft();
+  busy(true,'Czytam PRENOSS…');
+  let r=null, err='';
+  try{ r=parsePrenoss(await pdfLines(file)); if(!r) err='To nie wygląda na PRENOSS RF (brak sekcji z antenami).'; }
+  catch(e){ err= e&&e.message==='script' ? 'Nie udało się pobrać czytnika PDF. Sprawdź internet i spróbuj ponownie.' : 'Nie udało się odczytać tego PDF-a.'; }
+  busy(false);
+  if(r){ applyPrenoss(S.draft,r); S.view='form'; render(); toast(`PRENOSS: ${r.nr} · ${r.sectors.length} sektory`); }
+  else { S.view='form'; render(); const e=document.getElementById('pnErr'); if(e){e.hidden=false;e.textContent=err;} }
+});
 document.getElementById('g5file').addEventListener('change',async ev=>{
   const file=ev.target.files[0]; ev.target.value=''; if(!file||!S.draft) return;
   if(S.view==='form') syncDraft();
