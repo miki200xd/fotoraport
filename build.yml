@@ -1,0 +1,46 @@
+name: Zbuduj aplikację
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Budowanie APK
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Nazwa pliku
+        run: cp app/build/outputs/apk/release/app-release.apk FotoRaport.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FotoRaport-apk
+          path: FotoRaport.apk
+
+      - name: Publikacja w „Releases” (stały link do pobrania)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: wersja-${{ github.run_number }}
+          name: Foto Raport – wersja ${{ github.run_number }}
+          files: FotoRaport.apk
+          make_latest: true
