@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_bg">#1F5FAF</color>
+    <!-- granat w stylu Nokii -->
+    <color name="ic_bg">#124191</color>
 </resources>
