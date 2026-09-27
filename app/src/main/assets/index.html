@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>window.FR_LOCAL_LIBS=true;</script>
+<style>html,body{margin:0}img{max-width:100%}</style>
+<title>Foto Raport Stacji</title>
+<script src="jszip.min.js"></script>
+<style>
+:root{
+  --bg:#EEF2F0; --surface:#FFFFFF; --sunk:#E3E9E6; --ink:#14201C; --muted:#56665F; --line:#CFD9D4;
+  --accent:#D9500B; --accent-ink:#FFFFFF; --accent-soft:#FBE3D5;
+  --ok:#1D7F46; --ok-soft:#D8EFE1; --warn:#9A6400; --warn-soft:#F6E8C8; --danger:#B42318;
+  --shadow:0 1px 2px rgba(20,32,28,.08),0 4px 14px rgba(20,32,28,.06);
+  --display:"Barlow Condensed","Roboto Condensed","sans-serif-condensed","Arial Narrow",sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E1412; --surface:#17201D; --sunk:#111916; --ink:#E6EEEA; --muted:#93A59D; --line:#2A3632;
+    --accent:#FF7A2F; --accent-ink:#1A0C03; --accent-soft:#3A2114;
+    --ok:#4CC27F; --ok-soft:#163324; --warn:#E3B04B; --warn-soft:#352A12; --danger:#FF7B6E;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1412; --surface:#17201D; --sunk:#111916; --ink:#E6EEEA; --muted:#93A59D; --line:#2A3632;
+  --accent:#FF7A2F; --accent-ink:#1A0C03; --accent-soft:#3A2114;
+  --ok:#4CC27F; --ok-soft:#163324; --warn:#E3B04B; --warn-soft:#352A12; --danger:#FF7B6E;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+main{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:12px 96px}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.1;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:30px} h2{font-size:24px;overflow-wrap:anywhere} h3{font-size:19px}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.eyebrow{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+button,.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;min-height:48px;padding:10px 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;user-select:none}
+button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--muted);padding-inline:8px}
+.btn-danger{color:var(--danger)}
+.btn-block{width:100%}
+.btn-big{min-height:64px;font-size:18px;line-height:1.1;font-family:var(--display);letter-spacing:.03em;text-transform:uppercase}
+button:disabled{opacity:.45;cursor:default}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+label.field{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
+label.field span.hint{font-weight:400;color:var(--muted)}
+input[type=text],input[type=date],textarea{font:inherit;font-size:17px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);width:100%;min-height:48px}
+textarea{min-height:70px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.grid2{grid-template-columns:1fr}}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:15px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tag{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:var(--sunk);color:var(--muted)}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.acc{background:var(--accent-soft);color:var(--accent)}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;border-radius:0;min-width:48px;flex:1;min-height:44px;padding:6px 10px;font-family:var(--display);font-size:19px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.secbox{border-top:1px solid var(--line);padding-top:12px;gap:8px}
+select.secsel{font:inherit;font-size:15px;min-height:44px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);max-width:70%}
+.g5card{border-color:var(--accent)}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-weight:600}
+.cfgrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.progress{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.progress>i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.num{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums}
+/* station cards */
+.st{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+.st h3{font-size:22px}
+/* item list */
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;min-height:44px;padding:6px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600;display:flex;gap:8px;align-items:center;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab .cnt{font-family:var(--display);font-size:15px;opacity:.75}
+.items{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.item{display:grid;grid-template-columns:52px 1fr 60px;gap:12px;align-items:center;padding:10px 12px;border:0;border-radius:0;background:transparent;text-align:left;min-height:72px;width:100%;font-weight:400}
+.item+.item{border-top:1px solid var(--line)}
+.plate{width:52px;height:52px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:26px;background:var(--sunk);color:var(--ink);font-variant-numeric:tabular-nums}
+.item.done .plate{background:var(--ok);color:#fff}
+.item.skip .plate{background:transparent;border:2px dashed var(--line);color:var(--muted)}
+.item .t{font-weight:600;line-height:1.25}
+.item .d{font-size:13px;color:var(--muted);line-height:1.3;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;background:var(--sunk);display:block}
+.thumb.empty{border:1px dashed var(--line);background:transparent}
+.cnt-badge{font-size:11px;font-weight:700;color:var(--muted);text-align:center;margin-top:2px}
+/* shoot */
+.marker{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.marker .big{font-family:var(--display);font-weight:700;font-size:72px;line-height:.9;min-width:90px;height:96px;padding:0 10px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-variant-numeric:tabular-nums}
+.marker.done .big{background:var(--ok);color:#fff}
+.preview{width:100%;max-width:100%;aspect-ratio:3/4;max-height:58vh;border-radius:12px;background:var(--sunk);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-inline:auto}
+.preview img{width:100%;height:100%;object-fit:contain}
+.preview .ph{color:var(--muted);text-align:center;padding:24px;font-size:15px}
+.takes{display:flex;gap:10px;overflow-x:auto;padding-block:4px}
+.take{position:relative;flex:0 0 auto;padding:0;border:3px solid transparent;border-radius:10px;background:none;min-height:0}
+.take img{width:72px;height:96px;object-fit:cover;border-radius:7px;display:block}
+.take[aria-pressed="true"]{border-color:var(--ok)}
+.take .lbl{position:absolute;left:4px;bottom:4px;font-size:11px;font-weight:700;background:rgba(0,0,0,.65);color:#fff;border-radius:4px;padding:1px 5px}
+.navrow{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px}
+.sticky-actions{position:sticky;bottom:0;padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 80%,transparent)}
+.hidden-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:10px;font-weight:600;z-index:50;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.notice{border-radius:10px;padding:10px 12px;background:var(--warn-soft);color:var(--warn);font-size:14px;font-weight:500}
+.notice.info{background:var(--sunk);color:var(--muted)}
+.missing{font-family:var(--display);font-size:17px;letter-spacing:.02em}
+.busy{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:60}
+.busy div{background:var(--surface);color:var(--ink);padding:18px 22px;border-radius:12px;font-weight:600}
+.empty-state{text-align:center;padding:28px 8px}
+@media (prefers-reduced-motion:no-preference){ .item,.take,button{transition:background-color .15s,border-color .15s} }
+</style>
+
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<input id="cam" class="hidden-input" type="file" accept="image/*" capture="environment" aria-label="Aparat">
+<input id="gal" class="hidden-input" type="file" accept="image/*" multiple aria-label="Galeria">
+<input id="zipfile" class="hidden-input" type="file" accept=".zip,application/zip,application/x-zip-compressed" aria-label="Plik ZIP ze zdjęciami">
+<input id="g5file" class="hidden-input" type="file" accept="application/pdf,.pdf" aria-label="Plik G5 PDF">
+<div id="toast" class="toast" hidden></div>
+<div id="busy" class="busy" hidden><div id="busyText">Zapisywanie…</div></div>
+
+<script>
+/* ======================= Dane z szablonu Foto_raport_V1 ======================= */
+const RAW = {v1:{"BTS": [[1, "Widok ogólny obiektu", "Widok ogólny obiektu (np. wieża, budynek, komin)"], [2, "BTS-widok ogólny", "Widok ogólny: racka, szafy Nokia, szafy sprzętowej"], [3, "BBU/AirScale/FSMF", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [4, "BBU/AirScale/FSMF", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [5, "BBU/AirScale/FSMF", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [6, "BBU/AirScale/FSMF", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [7, "BBU/AirScale/FSMF", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [8, "BBU/AirScale/FSMF", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [9, "BBU/AirScale/FSMF", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [10, "Moduł zasilający", "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia"], [11, "Moduł zasilający", "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia"], [12, "Moduł zasilający", "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia"], [13, "Moduł zasilający", "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia"], [14, "Moduł radiowy S1 RRU/RRH 1", "Moduł radiowy S1 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia"], [15, "Moduł radiowy S1 RRU/RRH 1", "Moduł radiowy S1 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [16, "Moduł radiowy S1 RRU/RRH 2", "Moduł radiowy S1 RRU/RRH 2, 3-6RF połączenia jumperów, oznaczenia"], [17, "Moduł radiowy S1 RRU/RRH 2", "Moduł radiowy S1 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [18, "Moduł radiowy S1 RRU/RRH 3", "Moduł radiowy S1 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia"], [19, "Moduł radiowy S1 RRU/RRH 3", "Moduł radiowy S1 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [20, "Moduł radiowy S1 RRU/RRH 4", "Moduł radiowy S1 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia"], [21, "Moduł radiowy S1 RRU/RRH 4", "Moduł radiowy S1 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [22, "Moduł radiowy S1 RRU/RRH 5", "Moduł radiowy S1 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia"], [23, "Moduł radiowy S1 RRU/RRH 5", "Moduł radiowy S1 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [24, "Moduł radiowy S2 RRU/RRH 2", "Moduł radiowy S2 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia"], [25, "Moduł radiowy S2 RRU/RRH 2", "Moduł radiowy S2 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [26, "Moduł radiowy S2 RRU/RRH 2", "Moduł radiowy S2 RRU/RRH 2, 3-6RFpołączenia jumperów, oznaczenia"], [27, "Moduł radiowy S2 RRU/RRH 2", "Moduł radiowy S2 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [28, "Moduł radiowy S2 RRU/RRH 3", "Moduł radiowy S2 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia"], [29, "Moduł radiowy S2 RRU/RRH 3", "Moduł radiowy S2 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [30, "Moduł radiowy S2 RRU/RRH 4", "Moduł radiowy S2 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia"], [31, "Moduł radiowy S2 RRU/RRH 4", "Moduł radiowy S2 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [32, "Moduł radiowy S2 RRU/RRH 5", "Moduł radiowy S2 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia"], [33, "Moduł radiowy S2 RRU/RRH 5", "Moduł radiowy S2 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [34, "Moduł radiowy S3 RRU/RRH 1", "Moduł radiowy S3 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia"], [35, "Moduł radiowy S3 RRU/RRH 1", "Moduł radiowy S3 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [36, "Moduł radiowy S3 RRU/RRH 2", "Moduł radiowy S3 RRU/RRH 2, 3-6RF połączenia jumperów, oznaczenia"], [37, "Moduł radiowy S3 RRU/RRH 2", "Moduł radiowy S3 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [38, "Moduł radiowy S3 RRU/RRH 3", "Moduł radiowy S3 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia"], [39, "Moduł radiowy S3 RRU/RRH 3", "Moduł radiowy S3 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [40, "Moduł radiowy S3 RRU/RRH 4", "Moduł radiowy S3 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia"], [41, "Moduł radiowy S3 RRU/RRH 4", "Moduł radiowy S3 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [42, "Moduł radiowy S3 RRU/RRH 5", "Moduł radiowy S3 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia"], [43, "Moduł radiowy S3 RRU/RRH 5", "Moduł radiowy S3 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [44, "Moduł radiowy S4 RRU/RRH 1", "Moduł radiowy S4 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia"], [45, "Moduł radiowy S4 RRU/RRH 1", "Moduł radiowy S4 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [46, "Moduł radiowy S4 RRU/RRH 2", "Moduł radiowy S4 RRU/RRH 2, 3-6RF połączenia jumperów, oznaczenia"], [47, "Moduł radiowy S4 RRU/RRH 2", "Moduł radiowy S4 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [48, "Moduł radiowy S4 RRU/RRH 3", "Moduł radiowy S4 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia"], [49, "Moduł radiowy S4 RRU/RRH 3", "Moduł radiowy S4 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [50, "Moduł radiowy S4 RRU/RRH 4", "Moduł radiowy S4 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia"], [51, "Moduł radiowy S4 RRU/RRH 4", "Moduł radiowy S4 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [52, "Moduł radiowy S4 RRU/RRH 5", "Moduł radiowy S4 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia"], [53, "Moduł radiowy S4 RRU/RRH 5", "Moduł radiowy S4 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [54, "S1 RRU/RRH, widok ogólny", "S1 RRU/RRH, widok ogólny wszystkie moduły"], [55, "S2 RRU/RRH, widok ogólny", "S2 RRU/RRH, widok ogólny wszystkie moduły"], [56, "S3 RRU/RRH, widok ogólny", "S3 RRU/RRH, widok ogólny wszystkie moduły"], [57, "S4 RRU/RRH, widok ogólny", "S4 RRU/RRH, widok ogólny wszystkie moduły"], [58, "Antena S1 / konektory antena", "Antena S1 / konektory przy antenie, kabel AISG, oznaczenia"], [59, "Antena S1 / konektory antena", "Antena S1 / konektory przy antenie, kabel AISG, oznaczenia"], [60, "Antena S2 / konektory antena", "Antena S2 / konektory przy antenie, kabel AISG, oznaczenia"], [61, "Antena S2 / konektory antena", "Antena S2 / konektory przy antenie, kabel AISG, oznaczenia"], [62, "Antena S3 / konektory antena", "Antena S3 / konektory przy antenie, kabel AISG, oznaczenia"], [63, "Antena S3 / konektory antena", "Antena S3 / konektory przy antenie, kabel AISG, oznaczenia"], [64, "Antena S4 / konektory antena", "Antena S4 / konektory przy antenie, kabel AISG, oznaczenia"], [65, "Antena S4 / konektory antena", "Antena S4 / konektory przy antenie, kabel AISG, oznaczenia"], [66, "Droga kablowa", "Droga kablowa / przymocowane kable / uziemienia kabli"], [67, "Droga kablowa", "Droga kablowa / przymocowane kable / uziemienia kabli"], [68, "Droga kablowa", "Droga kablowa / przymocowane kable / uziemienia kabli"], [69, "Droga kablowa", "Droga kablowa / przymocowane kable / uziemienia kabli"], [70, "Zapas kabli FO przy BTS", "Zapas kabli FO przy BTS"], [71, "Zapas kabli FO przy BTS", "Zapas kabli FO przy BTS"], [72, "Zapas kabli FO przy BTS", "Zapas kabli FO przy BTS"], [73, "Zapas kabli FO przy BTS", "Zapas kabli FO przy BTS"], [74, "Przepust kablowy", "Przepust kablowy szafa sprzętowa/roxtec z zewnątrz/ wskazanie zajmowanego otworu"], [75, "Przepust kablowy", "Przepust kablowy szafa sprzętowa/roxtec - zdjęcie z środka bez lampy błyskowej/ wskazanie zajmowanego otworu"], [76, "Uziemienie S1", "Uziemienie S1 / listwa / kowadełko"], [77, "Uziemienie S2", "Uziemienie S2 / listwa / kowadełko"], [78, "Uziemienie S3", "Uziemienie S3 / listwa / kowadełko"], [79, "Uziemienie S4", "Uziemienie S4 / listwa / kowadełko"], [80, "DDF alarmy BTS", "DDF alarmy BTS"], [81, "DDF alarmy BTS", "DDF alarmy BTS"], [82, "S1 Dystrybucjia zasialania", "S1 Dystrybucjia zasialania ODM, OCB"], [83, "S2 Dystrybucjia zasialania", "S2 Dystrybucjia zasialania ODM, OCB"], [84, "S3 Dystrybucjia zasialania", "S3 Dystrybucjia zasialania ODM, OCB"], [85, "S4 Dystrybucjia zasialania", "S4 Dystrybucjia zasialania ODM, OCB"], [86, "ODF", "ODF - tacka z rozszytym interfejsem optycznyym"], [87, "Kontener", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [88, "Antena GPS / okablowanie", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / antena GPS / okablowanie"], [89, "Antena GPS / okablowanie", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / antena GPS / okablowanie"], [90, "Antena GPS / okablowanie", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / antena GPS / okablowanie"], [91, "Bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [92, "Bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [93, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [94, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [95, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [96, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"]], "System Antenowy": [[1, "Widok ogólny obiektu", "Widok ogólny obiektu (np. wieża, budynek, komin)"], [2, "Widok ogólny S1 / dół", "Widok ogólny S1 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 1)"], [3, "Widok ogólny S2 / dół", "Widok ogólny S2 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 2)"], [4, "Widok ogólny S3 / dół", "Widok ogólny S3 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 3)"], [5, "Widok ogólny S4 / dół", "Widok ogólny S4 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 4)"], [6, "Widok ogólny Sektor 1 / góra", "Widok ogólny Sektor 1 / góra - wszystkie anteny w sektorze 1"], [7, "Sektor 1 antena 1 / etykieta", "Sektor 1 antena 1 / etykieta anteny z typem anteny"], [8, "Sektor 1 antena 2 / etykieta", "Sektor 1 antena 2 / etykieta anteny z typem anteny"], [9, "Sektor 1 antena 3 / etykieta", "Sektor 1 antena 3 / etykieta anteny z typem anteny"], [10, "Sektor 1 antena 1 / konektory", "Sektor 1 antena 1 / konektory oraz oznaczenia na podłączonych jumperach"], [11, "Sektor 1 antena 2 / konektory", "Sektor 1 antena 2 / konektory oraz oznaczenia na podłączonych jumperach"], [12, "Sektor 1 antena 3 / konektory", "Sektor 1 antena 3 / konektory oraz oznaczenia na podłączonych jumperach"], [13, "Sektor 1 antena 1 / uziemienie", "Sektor 1 antena 1 / uziemienie anteny po stronie listwy lub kowadełka"], [14, "Sektor 1 antena 2 / uziemienie", "Sektor 1 antena 2 / uziemienie anteny po stronie listwy lub kowadełka"], [15, "Sektor 1 antena 3 / uziemienie", "Sektor 1 antena 3 / uziemienie anteny po stronie listwy lub kowadełka"], [16, "Sektor 1 antena 1 / pochyladło", "Sektor 1 antena 1 / pochyladło lub poziomica"], [17, "Sektor 1 antena 2 / pochyladło", "Sektor 1 antena 2 / pochyladło lub poziomica"], [18, "Sektor 1 antena 3 / pochyladło", "Sektor 1 antena 3 / pochyladło lub poziomica"], [19, "Sektor 1 ant. 1/Alignment Tool", "Antena S1 / Alignment Tool antena 1"], [20, "Sektor 1 ant. 2/Alignment Tool", "Antena S1 / Alignment Tool antena 2"], [21, "Sektor 1 ant. 3/Alignment Tool", "Antena S1 / Alignment Tool antena 3"], [22, "Widok ogólny Sektor 2", "Widok ogólny Sektor 2 / góra - wszystkie anteny w sektorze 1"], [23, "Sektor 2 antena 1 / etykieta", "Sektor 2 antena 1 / etykieta anteny z typem anteny"], [24, "Sektor 2 antena 2 / etykieta", "Sektor 2 antena 2 / etykieta anteny z typem anteny"], [25, "Sektor 2 antena 3 / etykieta", "Sektor 2 antena 3 / etykieta anteny z typem anteny"], [26, "Sektor 2 antena 1 / konektory", "Sektor 2 antena 1 / konektory oraz oznaczenia na podłączonych jumperach"], [27, "Sektor 2 antena 2 / konektory", "Sektor 2 antena 2 / konektory oraz oznaczenia na podłączonych jumperach"], [28, "Sektor 2 antena 3 / konektory", "Sektor 2 antena 3 / konektory oraz oznaczenia na podłączonych jumperach"], [29, "Sektor 2 antena 1 / uziemienie", "Sektor 2 antena 1 / uziemienie anteny po stronie listwy lub kowadełka"], [30, "Sektor 2 antena 2 / uziemienie", "Sektor 2 antena 2 / uziemienie anteny po stronie listwy lub kowadełka"], [31, "Sektor 2 antena 3 / uziemienie", "Sektor 2 antena 3 / uziemienie anteny po stronie listwy lub kowadełka"], [32, "Sektor 2 antena 1 / pochyladło", "Sektor 2 antena 1 / pochyladło lub poziomica"], [33, "Sektor 2 antena 2 / pochyladło", "Sektor 2 antena 2 / pochyladło lub poziomica"], [34, "Sektor 2 antena 3 / pochyladło", "Sektor 2 antena 3 / pochyladło lub poziomica"], [35, "Sektor 2 ant. 1/Alignment Tool", "Antena S2 / Alignment Tool antena 1"], [36, "Sektor 2 ant. 2/Alignment Tool", "Antena S2 / Alignment Tool antena 2"], [37, "Sektor 2 ant. 3/Alignment Tool", "Antena S2 / Alignment Tool antena 3"], [38, "Widok ogólny Sektor 3", "Widok ogólny Sektor 3 / góra - wszystkie anteny w sektorze 1"], [39, "Sektor 3 antena 1 / etykieta", "Sektor 3 antena 1 / etykieta anteny z typem anteny"], [40, "Sektor 3 antena 2 / etykieta", "Sektor 3 antena 2 / etykieta anteny z typem anteny"], [41, "Sektor 3 antena 3 / etykieta", "Sektor 3 antena 3 / etykieta anteny z typem anteny"], [42, "Sektor 3 antena 1 / konektory", "Sektor 3 antena 1 / konektory oraz oznaczenia na podłączonych jumperach"], [43, "Sektor 3 antena 2 / konektory", "Sektor 3 antena 2 / konektory oraz oznaczenia na podłączonych jumperach"], [44, "Sektor 3 antena 3 / konektory", "Sektor 3 antena 3 / konektory oraz oznaczenia na podłączonych jumperach"], [45, "Sektor 3 antena 1 / uziemienie", "Sektor 3 antena 1 / uziemienie anteny po stronie listwy lub kowadełka"], [46, "Sektor 3 antena 2 / uziemienie", "Sektor 3 antena 2 / uziemienie anteny po stronie listwy lub kowadełka"], [47, "Sektor 3 antena 3 / uziemienie", "Sektor 3 antena 3 / uziemienie anteny po stronie listwy lub kowadełka"], [48, "Sektor 3 antena 1 / pochyladło", "Sektor 3 antena 1 / pochyladło lub poziomica"], [49, "Sektor 3 antena 2 / pochyladło", "Sektor 3 antena 2 / pochyladło lub poziomica"], [50, "Sektor 3 antena 3 / pochyladło", "Sektor 3 antena 3 / pochyladło lub poziomica"], [51, "Sektor 3 ant. 1/Alignment Tool", "Antena S3 / Alignment Tool antena 1"], [52, "Sektor 3 ant. 2/Alignment Tool", "Antena S3 / Alignment Tool antena 2"], [53, "Sektor 3 ant. 3/Alignment Tool", "Antena S3 / Alignment Tool antena 3"], [54, "Widok ogólny Sektor 4", "Widok ogólny Sektor 4 / góra - wszystkie anteny w sektorze 1"], [55, "Sektor 4 antena 1 / etykieta", "Sektor 4 antena 1 / etykieta anteny z typem anteny"], [56, "Sektor 4 antena 2 / etykieta", "Sektor 4 antena 2 / etykieta anteny z typem anteny"], [57, "Sektor 4 antena 3 / etykieta", "Sektor 4 antena 3 / etykieta anteny z typem anteny"], [58, "Sektor 4 antena 1 / konektory", "Sektor 4 antena 1 / konektory oraz oznaczenia na podłączonych jumperach"], [59, "Sektor 4 antena 2 / konektory", "Sektor 4 antena 2 / konektory oraz oznaczenia na podłączonych jumperach"], [60, "Sektor 4 antena 3 / konektory", "Sektor 4 antena 3 / konektory oraz oznaczenia na podłączonych jumperach"], [61, "Sektor 4 antena 1 / uziemienie", "Sektor 4 antena 1 / uziemienie anteny po stronie listwy lub kowadełka"], [62, "Sektor 4 antena 2 / uziemienie", "Sektor 4 antena 2 / uziemienie anteny po stronie listwy lub kowadełka"], [63, "Sektor 4 antena 3 / uziemienie", "Sektor 4 antena 3 / uziemienie anteny po stronie listwy lub kowadełka"], [64, "Sektor 3 antena 1 / pochyladło", "Sektor 3 antena 1 / pochyladło lub poziomica"], [65, "Sektor 3 antena 2 / pochyladło", "Sektor 3 antena 2 / pochyladło lub poziomica"], [66, "Sektor 3 antena 3 / pochyladło", "Sektor 3 antena 3 / pochyladło lub poziomica"], [67, "Sektor 4 ant. 1/Alignment Tool", "Antena S4 / Alignment Tool antena 1"], [68, "Sektor 4 ant. 2/Alignment Tool", "Antena S4 / Alignment Tool antena 2"], [69, "Sektor 4 ant. 3/Alignment Tool", "Antena S4 / Alignment Tool antena 3"], [70, "Feeder / jumper S1", "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [71, "Feeder / jumper S1", "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [72, "Feeder / jumper S1", "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [73, "Feeder / jumper S1", "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [74, "Feeder / jumper S2", "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [75, "Feeder / jumper S2", "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [76, "Feeder / jumper S2", "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [77, "Feeder / jumper S2", "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [78, "Feeder / jumper S3", "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [79, "Feeder / jumper S3", "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [80, "Feeder / jumper S3", "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [81, "Feeder / jumper S3", "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [82, "Feeder / jumper S4", "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [83, "Feeder / jumper S4", "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [84, "Feeder / jumper S4", "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [85, "Feeder / jumper S4", "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [86, "Diplekser S1", "Diplekser S1 - diplekser, triplekser, TMA (góra, dół)"], [87, "Diplekser S1", "Diplekser S1 - diplekser, triplekser, TMA (góra, dół)"], [88, "Diplekser S2", "Diplekser S2 - diplekser, triplekser, TMA (góra, dół)"], [89, "Diplekser S2", "Diplekser S2 - diplekser, triplekser, TMA (góra, dół)"], [90, "Diplekser S3", "Diplekser S3 - diplekser, triplekser, TMA (góra, dół)"], [91, "Diplekser S3", "Diplekser S3 - diplekser, triplekser, TMA (góra, dół)"], [92, "Diplekser S4", "Diplekser S4 - diplekser, triplekser, TMA (góra, dół)"], [93, "Diplekser S4", "Diplekser S4 - diplekser, triplekser, TMA (góra, dół)"], [94, "Droga kablowa", "Droga kablowa - zdjęcia mocowań feederów, kabli"], [95, "Droga kablowa", "Droga kablowa - zdjęcia mocowań feederów, kabli"], [96, "Droga kablowa", "Droga kablowa - zdjęcia mocowań feederów, kabli"], [97, "Droga kablowa", "Droga kablowa - zdjęcia mocowań feederów, kabli"], [98, "Kontener", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [99, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [100, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [101, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"]], "Radiolinia": [[1, "Widok ogólny obiektu", "Widok ogólny obiektu (np. wieża, budynek, komin)"], [2, "Widok ogólny antena MW / dół", "Widok ogólny antena MW / dół"], [3, "Widok ogólny antena MW / góra", "Widok ogólny antena MW / góra"], [4, "ODU 1", "Widok ODU 1"], [5, "ODU 2", "Widok ODU 2"], [6, "ODU 3", "Widok ODU 3"], [7, "ODU 4", "Widok ODU 4"], [8, "ODU 1 / konektor / oznacznik", "ODU 1 podłączone kable, widoczne oznaczenia"], [9, "ODU 2 / konektor / oznacznik", "ODU 2 podłączone kable, widoczne oznaczenia"], [10, "ODU 3 / konektor / oznacznik", "ODU 3 podłączone kable, widoczne oznaczenia"], [11, "ODU 4 / konektor / oznacznik", "ODU 4 podłączone kable, widoczne oznaczenia"], [12, "ODU 1 / uziemienie", "ODU 1 / uziemienie (listwa uziemiająca lub kowadełko)"], [13, "ODU 2 / uziemienie", "ODU 2 / uziemienie (listwa uziemiająca lub kowadełko)"], [14, "ODU 3 / uziemienie", "ODU 3 / uziemienie (listwa uziemiająca lub kowadełko)"], [15, "ODU 4 / uziemienie", "ODU 4 / uziemienie (listwa uziemiająca lub kowadełko)"], [16, "Antena MW / etykieta", "Antena MW / etykieta"], [17, "Coupler / etykieta", "Coupler / etykieta"], [18, "Azymut anteny MW 120°", "Azymut anteny MW 120° (co 30°)"], [19, "Azymut anteny MW 120°", "Azymut anteny MW 120° (co 30°)"], [20, "Azymut anteny MW 120°", "Azymut anteny MW 120° (co 30°)"], [21, "Azymut anteny MW 120°", "Azymut anteny MW 120° (co 30°)"], [22, "Rack RL / szafa sprzętowa", "Widok ogólny rack RL / szafa sprzętowa"], [23, "Widok ogólny INU", "Widok ogólny INU"], [24, "INU / karta", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [25, "INU / karta", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [26, "INU / karta", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [27, "INU / karta", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [28, "INU / karta", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [29, "INU / karta", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [30, "INU / uziemienie", "INU / podłączone uziemienie"], [31, "INU / uziemienie", "INU / podłączone uziemienie"], [32, "Kabel IF / FO", "Instalacja kabei IF / FO na drodze kablowej/ uziemienia"], [33, "Kabel IF / FO", "Instalacja kabei IF / FO na drodze kablowej/ uziemienia"], [34, "Kabel IF / FO", "Instalacja kabei IF / FO na drodze kablowej/ uziemienia"], [35, "Kabel IF / FO", "Instalacja kabei IF / FO na drodze kablowej - zapas kabla"], [36, "Przepust kablowy", "Przepust kablowy szafa sprzętowa/roxtec z zewnątrz/ wskazanie zajmowanego otworu"], [37, "Przepust kablowy", "Przepust kablowy szafa sprzętowa/roxtec - zdjęcie z środka bez lampy błyskowej/ wskazanie zajmowanego otworu"], [38, "ODF", "ODF lub połączenia bezpośrednie"], [39, "ODF", "ODF lub połączenia bezpośrednie"], [40, "ODF", "ODF lub połączenia bezpośrednie"], [41, "ODF", "ODF lub połączenia bezpośrednie"], [42, "Koryto grzebieniowe", "Koryto grzebieniowe , peszel"], [43, "Koryto grzebieniowe", "Koryto grzebieniowe , peszel"], [44, "INU / zasilanie", "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [45, "INU / zasilanie", "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [46, "INU / zasilanie", "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [47, "INU / zasilanie", "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [48, "Kontener", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [49, "Bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja/ modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [50, "Bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja/ modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [51, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [52, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [53, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"]], "System zasilania-szafa sprzet": [[1, "Widok ogólny obiektu", "Widok ogólny obiektu (np. wieża, budynek, komin)"], [2, "Widok ogólny siłownia", "Widok ogólny zasilacz"], [3, "Widok ogólny szafa sprzętowa", "Widok ogólny szafa sprzętowa"], [4, "Siłownia / szafa sprzętowa", "Siłownia / szafa sprzętowa/ pola odbiorów / styczniki K1, K2"], [5, "Siłownia / szafa sprzętowa", "Siłownia / szafa sprzętowa/ pola odbiorów / styczniki K1, K3"], [6, "Siłownia / szafa sprzętowa", "Siłownia / szafa sprzętowa -widok sprzętu w szafie"], [7, "Siłownia / szafa sprzętowa", "Siłownia / szafa sprzętowa -widok sprzętu w szafie"], [8, "Siłownia / prostowniki", "Siłownia / prostowniki (zdjęcie obrazuje ilość prostowników)"], [9, "Siłownia / prostowniki", "Siłownia / prostowniki (zdjęcie obrazuje ilość prostowników)"], [10, "Sterownik", "Zainstalowany sterownik w siłowni / szafie sprzętowej"], [11, "Sterownik", "Zainstalowany sterownik w siłowni / szafie sprzętowej"], [12, "Sterownik", "Zainstalowany sterownik w siłowni / szafie sprzętowej / ekran-obciążenie siłowni"], [13, "Sterownik / kabel FTP", "Zainstalowany sterownik w siłowni / szafie sprzętowej / kabel FTP"], [14, "Siłownia / etykieta", "Siłownia / etykieta (typ zasilacza)"], [15, "Szafa sprzętowa / etykieta", "Szafa sprzętowa / etykieta (typ szafy)"], [16, "Siłownia / zasilanie", "Siłownia / zasilanie AC"], [17, "Zasialacz / zasilanie", "Siłownia / zasilanie AC"], [18, "Szafa sprzętowa / zasilanie", "Szafa sprzętowa / zasilanie"], [19, "Szafa sprzętowa / zasilanie", "Szafa sprzętowa / zasilanie"], [20, "Siłownia / alarmy", "Siłownia / alarmy"], [21, "Siłownia / alarmy", "Siłownia / alarmy"], [22, "Szafa sprzętowa / alarmy", "Szafa sprzętowa / alarmy"], [23, "Szafa sprzętowa / alarmy", "Szafa sprzętowa / alarmy"], [24, "Uziemienie siłowni / szafy", "Uziemienie siłowni / szafy"], [25, "Uziemienie siłowni / szafy", "Uziemienie siłowni / szafy"], [26, "Uziemienie siłowni / szafy", "Uziemienie siłowni / szafy"], [27, "Uziemienie siłowni / szafy", "Uziemienie siłowni / szafy"], [28, "Mocowanie siłowni / szafy", "Mocowanie siłowni / szafy"], [29, "Mocowanie siłowni / szafy", "Mocowanie siłowni / szafy"], [30, "Zestaw baterii 1", "Zestaw baterii 1 (etykieta)"], [31, "Zestaw baterii 1", "Zestaw baterii 1 (etykieta)"], [32, "Zestaw baterii 1", "Zestaw baterii 1 (etykieta)"], [33, "Zestaw baterii 1", "Zestaw baterii 1 (etykieta)"], [34, "Zestaw baterii 2", "Zestaw baterii 2 (etykieta)"], [35, "Zestaw baterii 2", "Zestaw baterii 2 (etykieta)"], [36, "Zestaw baterii 2", "Zestaw baterii 2 (etykieta)"], [37, "Zestaw baterii 2", "Zestaw baterii 2 (etykieta)"], [38, "Zestaw baterii 3", "Zestaw baterii 3 (etykieta)"], [39, "Zestaw baterii 3", "Zestaw baterii 3 (etykieta)"], [40, "Zestaw baterii 3", "Zestaw baterii 3 (etykieta)"], [41, "Zestaw baterii 3", "Zestaw baterii 3 (etykieta)"], [42, "Zestaw baterii 4", "Zestaw baterii 4 (etykieta)"], [43, "Zestaw baterii 4", "Zestaw baterii 4 (etykieta)"], [44, "Zestaw baterii 4", "Zestaw baterii 4 (etykieta)"], [45, "Zestaw baterii 4", "Zestaw baterii 4 (etykieta)"], [46, "Rozdzielnica elektryczna", "Rozdzielnica elektryczna"], [47, "Rozdzielnica elektryczna", "Rozdzielnica elektryczna"], [48, "Rozdzielnica elektryczna", "Rozdzielnica elektryczna"], [49, "Rozdzielnica elektryczna", "Rozdzielnica elektryczna"], [50, "Przepust kablowy", "Przepust kablowy"], [51, "Przepust kablowy", "Przepust kablowy"], [52, "Przepust kablowy", "Przepust kablowy / wskazanie zajmowanego otworu"], [53, "Przepust kablowy", "Przepust kablowy / wskazanie zajmowanego otworu"], [54, "Gniazdo zasilania awaryjnego", "Gniazdo zasilania awaryjnego"], [55, "Kontener", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [56, "Dodatkowe zdjęcie", "Dodatkowe zdjęcia nie ujęte w spisie - ustawienia sterownika po modernizacji"], [57, "Dodatkowe zdjęcie", "Dodatkowe zdjęcia nie ujęte w spisie - ustawienia sterownika po modernizacji"], [58, "Dokręcenie dachu szafy / siłowni", "Dokręcenie dachu szafy / siłowni"], [59, "Dokręcenie dachu szafy / siłowni", "Dokręcenie dachu szafy / siłowni"]], "Wezel TRM": [[1, "Widok ogólny obiektu", "Widok ogólny obiektu (np. wieża, budynek, komin)"], [2, "Rack RL / Szafa sprzętowa", "Rack RL / Szafa sprzętowa"], [3, "Węzeł Coriant", "Węzeł TRM (np..Coriant)"], [4, "Zasilanie DC", "Zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [5, "Zasialanie DC", "Zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [6, "Interfejsy FO", "Interfejsy FO po stronie węzła"], [7, "Interfejsy FO", "Interfejsy FO po stronie węzła"], [8, "Interfejsy FO", "Interfejsy FO po stronie węzła"], [9, "Interfejsy FO", "Interfejsy FO po stronie węzła"], [10, "Interfejsy elektryczne", "Interfejsy elektryczne po stronie węzła"], [11, "Interfejsy elektryczne", "Interfejsy elektryczne po stronie węzła"], [12, "Uziemienie", "Uziemienie"], [13, "Uziemienie", "Uziemienie"], [14, "ODF", "ODF"], [15, "ODF", "ODF"], [16, "ODF", "ODF"], [17, "ODF", "ODF"], [18, "Koryto grzebieniowe / peszel", "Koryto grzebieniowe / peszel"], [19, "Koryto grzebieniowe / peszel", "Koryto grzebieniowe / peszel"], [20, "Koryto grzebieniowe / peszel", "Koryto grzebieniowe / peszel"], [21, "Koryto grzebieniowe / peszel", "Koryto grzebieniowe / peszel"], [22, "Kontener", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [23, "Bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [24, "Bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [25, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [26, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [27, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [28, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [29, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [30, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [31, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [32, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [33, "", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"]], "Inne": [[1, "Widok ogólny obiektu", ""]]}, v3:{"BTS": [[1, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [2, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [3, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [4, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [5, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [6, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [7, "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [8, "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [9, "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [10, "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej po zakończeniu prac"], [11, "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej po zakończeniu prac"], [12, "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy Nokia/HUA, szafy sprzętowej po zakończeniu prac"], [13, "BBU/AirScale/FSMF - połączenia, oznaczenia", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [14, "BBU/AirScale/FSMF - połączenia, oznaczenia", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [15, "BBU/AirScale/FSMF - połączenia, oznaczenia", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [16, "BBU/AirScale/FSMF - połączenia, oznaczenia", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [17, "BBU/AirScale/FSMF - połączenia, oznaczenia", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [18, "BBU/AirScale/FSMF - połączenia, oznaczenia", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [19, "BBU/AirScale/FSMF - połączenia, oznaczenia", "BBU/AirScale/FSMF - połączenia, oznaczenia"], [20, "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia", "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia"], [21, "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia", "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia"], [22, "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia", "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia"], [23, "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia", "Moduł zasilający DCDU/FPFC/FPFH/FPFD, połączenia, oznaczenia"], [24, "Moduł radiowy S1 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S1 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia"], [25, "Moduł radiowy S1 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S1 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [26, "Moduł radiowy S1 RRU/RRH 2, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S1 RRU/RRH 2, 3-6RF połączenia jumperów, oznaczenia"], [27, "Moduł radiowy S1 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S1 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [28, "Moduł radiowy S1 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S1 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia"], [29, "Moduł radiowy S1 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S1 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [30, "Moduł radiowy S1 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S1 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia"], [31, "Moduł radiowy S1 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S1 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [32, "Moduł radiowy S1 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S1 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia"], [33, "Moduł radiowy S1 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S1 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [34, "Moduł radiowy S2 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S2 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia"], [35, "Moduł radiowy S2 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S2 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [36, "Moduł radiowy S2 RRU/RRH 2, 3-6RFpołączenia jumperów, oznaczenia", "Moduł radiowy S2 RRU/RRH 2, 3-6RFpołączenia jumperów, oznaczenia"], [37, "Moduł radiowy S2 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S2 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [38, "Moduł radiowy S2 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S2 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia"], [39, "Moduł radiowy S2 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S2 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [40, "Moduł radiowy S2 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S2 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia"], [41, "Moduł radiowy S2 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S2 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [42, "Moduł radiowy S2 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S2 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia"], [43, "Moduł radiowy S2 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S2 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [44, "Moduł radiowy S3 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S3 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia"], [45, "Moduł radiowy S3 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S3 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [46, "Moduł radiowy S3 RRU/RRH 2, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S3 RRU/RRH 2, 3-6RF połączenia jumperów, oznaczenia"], [47, "Moduł radiowy S3 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S3 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [48, "Moduł radiowy S3 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S3 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia"], [49, "Moduł radiowy S3 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S3 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [50, "Moduł radiowy S3 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S3 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia"], [51, "Moduł radiowy S3 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S3 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [52, "Moduł radiowy S3 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S3 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia"], [53, "Moduł radiowy S3 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S3 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [54, "Moduł radiowy S4 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S4 RRU/RRH 1, 3-6RF połączenia jumperów, oznaczenia"], [55, "Moduł radiowy S4 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S4 RRU/RRH 1, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [56, "Moduł radiowy S4 RRU/RRH 2, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S4 RRU/RRH 2, 3-6RF połączenia jumperów, oznaczenia"], [57, "Moduł radiowy S4 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S4 RRU/RRH 2, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [58, "Moduł radiowy S4 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S4 RRU/RRH 3, 3-6RF połączenia jumperów, oznaczenia"], [59, "Moduł radiowy S4 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S4 RRU/RRH 3, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [60, "Moduł radiowy S4 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S4 RRU/RRH 4, 3-6RF połączenia jumperów, oznaczenia"], [61, "Moduł radiowy S4 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S4 RRU/RRH 4, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [62, "Moduł radiowy S4 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia", "Moduł radiowy S4 RRU/RRH 5, 3-6RF połączenia jumperów, oznaczenia"], [63, "Moduł radiowy S4 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia", "Moduł radiowy S4 RRU/RRH 5, 3-6RF widok wtyczki DC, SFP, oznaczenia"], [64, "S1 RRU/RRH, widok ogólny wszystkie moduły", "S1 RRU/RRH, widok ogólny wszystkie moduły"], [65, "S2 RRU/RRH, widok ogólny wszystkie moduły", "S2 RRU/RRH, widok ogólny wszystkie moduły"], [66, "S3 RRU/RRH, widok ogólny wszystkie moduły", "S3 RRU/RRH, widok ogólny wszystkie moduły"], [67, "S4 RRU/RRH, widok ogólny wszystkie moduły", "S4 RRU/RRH, widok ogólny wszystkie moduły"], [68, "Antena S1 / konektory przy antenie, kabel AISG, oznaczenia", "Antena S1 / konektory przy antenie, kabel AISG, oznaczenia"], [69, "Antena S1 / konektory przy antenie, kabel AISG, oznaczenia", "Antena S1 / konektory przy antenie, kabel AISG, oznaczenia"], [70, "Antena S2 / konektory przy antenie, kabel AISG, oznaczenia", "Antena S2 / konektory przy antenie, kabel AISG, oznaczenia"], [71, "Antena S2 / konektory przy antenie, kabel AISG, oznaczenia", "Antena S2 / konektory przy antenie, kabel AISG, oznaczenia"], [72, "Antena S3 / konektory przy antenie, kabel AISG, oznaczenia", "Antena S3 / konektory przy antenie, kabel AISG, oznaczenia"], [73, "Antena S3 / konektory przy antenie, kabel AISG, oznaczenia", "Antena S3 / konektory przy antenie, kabel AISG, oznaczenia"], [74, "Antena S4 / konektory przy antenie, kabel AISG, oznaczenia", "Antena S4 / konektory przy antenie, kabel AISG, oznaczenia"], [75, "Antena S4 / konektory przy antenie, kabel AISG, oznaczenia", "Antena S4 / konektory przy antenie, kabel AISG, oznaczenia"], [76, "Droga kablowa / przymocowane kable / uziemienia kabli", "Droga kablowa / przymocowane kable / uziemienia kabli"], [77, "Droga kablowa / przymocowane kable / uziemienia kabli", "Droga kablowa / przymocowane kable / uziemienia kabli"], [78, "Droga kablowa / przymocowane kable / uziemienia kabli", "Droga kablowa / przymocowane kable / uziemienia kabli"], [79, "Droga kablowa / przymocowane kable / uziemienia kabli", "Droga kablowa / przymocowane kable / uziemienia kabli"], [80, "Zapas kabli FO przy BTS", "Zapas kabli FO przy BTS"], [81, "Zapas kabli FO przy BTS", "Zapas kabli FO przy BTS"], [82, "Zapas kabli FO przy BTS", "Zapas kabli FO przy BTS"], [83, "Zapas kabli FO przy BTS", "Zapas kabli FO przy BTS"], [84, "Przepust kablowy szafa sprzętowa/roxtec z zewnątrz/ wskazanie zajmowanego otworu", "Przepust kablowy szafa sprzętowa/roxtec z zewnątrz/ wskazanie zajmowanego otworu"], [85, "Przepust kablowy szafa sprzętowa/roxtec - zdjęcie z środka bez lampy błyskowej/ wskazanie zajmowanego otworu", "Przepust kablowy szafa sprzętowa/roxtec - zdjęcie z środka bez lampy błyskowej/ wskazanie zajmowanego otworu"], [86, "Uziemienie S1 / listwa / kowadełko / urządzenie", "Uziemienie S1 / listwa / kowadełko / urządzenie"], [87, "Uziemienie S2 / listwa / kowadełko / urządzenie", "Uziemienie S2 / listwa / kowadełko / urządzenie"], [88, "Uziemienie S3 / listwa / kowadełko / urządzenie", "Uziemienie S3 / listwa / kowadełko / urządzenie"], [89, "Uziemienie S4 / listwa / kowadełko / urządzenie", "Uziemienie S4 / listwa / kowadełko / urządzenie"], [90, "DDF alarmy BTS", "DDF alarmy BTS"], [91, "DDF alarmy BTS", "DDF alarmy BTS"], [92, "S1 Dystrybucjia zasialania ODM, OCB", "S1 Dystrybucjia zasialania ODM, OCB"], [93, "S2 Dystrybucjia zasialania ODM, OCB", "S2 Dystrybucjia zasialania ODM, OCB"], [94, "S3 Dystrybucjia zasialania ODM, OCB", "S3 Dystrybucjia zasialania ODM, OCB"], [95, "S4 Dystrybucjia zasialania ODM, OCB", "S4 Dystrybucjia zasialania ODM, OCB"], [96, "ODF - tacka z rozszytym interfejsem optycznyym - widok rozszycia oraz opisów połączeń", "ODF - tacka z rozszytym interfejsem optycznyym - widok rozszycia oraz opisów połączeń"], [97, "Kontener- zdjęcia kontenera po wykonanych pracaach", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [98, "Dodatkowe zdjęcia nie ujęte w spisie - opcja / antena GPS / okablowanie", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / antena GPS / okablowanie"], [99, "Dodatkowe zdjęcia nie ujęte w spisie - opcja / antena GPS / okablowanie", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / antena GPS / okablowanie"], [100, "Dodatkowe zdjęcia nie ujęte w spisie - opcja / antena GPS / okablowanie", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / antena GPS / okablowanie"], [101, "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [102, "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [103, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [104, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [105, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [106, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [107, "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie przed deinstalacją.", "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie przed deinstalacją."], [108, "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie przed deinstalacją.", "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie przed deinstalacją."], [109, "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie przed deinstalacją.", "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie przed deinstalacją."], [110, "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie przed deinstalacją.", "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie przed deinstalacją."], [111, "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie po deinstalacji.", "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie po deinstalacji."], [112, "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie po deinstalacji.", "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie po deinstalacji."], [113, "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie po deinstalacji.", "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie po deinstalacji."], [114, "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie po deinstalacji.", "Zdeinstalowany sprzęt oraz materiały (np. kable), w tym zdjęcia zdeinstalowanego okablowania alarmowego wraz z rozszyciem na łączówkach z eNDB (dotyczy renewal HUA) - zdjęcie po deinstalacji."], [115, "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej", "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej"], [116, "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej", "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej"], [117, "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej", "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej"], [118, "Etykieta/nadruk kabla DC potwierdzający jego przekrój", "Etykieta/nadruk kabla DC potwierdzający jego przekrój"], [119, "Etykieta/nadruk kabla FO potwierdzający jego typ", "Etykieta/nadruk kabla FO potwierdzający jego typ"], [120, "Wartość prądu poboru w siłowni po wykonanych pracach", "Wartość prądu poboru w siłowni po wykonanych pracach"]], "System Antenowy": [[1, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [2, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [3, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [4, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [5, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [6, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [7, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [8, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [9, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [10, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [11, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [12, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [13, "Widok ogólny S1 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 1)", "Widok ogólny S1 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 1)"], [14, "Widok ogólny S2 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 2)", "Widok ogólny S2 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 2)"], [15, "Widok ogólny S3 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 3)", "Widok ogólny S3 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 3)"], [16, "Widok ogólny S4 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 4)", "Widok ogólny S4 / dół - zdjęcie wykonane z dołu (wszystkie anteny w seektorze 4)"], [17, "Widok ogólny Sektor 1 / góra - wszystkie anteny w sektorze 1", "Widok ogólny Sektor 1 / góra - wszystkie anteny w sektorze 1"], [18, "Sektor 1 antena 1 / etykieta anteny z typem anteny", "Sektor 1 antena 1 / etykieta anteny z typem anteny"], [19, "Sektor 1 antena 2 / etykieta anteny z typem anteny", "Sektor 1 antena 2 / etykieta anteny z typem anteny"], [20, "Sektor 1 antena 3 / etykieta anteny z typem anteny", "Sektor 1 antena 3 / etykieta anteny z typem anteny"], [21, "Sektor 1 antena 1 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 1 antena 1 / konektory oraz oznaczenia na podłączonych jumperach"], [22, "Sektor 1 antena 2 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 1 antena 2 / konektory oraz oznaczenia na podłączonych jumperach"], [23, "Sektor 1 antena 3 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 1 antena 3 / konektory oraz oznaczenia na podłączonych jumperach"], [24, "Sektor 1 antena 1 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny", "Sektor 1 antena 1 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [25, "Sektor 1 antena 2 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny", "Sektor 1 antena 2 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [26, "Sektor 1 antena 3 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny", "Sektor 1 antena 3 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [27, "Sektor 1 antena 1 / pochyladło lub poziomica", "Sektor 1 antena 1 / pochyladło lub poziomica"], [28, "Sektor 1 antena 2 / pochyladło lub poziomica", "Sektor 1 antena 2 / pochyladło lub poziomica"], [29, "Sektor 1 antena 3 / pochyladło lub poziomica", "Sektor 1 antena 3 / pochyladło lub poziomica"], [30, "Antena S1 / Alignment Tool antena 1", "Antena S1 / Alignment Tool antena 1"], [31, "Antena S1 / Alignment Tool antena 2", "Antena S1 / Alignment Tool antena 2"], [32, "Antena S1 / Alignment Tool antena 3", "Antena S1 / Alignment Tool antena 3"], [33, "Widok ogólny Sektor 2 / góra - wszystkie anteny w sektorze 1", "Widok ogólny Sektor 2 / góra - wszystkie anteny w sektorze 1"], [34, "Sektor 2 antena 1 / etykieta anteny z typem anteny", "Sektor 2 antena 1 / etykieta anteny z typem anteny"], [35, "Sektor 2 antena 2 / etykieta anteny z typem anteny", "Sektor 2 antena 2 / etykieta anteny z typem anteny"], [36, "Sektor 2 antena 3 / etykieta anteny z typem anteny", "Sektor 2 antena 3 / etykieta anteny z typem anteny"], [37, "Sektor 2 antena 1 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 2 antena 1 / konektory oraz oznaczenia na podłączonych jumperach"], [38, "Sektor 2 antena 2 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 2 antena 2 / konektory oraz oznaczenia na podłączonych jumperach"], [39, "Sektor 2 antena 3 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 2 antena 3 / konektory oraz oznaczenia na podłączonych jumperach"], [40, "Sektor 2 antena 1 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny", "Sektor 2 antena 1 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [41, "Sektor 2 antena 2 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny", "Sektor 2 antena 2 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [42, "Sektor 2 antena 3 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny", "Sektor 2 antena 3 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [43, "Sektor 2 antena 1 / pochyladło lub poziomica", "Sektor 2 antena 1 / pochyladło lub poziomica"], [44, "Sektor 2 antena 2 / pochyladło lub poziomica", "Sektor 2 antena 2 / pochyladło lub poziomica"], [45, "Sektor 2 antena 3 / pochyladło lub poziomica", "Sektor 2 antena 3 / pochyladło lub poziomica"], [46, "Antena S2 / Alignment Tool antena 1", "Antena S2 / Alignment Tool antena 1"], [47, "Antena S2 / Alignment Tool antena 2", "Antena S2 / Alignment Tool antena 2"], [48, "Antena S2 / Alignment Tool antena 3", "Antena S2 / Alignment Tool antena 3"], [49, "Widok ogólny Sektor 3 / góra - wszystkie anteny w sektorze 1", "Widok ogólny Sektor 3 / góra - wszystkie anteny w sektorze 1"], [50, "Sektor 3 antena 1 / etykieta anteny z typem anteny", "Sektor 3 antena 1 / etykieta anteny z typem anteny"], [51, "Sektor 3 antena 2 / etykieta anteny z typem anteny", "Sektor 3 antena 2 / etykieta anteny z typem anteny"], [52, "Sektor 3 antena 3 / etykieta anteny z typem anteny", "Sektor 3 antena 3 / etykieta anteny z typem anteny"], [53, "Sektor 3 antena 1 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 3 antena 1 / konektory oraz oznaczenia na podłączonych jumperach"], [54, "Sektor 3 antena 2 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 3 antena 2 / konektory oraz oznaczenia na podłączonych jumperach"], [55, "Sektor 3 antena 3 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 3 antena 3 / konektory oraz oznaczenia na podłączonych jumperach"], [56, "Sektor 3 antena 1 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny", "Sektor 3 antena 1 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [57, "Sektor 3 antena 2 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny", "Sektor 3 antena 2 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [58, "", "Sektor 3 antena 3 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [59, "Sektor 3 antena 1 / pochyladło lub poziomica", "Sektor 3 antena 1 / pochyladło lub poziomica"], [60, "Sektor 3 antena 2 / pochyladło lub poziomica", "Sektor 3 antena 2 / pochyladło lub poziomica"], [61, "Sektor 3 antena 3 / pochyladło lub poziomica", "Sektor 3 antena 3 / pochyladło lub poziomica"], [62, "Antena S3 / Alignment Tool antena 1", "Antena S3 / Alignment Tool antena 1"], [63, "Antena S3 / Alignment Tool antena 2", "Antena S3 / Alignment Tool antena 2"], [64, "Antena S3 / Alignment Tool antena 3", "Antena S3 / Alignment Tool antena 3"], [65, "Widok ogólny Sektor 4 / góra - wszystkie anteny w sektorze 1", "Widok ogólny Sektor 4 / góra - wszystkie anteny w sektorze 1"], [66, "Sektor 4 antena 1 / etykieta anteny z typem anteny", "Sektor 4 antena 1 / etykieta anteny z typem anteny"], [67, "Sektor 4 antena 2 / etykieta anteny z typem anteny", "Sektor 4 antena 2 / etykieta anteny z typem anteny"], [68, "Sektor 4 antena 3 / etykieta anteny z typem anteny", "Sektor 4 antena 3 / etykieta anteny z typem anteny"], [69, "Sektor 4 antena 1 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 4 antena 1 / konektory oraz oznaczenia na podłączonych jumperach"], [70, "Sektor 4 antena 2 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 4 antena 2 / konektory oraz oznaczenia na podłączonych jumperach"], [71, "Sektor 4 antena 3 / konektory oraz oznaczenia na podłączonych jumperach", "Sektor 4 antena 3 / konektory oraz oznaczenia na podłączonych jumperach"], [72, "", "Sektor 4 antena 1 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [73, "", "Sektor 4 antena 2 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [74, "", "Sektor 4 antena 3 / uziemienie anteny po stronie listwy lub kowadełka oraz anteny"], [75, "Sektor 3 antena 1 / pochyladło lub poziomica", "Sektor 3 antena 1 / pochyladło lub poziomica"], [76, "Sektor 3 antena 2 / pochyladło lub poziomica", "Sektor 3 antena 2 / pochyladło lub poziomica"], [77, "Sektor 3 antena 3 / pochyladło lub poziomica", "Sektor 3 antena 3 / pochyladło lub poziomica"], [78, "Antena S4 / Alignment Tool antena 1", "Antena S4 / Alignment Tool antena 1"], [79, "Antena S4 / Alignment Tool antena 2", "Antena S4 / Alignment Tool antena 2"], [80, "Antena S4 / Alignment Tool antena 3", "Antena S4 / Alignment Tool antena 3"], [81, "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [82, "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [83, "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [84, "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S1 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [85, "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [86, "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [87, "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [88, "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [89, "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [90, "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [91, "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [92, "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S1, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [93, "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [94, "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [95, "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [96, "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S2 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [97, "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [98, "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [99, "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [100, "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [101, "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [102, "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [103, "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [104, "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S2, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [105, "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [106, "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [107, "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [108, "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S3 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [109, "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [110, "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [111, "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [112, "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [113, "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [114, "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [115, "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [116, "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S3, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [117, "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [118, "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [119, "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [120, "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie", "Feeder / jumper S4 - połączenie jumper/feeder , izolacja, oznaczenia, uziemienie"], [121, "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [122, "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [123, "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [124, "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac", "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji przed wykonaniem prac"], [125, "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [126, "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [127, "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [128, "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Cały przebieg feeder/jumper S4, mocowań w uchwytach będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [129, "Diplekser S1 - diplekser, triplekser, TMA (góra, dół)", "Diplekser S1 - diplekser, triplekser, TMA (góra, dół)"], [130, "Diplekser S1 - diplekser, triplekser, TMA (góra, dół)", "Diplekser S1 - diplekser, triplekser, TMA (góra, dół)"], [131, "Diplekser S2 - diplekser, triplekser, TMA (góra, dół)", "Diplekser S2 - diplekser, triplekser, TMA (góra, dół)"], [132, "Diplekser S2 - diplekser, triplekser, TMA (góra, dół)", "Diplekser S2 - diplekser, triplekser, TMA (góra, dół)"], [133, "Diplekser S3 - diplekser, triplekser, TMA (góra, dół)", "Diplekser S3 - diplekser, triplekser, TMA (góra, dół)"], [134, "Diplekser S3 - diplekser, triplekser, TMA (góra, dół)", "Diplekser S3 - diplekser, triplekser, TMA (góra, dół)"], [135, "Diplekser S4 - diplekser, triplekser, TMA (góra, dół)", "Diplekser S4 - diplekser, triplekser, TMA (góra, dół)"], [136, "Diplekser S4 - diplekser, triplekser, TMA (góra, dół)", "Diplekser S4 - diplekser, triplekser, TMA (góra, dół)"], [137, "Droga kablowa - zdjęcia mocowań feederów, kabli", "Droga kablowa - zdjęcia mocowań feederów, kabli"], [138, "Droga kablowa - zdjęcia mocowań feederów, kabli", "Droga kablowa - zdjęcia mocowań feederów, kabli"], [139, "Droga kablowa - zdjęcia mocowań feederów, kabli", "Droga kablowa - zdjęcia mocowań feederów, kabli"], [140, "Droga kablowa - zdjęcia mocowań feederów, kabli", "Droga kablowa - zdjęcia mocowań feederów, kabli"], [141, "Kontener- zdjęcia kontenera po wykonanych pracaach", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [142, "Droga kablowa i wejście do przepustu roxtec przed wykonaniem prac", "Droga kablowa i wejście do przepustu roxtec przed wykonaniem prac"], [143, "Droga kablowa i wejście do przepustu roxtec przed wykonaniem prac", "Droga kablowa i wejście do przepustu roxtec przed wykonaniem prac"], [144, "Droga kablowa i wejście do przepustu roxtec ze wskazaniem kabli/wiązek będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Droga kablowa i wejście do przepustu roxtec ze wskazaniem kabli/wiązek będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [145, "Droga kablowa i wejście do przepustu roxtec ze wskazaniem kabli/wiązek będących przedmiotem instalacji/modernizacji po wykonaniu prac", "Droga kablowa i wejście do przepustu roxtec ze wskazaniem kabli/wiązek będących przedmiotem instalacji/modernizacji po wykonaniu prac"], [146, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [147, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [148, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [149, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [150, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [151, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [152, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [153, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [154, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [155, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [156, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [157, "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)", "Dodatkowe zdjęcia nie ujęte w spisie - opcja (np. RET, SmartBias, podziałka tiltu)"], [158, "Wartość prądu poboru w siłowni po wykonanych pracach", "Wartość prądu poboru w siłowni po wykonanych pracach"]], "Radiolinia": [[1, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [2, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [3, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [4, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [5, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [6, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [7, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [8, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [9, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [10, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [11, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [12, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [13, "Widok ogólny antena MW / dół", "Widok ogólny antena MW / dół"], [14, "Widok ogólny antena MW / góra", "Widok ogólny antena MW / góra"], [15, "Widok ODU 1", "Widok ODU 1"], [16, "Widok ODU 2", "Widok ODU 2"], [17, "Widok ODU 3", "Widok ODU 3"], [18, "Widok ODU 4", "Widok ODU 4"], [19, "ODU 1 podłączone kable, widoczne oznaczenia", "ODU 1 podłączone kable, widoczne oznaczenia"], [20, "ODU 2 podłączone kable, widoczne oznaczenia", "ODU 2 podłączone kable, widoczne oznaczenia"], [21, "ODU 3 podłączone kable, widoczne oznaczenia", "ODU 3 podłączone kable, widoczne oznaczenia"], [22, "ODU 4 podłączone kable, widoczne oznaczenia", "ODU 4 podłączone kable, widoczne oznaczenia"], [23, "ODU 1 / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)", "ODU 1 / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)"], [24, "ODU 3 / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)", "ODU 2 / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)"], [25, "ODU 4 / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)", "ODU 3 / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)"], [26, "ODU 4 / uziemienie (listwa uziemiająca lub kowadełko)", "ODU 4 / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)"], [27, "Antena MW / etykieta", "Antena MW / etykieta"], [28, "Coupler / etykieta", "Coupler / etykieta"], [29, "Azymut anteny MW 120° (co 30°)", "Azymut anteny MW 120° (co 30°)"], [30, "Azymut anteny MW 120° (co 30°)", "Azymut anteny MW 120° (co 30°)"], [31, "Azymut anteny MW 120° (co 30°)", "Azymut anteny MW 120° (co 30°)"], [32, "Azymut anteny MW 120° (co 30°)", "Azymut anteny MW 120° (co 30°)"], [33, "Widok ogólny rack RL / szafa sprzętowa", "Widok ogólny rack RL / szafa sprzętowa"], [34, "Widok ogólny INU", "Widok ogólny INU"], [35, "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [36, "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [37, "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [38, "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [39, "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [40, "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)", "Zdjęcia zainstalowanych kart w INU (okablowanie i oznaczenia)"], [41, "INU / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)", "INU / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)"], [42, "INU / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)", "INU / uziemienie (listwa uziemiająca lub kowadełko, urządzenie)"], [43, "Instalacja kabei IF / FO na drodze kablowej/ uziemienia", "Instalacja kabei IF / FO na drodze kablowej/ uziemienia"], [44, "Instalacja kabei IF / FO na drodze kablowej/ uziemienia", "Instalacja kabei IF / FO na drodze kablowej/ uziemienia"], [45, "Instalacja kabei IF / FO na drodze kablowej/ uziemienia", "Instalacja kabei IF / FO na drodze kablowej/ uziemienia"], [46, "Instalacja kabei IF / FO na drodze kablowej - zapas kabla", "Instalacja kabei IF / FO na drodze kablowej - zapas kabla"], [47, "Przepust kablowy szafa sprzętowa/roxtec z zewnątrz/ wskazanie zajmowanego otworu", "Przepust kablowy szafa sprzętowa/roxtec z zewnątrz/ wskazanie zajmowanego otworu"], [48, "Przepust kablowy szafa sprzętowa/roxtec - zdjęcie z środka bez lampy błyskowej/ wskazanie zajmowanego otworu", "Przepust kablowy szafa sprzętowa/roxtec - zdjęcie z środka bez lampy błyskowej/ wskazanie zajmowanego otworu"], [49, "ODF lub połączenia bezpośrednie - widok rozszycia oraz opisów połączeń", "ODF lub połączenia bezpośrednie - widok rozszycia oraz opisów połączeń"], [50, "ODF lub połączenia bezpośrednie - widok rozszycia oraz opisów połączeń", "ODF lub połączenia bezpośrednie - widok rozszycia oraz opisów połączeń"], [51, "ODF lub połączenia bezpośrednie - widok rozszycia oraz opisów połączeń", "ODF lub połączenia bezpośrednie - widok rozszycia oraz opisów połączeń"], [52, "ODF lub połączenia bezpośrednie - widok rozszycia oraz opisów połączeń", "ODF lub połączenia bezpośrednie - widok rozszycia oraz opisów połączeń"], [53, "Koryto grzebieniowe , peszel", "Koryto grzebieniowe , peszel"], [54, "Koryto grzebieniowe , peszel", "Koryto grzebieniowe , peszel"], [55, "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)", "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [56, "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)", "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [57, "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)", "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [58, "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)", "INU / zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [59, "Kontener- zdjęcia kontenera po wykonanych pracaach", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [60, "Dodatkowe zdjęcia nie ujęte w spisie - opcja/ modernizacja zabezpieczeń nadprądowych / bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja/ modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [61, "Dodatkowe zdjęcia nie ujęte w spisie - opcja/ modernizacja zabezpieczeń nadprądowych / bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja/ modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [62, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [63, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [64, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [65, "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej", "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej"], [66, "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej", "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej"], [67, "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej", "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej"], [68, "Etykieta/nadruk kabla DC potwierdzający jego przekrój", "Etykieta/nadruk kabla DC potwierdzający jego przekrój"], [69, "Etykieta/nadruk kabla FO potwierdzający jego typ", "Etykieta/nadruk kabla FO potwierdzający jego typ"], [70, "Wartość prądu poboru w siłowni po wykonanych pracach", "Wartość prądu poboru w siłowni po wykonanych pracach"]], "System zasilania-szafa sprzet": [[1, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [2, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [3, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [4, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [5, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [6, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [7, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [8, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [9, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [10, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [11, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [12, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [13, "Widok ogólny zasilacz", "Widok ogólny zasilacz"], [14, "Widok ogólny szafa sprzętowa", "Widok ogólny szafa sprzętowa"], [15, "Siłownia / szafa sprzętowa/ pola odbiorów / styczniki K1, K2", "Siłownia / szafa sprzętowa/ pola odbiorów / styczniki K1, K2"], [16, "Siłownia / szafa sprzętowa/ pola odbiorów / styczniki K1, K3", "Siłownia / szafa sprzętowa/ pola odbiorów / styczniki K1, K3"], [17, "Siłownia / szafa sprzętowa -widok sprzętu w szafie", "Siłownia / szafa sprzętowa -widok sprzętu w szafie"], [18, "Siłownia / szafa sprzętowa -widok sprzętu w szafie", "Siłownia / szafa sprzętowa -widok sprzętu w szafie"], [19, "Siłownia / prostowniki (zdjęcie obrazuje ilość prostowników)", "Siłownia / prostowniki (zdjęcie obrazuje ilość prostowników)"], [20, "Siłownia / prostowniki (zdjęcie obrazuje ilość prostowników)", "Siłownia / prostowniki (zdjęcie obrazuje ilość prostowników)"], [21, "Zainstalowany sterownik w siłowni / szafie sprzętowej", "Zainstalowany sterownik w siłowni / szafie sprzętowej"], [22, "Zainstalowany sterownik w siłowni / szafie sprzętowej", "Zainstalowany sterownik w siłowni / szafie sprzętowej"], [23, "Zainstalowany sterownik w siłowni / szafie sprzętowej / ekran-obciążenie siłowni", "Zainstalowany sterownik w siłowni / szafie sprzętowej / ekran-obciążenie siłowni"], [24, "Zainstalowany sterownik w siłowni / szafie sprzętowej / kabel FTP", "Zainstalowany sterownik w siłowni / szafie sprzętowej / kabel FTP"], [25, "Siłownia / etykieta (typ zasilacza)", "Siłownia / etykieta (typ zasilacza)"], [26, "Szafa sprzętowa / etykieta (typ szafy)", "Szafa sprzętowa / etykieta (typ szafy)"], [27, "Siłownia / zasilanie AC", "Siłownia / zasilanie AC"], [28, "Siłownia / zasilanie AC", "Siłownia / zasilanie AC"], [29, "Szafa sprzętowa / zasilanie", "Szafa sprzętowa / zasilanie"], [30, "Szafa sprzętowa / zasilanie", "Szafa sprzętowa / zasilanie"], [31, "Siłownia / alarmy", "Siłownia / alarmy"], [32, "Siłownia / alarmy", "Siłownia / alarmy"], [33, "Szafa sprzętowa / alarmy", "Szafa sprzętowa / alarmy"], [34, "Szafa sprzętowa / alarmy", "Szafa sprzętowa / alarmy"], [35, "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej", "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej"], [36, "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej", "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej"], [37, "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej", "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej"], [38, "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej", "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej"], [39, "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej", "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej"], [40, "Mocowanie siłowni / szafy", "Uziemienie siłowni / szafy – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej"], [41, "Zestaw baterii 1 (etykieta)", "Zestaw baterii 1 (etykieta)"], [42, "Zestaw baterii 1 (etykieta)", "Zestaw baterii 1 (etykieta)"], [43, "Zestaw baterii 1 (etykieta)", "Zestaw baterii 1 (etykieta)"], [44, "Zestaw baterii 1 (etykieta)", "Zestaw baterii 1 (etykieta)"], [45, "Zestaw baterii 2 (etykieta)", "Zestaw baterii 2 (etykieta)"], [46, "Zestaw baterii 2 (etykieta)", "Zestaw baterii 2 (etykieta)"], [47, "Zestaw baterii 2 (etykieta)", "Zestaw baterii 2 (etykieta)"], [48, "Zestaw baterii 2 (etykieta)", "Zestaw baterii 2 (etykieta)"], [49, "Zestaw baterii 3 (etykieta)", "Zestaw baterii 3 (etykieta)"], [50, "Zestaw baterii 3 (etykieta)", "Zestaw baterii 3 (etykieta)"], [51, "Zestaw baterii 3 (etykieta)", "Zestaw baterii 3 (etykieta)"], [52, "Zestaw baterii 3 (etykieta)", "Zestaw baterii 3 (etykieta)"], [53, "Zestaw baterii 4 (etykieta)", "Zestaw baterii 4 (etykieta)"], [54, "Zestaw baterii 4 (etykieta)", "Zestaw baterii 4 (etykieta)"], [55, "Zestaw baterii 4 (etykieta)", "Zestaw baterii 4 (etykieta)"], [56, "Zestaw baterii 4 (etykieta)", "Zestaw baterii 4 (etykieta)"], [57, "Rozdzielnica elektryczna", "Rozdzielnica elektryczna"], [58, "Rozdzielnica elektryczna", "Rozdzielnica elektryczna"], [59, "Rozdzielnica elektryczna", "Rozdzielnica elektryczna"], [60, "Rozdzielnica elektryczna", "Rozdzielnica elektryczna"], [61, "Przepust kablowy", "Przepust kablowy"], [62, "Przepust kablowy", "Przepust kablowy"], [63, "Przepust kablowy / wskazanie zajmowanego otworu", "Przepust kablowy / wskazanie zajmowanego otworu"], [64, "Przepust kablowy / wskazanie zajmowanego otworu", "Przepust kablowy / wskazanie zajmowanego otworu"], [65, "Gniazdo zasilania awaryjnego", "Gniazdo zasilania awaryjnego"], [66, "Kontener- zdjęcia kontenera po wykonanych pracaach", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [67, "Dodatkowe zdjęcia nie ujęte w spisie - ustawienia sterownika po modernizacji", "Dodatkowe zdjęcia nie ujęte w spisie - ustawienia sterownika po modernizacji"], [68, "Dodatkowe zdjęcia nie ujęte w spisie - ustawienia sterownika po modernizacji", "Dodatkowe zdjęcia nie ujęte w spisie - ustawienia sterownika po modernizacji"], [69, "Dokręcenie dachu szafy / siłowni", "Dokręcenie dachu szafy / siłowni"], [70, "Dokręcenie dachu szafy / siłowni", "Dokręcenie dachu szafy / siłowni"], [71, "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej", "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej"], [72, "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej", "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej"], [73, "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej", "Miejsce uziemień urządzeń z dwóch stron - od strony urządzenia oraz listwy uziemiającej"], [74, "Etykieta/nadruk kabla DC potwierdzający jego przekrój", "Etykieta/nadruk kabla DC potwierdzający jego przekrój"], [75, "Wartość prądu poboru w siłowni po wykonanych pracach", "Wartość prądu poboru w siłowni po wykonanych pracach"]], "Wezel TRM": [[1, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [2, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [3, "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny obiektu (np. wieża, budynek, komin) przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [4, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [5, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [6, "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac", "Widok ogólny obiektu (np. wieża, budynek, komin) po zakończeniu prac"], [7, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [8, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [9, "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach", "Widok ogólny: racka, szafy RAN, szafy sprzętowej przed rozpoczęciem prac ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach"], [10, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [11, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [12, "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac", "Widok ogólny: racka, szafy RAN, szafy sprzętowej po zakończeniu prac"], [13, "Rack RL / Szafa sprzętowa", "Rack RL / Szafa sprzętowa"], [14, "Węzeł TRM (np..Coriant)", "Węzeł TRM (np..Coriant)"], [15, "Zasilanie (wtyczka, oznaczenia, bezpiecznik)", "Zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [16, "Zasilanie (wtyczka, oznaczenia, bezpiecznik)", "Zasilanie (wtyczka, oznaczenia, bezpiecznik)"], [17, "Interfejsy FO po stronie węzła", "Interfejsy FO po stronie węzła"], [18, "Interfejsy FO po stronie węzła", "Interfejsy FO po stronie węzła"], [19, "Interfejsy FO po stronie węzła", "Interfejsy FO po stronie węzła"], [20, "Interfejsy FO po stronie węzła", "Interfejsy FO po stronie węzła"], [21, "Interfejsy elektryczne po stronie węzła", "Interfejsy elektryczne po stronie węzła"], [22, "Interfejsy elektryczne po stronie węzła", "Interfejsy elektryczne po stronie węzła"], [23, "Uziemienie – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej", "Uziemienie – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej"], [24, "Uziemienie – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej", "Uziemienie – po stronie urządzenia/sprzętu instalowanego oraz po stronie listwy ekwipotencjalnej"], [25, "ODF – widok rozszycia oraz opisów połączeń", "ODF – widok rozszycia oraz opisów połączeń"], [26, "ODF – widok rozszycia oraz opisów połączeń", "ODF – widok rozszycia oraz opisów połączeń"], [27, "ODF – widok rozszycia oraz opisów połączeń", "ODF – widok rozszycia oraz opisów połączeń"], [28, "ODF – widok rozszycia oraz opisów połączeń", "ODF – widok rozszycia oraz opisów połączeń"], [29, "Koryto grzebieniowe / peszel", "Koryto grzebieniowe / peszel"], [30, "Koryto grzebieniowe / peszel", "Koryto grzebieniowe / peszel"], [31, "Koryto grzebieniowe / peszel", "Koryto grzebieniowe / peszel"], [32, "Koryto grzebieniowe / peszel", "Koryto grzebieniowe / peszel"], [33, "Kontener- zdjęcia kontenera po wykonanych pracaach", "Kontener- zdjęcia kontenera po wykonanych pracaach"], [34, "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [35, "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik", "Dodatkowe zdjęcia nie ujęte w spisie - opcja / modernizacja zabezpieczeń nadprądowych / bezpiecznik"], [36, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [37, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [38, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [39, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [40, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [41, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [42, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [43, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [44, "Dodatkowe zdjęcia nie ujęte w spisie - opcja", "Dodatkowe zdjęcia nie ujęte w spisie - opcja"], [45, "Etykieta/nadruk kabla DC potwierdzający jego przekrój", "Etykieta/nadruk kabla DC potwierdzający jego przekrój"], [46, "Etykieta/nadruk kabla FO potwierdzający jego typ", "Etykieta/nadruk kabla FO potwierdzający jego typ"], [47, "Wartość prądu poboru w siłowni po wykonanych pracach", "Wartość prądu poboru w siłowni po wykonanych pracach"]], "Inne": [[1, "Widok ogólny obiektu", ""]]}};
+const REPORTS = [
+  {f:'BTS', name:'BTS', short:'BTS'},
+  {f:'System Antenowy', name:'System antenowy', short:'Antenowy'},
+  {f:'Radiolinia', name:'Radiolinia', short:'Radiolinia'},
+  {f:'System zasilania-szafa sprzet', name:'Zasilanie / szafa sprzętowa', short:'Zasilanie'},
+  {f:'Wezel TRM', name:'Węzeł TRM', short:'Węzeł TRM'},
+  {f:'Inne', name:'Inne', short:'Inne'}
+];
+const RMAP = Object.fromEntries(REPORTS.map(r=>[r.f,r]));
+
+// ===== Katalogi zdjęć: V1 (stary szablon) i V3.1 (od 2026) =====
+const TPL = {v3:{name:'V3.1', label:'Foto raport V3.1 (nowy)'}, v1:{name:'V1', label:'Foto raport V1 (stary)'}};
+function phaseOf(s){ if(/przed (rozpoczęciem|wykonaniem) prac|przed deinstalacją/i.test(s)) return 'przed'; if(/po (zakończeniu|wykonaniu|wykonanych) prac|po deinstalacji/i.test(s)) return 'po'; return ''; }
+function shortV3(s,phase){
+  if(/^Zdeinstalowany sprzęt/i.test(s)) return 'Zdeinstalowany sprzęt i materiały – '+(phase==='przed'?'przed deinstalacją':'po deinstalacji');
+  let b=s.replace(/\s*ze szczególnym uwzględnieniem zauważonych usterek po wcześniejszych pracach\.?/i,'').replace(/\s*\(np\. wieża, budynek, komin\)/i,'').replace(/^Dodatkowe zdjęcia nie ujęte w spisie\s*-\s*/i,'Dodatkowe: ').trim();
+  if(phase && b.length>55){
+    b=b.replace(/\s*(ze wskazaniem|będących przedmiotem|, mocowań).*$/i,'').replace(/\s*(przed rozpoczęciem prac|przed wykonaniem prac|po zakończeniu prac|po wykonaniu prac).*$/i,'').replace(/[,\s]+$/,'');
+    b+= phase==='przed'?' – przed pracami':' – po pracach';
+  }
+  return b;
+}
+const norm=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').replace(/[\s.]+$/,'').trim();
+function buildCatalog(raw,ver){
+  const cat={};
+  for(const r of REPORTS){
+    cat[r.f]=(raw[r.f]||[]).map(([n,l,d])=>{
+      l=(l||'').replace(/\s*:\s*$/,'').trim(); d=(d||'').trim();
+      let title,desc,extra,opt,phase='',deinst=false,share=null;
+      if(ver==='v1'){
+        if(r.f==='BTS'&&(n===24||n===25)) l=l.replace('RRU/RRH 2','RRU/RRH 1');
+        if(r.f==='System Antenowy'&&n>=64&&n<=66){ l=l.replace('Sektor 3','Sektor 4'); d=d.replace('Sektor 3','Sektor 4'); }
+        title=l; desc=d; extra=!title||/^Dodatkowe zdj/i.test(title); if(!title) title='Dodatkowe zdjęcie';
+        if(norm(desc)===norm(title)) desc='';
+        opt=extra||/opcja/i.test(d);
+        if(n===1) share='common/1';
+      } else {
+        if(r.f==='System Antenowy'&&n>=75&&n<=77){ l=l.replace('Sektor 3','Sektor 4'); d=d.replace('Sektor 3','Sektor 4'); }
+        const full=d||l; phase=phaseOf(full); deinst=/^Zdeinstalowany sprzęt/i.test(full);
+        title=shortV3(full,phase);
+        const notes=[]; if(norm(full)!==norm(title)) notes.push(full);
+        if(l && d && norm(l)!==norm(d)) notes.push('W raporcie Excel podpisane: „'+l+'”');
+        desc=notes.join(' · ');
+        extra=/^Dodatkowe zdj/i.test(full) && !/(GPS|bezpiecznik|sterownika)/i.test(full);
+        opt=extra||/opcja/i.test(full);
+        if(r.f!=='Inne' && n<=12) share='common/'+n;
+        if(r.f==='Inne' && n===1) share='common/1';
+        if(/^Wartość prądu poboru/i.test(full)) share='common/prad';
+      }
+      const m=(re)=>{const x=title.match(re); return x?+x[1]:0};
+      const tags={ sec:m(/\bS([1-4])\b/)||m(/Sektor\s*([1-4])/i), rru:m(/RRU\/RRH\s*(\d)/), ant:m(/ant(?:ena|\.)\s*(\d)/i), odu:m(/ODU\s*(\d)/), bat:m(/baterii\s*(\d)/i) };
+      return {n,title,desc,extra,opt,phase,deinst,share,tags};
+    });
+    const a=cat[r.f]; let i=0;
+    while(i<a.length){ let j=i; while(j+1<a.length && !a[i].extra && a[j+1].title===a[i].title && a[j+1].n===a[j].n+1) j++;
+      const mm=j-i+1; if(mm>1) for(let k=i;k<=j;k++) a[k].ser={k:k-i+1,m:mm}; i=j+1; }
+  }
+  return cat;
+}
+const CATALOGS={v1:buildCatalog(RAW.v1,'v1'), v3:buildCatalog(RAW.v3,'v3')};
+const CATIDX={}; for(const v in CATALOGS){ CATIDX[v]={}; for(const f in CATALOGS[v]){ CATIDX[v][f]={}; for(const it of CATALOGS[v][f]) CATIDX[v][f][it.n]=it; } }
+function tplOf(p){ return (p&&p.tpl)||'v1'; }
+
+/* ======================= Pamięć (IndexedDB) ======================= */
+const DB = {
+  db:null,
+  open(){
+    if(this.db) return Promise.resolve(this.db);
+    return new Promise((res,rej)=>{
+      let req;
+      try{ req = indexedDB.open('fotoraport',1); }catch(e){ rej(e); return; }
+      req.onupgradeneeded = ()=>{
+        const db=req.result;
+        if(!db.objectStoreNames.contains('projects')) db.createObjectStore('projects',{keyPath:'id'});
+        if(!db.objectStoreNames.contains('photos')){ const s=db.createObjectStore('photos',{keyPath:'id'}); s.createIndex('projectId','projectId'); }
+      };
+      req.onsuccess=()=>{this.db=req.result;res(this.db)};
+      req.onerror=()=>rej(req.error);
+    });
+  },
+  async run(store,mode,fn){
+    const db=await this.open();
+    return new Promise((res,rej)=>{
+      const tx=db.transaction(store,mode); const s=tx.objectStore(store);
+      let out; const r=fn(s); if(r) r.onsuccess=()=>{out=r.result};
+      tx.oncomplete=()=>res(out); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error);
+    });
+  },
+  all(store){return this.run(store,'readonly',s=>s.getAll())},
+  get(store,id){return this.run(store,'readonly',s=>s.get(id))},
+  put(store,v){return this.run(store,'readwrite',s=>s.put(v))},
+  del(store,id){return this.run(store,'readwrite',s=>s.delete(id))},
+  photosOf(pid){return this.run('photos','readonly',s=>s.index('projectId').getAll(pid))}
+};
+const ls = {
+  get(k,d){try{const v=localStorage.getItem('fr_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem('fr_'+k,JSON.stringify(v))}catch(e){}}
+};
+
+/* ===== Parser G5 N! Radio (tekst z PDF, linia po linii; lines.cols = [{l,r}] kolumny lewa/prawa) ===== */
+const G5_JUNK=/^(NetWorks?!? Sp\.|Prezes Zarządu|Członek Zarządu|Spółka zarejestrowana|KRS \d|Kapitał zakładowy|TAJEMNICA N|Page \d+ of \d+|\d+ G5 N! Radio)/i;
+function g5Equipment(rawLines){
+  const cols=rawLines.cols; const out={install:[],deinstall:[]};
+  if(!cols) return out;
+  const i0=rawLines.findIndex(s=>/^\s*2\.\s*EQUIPMENT\b/i.test(s)); if(i0<0) return out;
+  let last={l:null,r:null};
+  for(let i=i0+1;i<rawLines.length;i++){
+    const s=rawLines[i];
+    if(/BaseBand current|MSITES CURRENT|^\s*\d+\.\s*(BBU|SECTORS|EQUIPMENT TO ORDER)/i.test(s)) break;
+    if(G5_JUNK.test(s.trim())) continue;
+    for(const [side,list] of [['l',out.deinstall],['r',out.install]]){
+      const t=(cols[i]&&cols[i][side]||'').replace(/\s+/g,' ').trim(); if(!t) continue;
+      if(/(^|\s)Qty$/i.test(t)||/^(DE)?INSTALLATION$/i.test(t)||/\/none\//i.test(t)){ last[side]=null; continue; }
+      const m=t.match(/^(.*\S)\s+(\d+)$/);
+      if(m){ const it={name:m[1],qty:+m[2]}; list.push(it); last[side]=it; }
+      else if(last[side] && !/^[A-Z]{3}\d{5}O[A-Z]\b/.test(t)) last[side].name+=' '+t;
+    }
+  }
+  return out;
+}
+function parseG5(rawLines){
+  const equipment=g5Equipment(rawLines);
+  const L = rawLines.map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean).filter(s=>!G5_JUNK.test(s));
+  const all = L.join('\n');
+  const g = (re,i=1)=>{ const m=all.match(re); return m?m[i].trim():''; };
+  const r = {
+    nr: g(/\bN!?\s?Code\s+(\d+)/),
+    nName: g(/\bN!?\s?Name\s+(.+?)(?:\s+Mno\b|\n|$)/),
+    mno: g(/\bMno\s+([A-Z]+)/),
+    oplCode: g(/OPL Code\s+(\d+)/),
+    oplName: g(/OPL Name\s+(.+?)(?:\n|$)/),
+    tmplCode: g(/^TMPL\s+(\d+)/m),
+    tmplName: g(/^TMPL\s+\d+\s+TMPL\s+(.+?)(?:\n|$)/m),
+    place: g(/Place\s+(.+?)\s+Province/),
+    klass: g(/\bClass\s+(\S+)/),
+    height: g(/\bClass\s+\S+\s+Height\s+(\d+)/),
+    task: g(/^Task\s+(.+?)(?:\n|$)/m),
+    taskId: g(/TaskObjId\s+(\d+)/),
+    bbu: [], sectors: [], equipment
+  };
+  if(!r.nr){ const m=all.match(/^(\d{4,6})\s/m); if(m && /N!?\s?Name|OPL Code|SECTORS/.test(all)) r.nr=m[1]; }
+  if(!r.nr) return null;
+  // BBU
+  const iB=L.findIndex(s=>/^\d+\.\s*BBU CONFIGURATION/i.test(s)), iS=L.findIndex(s=>/^\d+\.\s*SECTORS/i.test(s));
+  if(iB>=0){
+    let cur=null;
+    for(const s of L.slice(iB+1, iS>iB?iS:undefined)){
+      let m=s.match(/^\d+\s+(BBU\S+)\s*-\s*(\S+)/);
+      if(m){ cur={name:m[1],type:m[2],slots:[]}; r.bbu.push(cur); continue; }
+      m=s.match(/^(\d{1,2})\s+([A-Z][A-Z0-9]{2,5})\s+(No action|INSTALLATION|DEINSTALLATION|MODIFICATION|RELOCATION|REPLACEMENT)\b/i);
+      if(m&&cur) cur.slots.push({slot:+m[1],card:m[2],action:m[3]});
+    }
+  }
+  // Sektory
+  const iE=L.findIndex(s=>/^\d+\.\s*EQUIPMENT TO ORDER/i.test(s));
+  const secLines=L.slice(iS>=0?iS+1:0, iE>0?iE:undefined);
+  const blocks=[]; let b=null;
+  for(const s of secLines){ if(/^Name\s+\S+/i.test(s) && /Azimuth|Height|SEC/i.test(s)){ b=[s]; blocks.push(b);} else if(b) b.push(s); }
+  const BANDS=/(GSM 900|GSM 1800|UMTS 900|UMTS 2100|LTE 800|LTE 1800|LTE 2100|LTE 2600|TDD 3600|NR 700|NR 3500|NR 2100)\s+((?:NULL|DISTRIBUTED|->|[A-Z]+)+)/g;
+  const EQ=/^(No change|INSTALLATION|DEINSTALLATION|MODIFICATION|RELOCATION)\s+(.+?)\s+(ANTENNAS AUX|ANTENNAS NR|ANTENNAS|RRU|RRH|RADIO|AAU)\b\s*(\d*)/;
+  for(const bl of blocks){
+    const t=bl.join('\n');
+    const gg=(re,i=1)=>{const m=t.match(re);return m?m[i].trim():''};
+    const bands=[]; let m; BANDS.lastIndex=0;
+    while((m=BANDS.exec(t))){ const v=m[2]; const after=v.includes('->')?v.split('->').pop():v; const before=v.includes('->')?v.split('->')[0]:v;
+      if(after&&after!=='NULL') bands.push({band:m[1],change:v.includes('->')?(before==='NULL'||!before?'nowe':'zmiana'):''});
+      else if(before&&before!=='NULL') bands.push({band:m[1],change:'usuwane'}); }
+    // anteny: podbloki ANTn
+    const ants=[]; let a=null;
+    for(const s of bl){ const am=s.match(/^ANT(\d+)\b/); if(am){ a={n:+am[1],lines:[],eq:[]}; ants.push(a); continue; } if(a){ a.lines.push(s); const e=s.match(EQ); if(e) a.eq.push({action:e[1],name:e[2],cls:e[3],qty:+e[4]||1}); } }
+    for(const x of ants){ const main=x.eq.filter(e=>e.cls!=='ANTENNAS AUX'); x.removed = main.length>0 && main.every(e=>e.action==='DEINSTALLATION'); }
+    const kept=ants.filter(x=>!x.removed);
+    const rrus=new Set(kept.flatMap(x=>x.lines.join(' ').match(/\bRRU_[A-Z0-9]+/g)||[]));
+    const eq=ants.flatMap(x=>x.eq.map(e=>({...e,ant:x.n})));
+    const work = eq.some(e=>e.action!=='No change') ;
+    const rawName=gg(/^Name\s+(\S+)/m);
+    const removed=/->\s*DEINSTALLATION/i.test(rawName) || (ants.length>0 && kept.length===0);
+    r.sectors.push({
+      removed, name:rawName.replace(/->.*$/,''), no:+gg(/^No\s+(\d+)/m)||r.sectors.length+1,
+      height:gg(/Height\s+(\d+(?:[.,]\d+)?)\s*m/), az:gg(/Azimuth\s+(\d+)/),
+      type:gg(/^No\s+\d+\s+Type\s+(.+)$/m), bands, ant:kept.length||ants.length||1, antAll:ants.length, rru:rrus.size, rruNames:[...rrus], eq, work
+    });
+  }
+  // radia do montażu z tabeli 2. EQUIPMENT
+  r.radiosNew = equipment.install.filter(e=>/RRH|RRU|AAU|AQQ|AEQ|AHQ|Radio Module|RFM|\b\d+T\d+R\b/i.test(e.name)).reduce((s,e)=>s+e.qty,0);
+  return r;
+}
+
+
+/* ======================= Stan ======================= */
+const S = {
+  view:'home', projects:[], p:null, photos:new Map(), urls:new Map(),
+  tab:null, filter:'all', showExtra:false, cur:null, confirm:null, dbError:null,
+  quality: ls.get('quality',2400), includeAlt:false, exporting:false
+};
+const $app = document.getElementById('app');
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const today = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2600); }
+function busy(on,txt){ const b=document.getElementById('busy'); b.hidden=!on; if(txt) document.getElementById('busyText').textContent=txt; }
+
+function slotKey(f,n,p=S.p){ const it=CATIDX[tplOf(p)][f]&&CATIDX[tplOf(p)][f][n]; return it&&it.share ? it.share : f+'/'+n; }
+function g5HasDeinst(g){ return !!g && ((g.equipment&&g.equipment.deinstall.length>0) || (g.sectors||[]).some(s=>(s.eq||[]).some(e=>e.action==='DEINSTALLATION'))); }
+function isOpt(p,it){ return !!it && (it.opt || (it.deinst && !!p.g5 && !g5HasDeinst(p.g5))); }
+function slot(p,key){ return p.slots[key] || (p.slots[key]={takes:[],chosen:null,skip:false}); }
+function peek(p,key){ return p.slots[key] || {takes:[],chosen:null,skip:false}; }
+
+function hiddenByCfg(p,f,it){
+  const c=p.cfg, t=it.tags;
+  if(t.sec && t.sec>c.sectors) return true;
+  const si=(t.sec||1)-1;
+  if(f==='BTS' && t.rru && t.rru>((c.secRru&&c.secRru[si])||c.rru)) return true;
+  if(f==='System Antenowy' && t.ant && t.ant>((c.secAnt&&c.secAnt[si])||c.ant)) return true;
+  if(f==='Radiolinia' && t.odu && t.odu>c.odu) return true;
+  if(t.bat && t.bat>c.bat) return true;
+  return false;
+}
+function itemsFor(p,f,{all=false}={}){
+  let list;
+  if(f==='Inne'){
+    list=[{n:1,title:'Widok ogólny obiektu',desc:'',extra:false,opt:false,tags:{}}]
+      .concat((p.inne||[]).map(x=>({n:x.n,title:x.opis||'Zdjęcie dodatkowe',desc:'Własny opis – wpisz go nad zdjęciem w raporcie „Inne”.',extra:false,opt:false,custom:true,tags:{}})));
+  } else list=CATALOGS[tplOf(p)][f]||[];
+  return list.filter(it=>{
+    if(all) return true;
+    if(hiddenByCfg(p,f,it)) return false;
+    if(it.extra && !S.showExtra && !peek(p,slotKey(f,it.n,p)).takes.length) return false;
+    return true;
+  });
+}
+function isDone(p,f,n){ return !!peek(p,slotKey(f,n,p)).chosen; }
+function isSkip(p,f,n){ return !!peek(p,slotKey(f,n,p)).skip; }
+function stats(p,f){
+  const req = itemsFor(p,f).filter(it=>!isOpt(p,it));
+  const done = req.filter(it=>isDone(p,f,it.n)||isSkip(p,f,it.n)).length;
+  return {done,total:req.length};
+}
+function totalStats(p){
+  const seen=new Set(); let done=0,total=0;
+  for(const f of p.reports) for(const it of itemsFor(p,f)){ if(isOpt(p,it)) continue; const k=slotKey(f,it.n,p); if(seen.has(k)) continue; seen.add(k); total++; if(isDone(p,f,it.n)||isSkip(p,f,it.n)) done++; }
+  return {done,total};
+}
+function sequence(p){
+  const seen=new Set(), out=[];
+  for(const f of p.reports) for(const it of itemsFor(p,f)){ if(S.mode==='przed' && it.phase!=='przed') continue; const k=slotKey(f,it.n,p); if(seen.has(k)) continue; seen.add(k); out.push({f,n:it.n}); }
+  return out;
+}
+function findItem(p,f,n){ return itemsFor(p,f,{all:true}).find(it=>it.n===n); }
+
+async function saveP(){ S.p.updated=Date.now(); await DB.put('projects',S.p); }
+function photoURL(id,thumb=true){
+  const key=id+(thumb?'t':'f');
+  if(S.urls.has(key)) return S.urls.get(key);
+  const ph=S.photos.get(id); if(!ph) return '';
+  const u=URL.createObjectURL(thumb?(ph.thumb||ph.blob):ph.blob); S.urls.set(key,u); return u;
+}
+function releaseFullURLs(){ for(const [k,u] of S.urls) if(k.endsWith('f')){ URL.revokeObjectURL(u); S.urls.delete(k);} }
+
+/* ======================= Widoki ======================= */
+function render(){
+  if(S.view!=='shoot') releaseFullURLs();
+  const v = S.view;
+  $app.innerHTML = v==='home'?vHome(): v==='form'?vForm(): v==='station'?vStation(): v==='shoot'?vShoot(): v==='export'?vExport():'';
+  window.scrollTo && S._scrollTop!==false && window.scrollTo(0,0);
+  if(v==='shoot') setCaptureTarget();
+}
+
+function vHome(){
+  const list = S.projects.slice().sort((a,b)=>b.updated-a.updated);
+  return `
+  <header class="stack" style="padding-block:8px 16px">
+    <div class="eyebrow">Raport zdjęciowy · OPL / TMPL</div>
+    <h1>Foto Raport Stacji</h1>
+    <p class="muted">Aplikacja prowadzi Cię przez listę zdjęć z szablonu Foto_raport i od razu nadaje im numery. Na koniec pobierasz ZIP z folderami BTS, System Antenowy itd., gotowy do makra „Wstaw zdjęcia”.</p>
+  </header>
+  ${S.dbError?`<div class="notice" style="margin-bottom:12px">Ta przeglądarka nie pozwala zapisywać zdjęć w pamięci (${esc(S.dbError)}). Otwórz stronę w zwykłym oknie przeglądarki, nie w trybie prywatnym.</div>`:''}
+  <div class="row" style="flex-wrap:nowrap">
+    <button class="btn btn-primary btn-big" style="flex:1.3" data-act="new" data-g5="1">+ Nowa z G5</button>
+    <button class="btn btn-big" style="flex:1" data-act="new">Bez G5</button>
+  </div>
+  <button class="btn-ghost" style="margin-top:6px" data-act="import-new">Wczytaj stację z ZIP-a (kopii)</button>
+  ${NATIVE?'<p class="notice info" style="margin-top:8px">Każde zdjęcie z aparatu ma kopię w galerii: album <b>FotoRaport › numer stacji</b> (Pictures/FotoRaport). ZIP-y zapisują się w Pobrane/FotoRaport.</p>':''}
+  <div class="stack" style="margin-top:18px">
+    ${list.length? `<div class="eyebrow">Stacje na tym telefonie</div>` + list.map(p=>{
+      const s=totalStats(p); const pct=s.total?Math.round(100*s.done/s.total):0;
+      const conf = S.confirm==='delp:'+p.id;
+      return `<div class="card stack" style="gap:10px">
+        <div class="st">
+          <div style="min-width:0">
+            <h3>${esc(p.nr||'—')} ${esc(p.nazwa||'')}</h3>
+            <div class="muted small">${esc(p.data)} · ${esc(p.firma||'bez wykonawcy')} · ${p.reports.map(f=>RMAP[f].short).join(', ')}</div>
+          </div>
+          <div class="num" style="font-size:22px">${s.done}/${s.total}</div>
+        </div>
+        <div class="progress"><i style="width:${pct}%"></i></div>
+        <div class="row">
+          <button class="btn-primary" data-act="open" data-id="${p.id}" style="flex:1">Otwórz</button>
+          <button class="${conf?'btn-danger':'btn-ghost'}" data-act="delp" data-id="${p.id}">${conf?'Na pewno usunąć?':'Usuń'}</button>
+        </div>
+      </div>`}).join('') : `<div class="card empty-state muted">Nie masz jeszcze żadnej stacji. Dodaj pierwszą: numer, data, wykonawca i zakres raportów.</div>`}
+  </div>
+  <div class="stack" style="margin-top:22px">
+    <div class="eyebrow">Ustawienia zdjęć</div>
+    <div class="card stack">
+      <div class="cfgrow"><div><b>Rozdzielczość zapisu</b><div class="muted small">Dłuższy bok. Wytyczne: min. 1200×1600, pionowo 3:4.</div></div>
+        <div class="seg" role="group" aria-label="Rozdzielczość">${[1600,2400,3200].map(q=>`<button data-act="quality" data-v="${q}" aria-pressed="${S.quality===q}">${q}</button>`).join('')}</div></div>
+      <p class="muted small">Zdjęcia są obracane zgodnie z orientacją telefonu przed zapisem, więc w Excelu nie wejdą bokiem.</p>
+      <p class="muted small" id="storage"></p>
+    </div>
+  </div>`;
+}
+
+const CFG_DEF = {sectors:3,rru:2,ant:2,odu:2,bat:1};
+function normCfg(c){ c={...CFG_DEF,...(c||{})};
+  if(!Array.isArray(c.secAnt)) c.secAnt=[0,1,2,3].map(()=>c.ant);
+  if(!Array.isArray(c.secRru)) c.secRru=[0,1,2,3].map(()=>c.rru);
+  if(!Array.isArray(c.map)) c.map=[null,null,null,null];
+  return c; }
+function secLabel(s){ return `${s.name} · ${s.az}° · ${s.height} m`; }
+const ACT_PL={'No change':'','INSTALLATION':'montaż','DEINSTALLATION':'demontaż','MODIFICATION':'modyfikacja','RELOCATION':'przeniesienie'};
+function secEquip(s){ const eq=(s.eq||[]).filter(e=>e.cls!=='ANTENNAS AUX'); const seen=new Set();
+  const txt=eq.map(e=>`${e.name}${ACT_PL[e.action]?' ('+ACT_PL[e.action]+')':''}`).filter(x=>!seen.has(x)&&seen.add(x)).join(', ');
+  return txt+(s.antAll&&s.antAll!==s.ant?` · anten po pracach: ${s.ant} (było ${s.antAll})`:''); }
+function g5Sector(p,sIdx){ const no=p.cfg&&p.cfg.map&&p.cfg.map[sIdx]; return (no!=null&&p.g5)?p.g5.sectors.find(s=>s.no===no):null; }
+function hwWork(s){ return !s.removed && (s.eq||[]).some(e=>/INSTALLATION|MODIFICATION|RELOCATION/.test(e.action)); }
+function secDefaults(s,r){ const aau=(s.eq||[]).some(e=>/AQQ|AAU|AEQ|AHQ/i.test(e.name)&&e.action!=='DEINSTALLATION');
+  let rru = aau?1:(s.rru||1);
+  if(r&&r.radiosNew&&hwWork(s)){ const hw=r.sectors.filter(hwWork).length||1; rru=Math.max(rru,Math.ceil(r.radiosNew/hw)); }
+  return {ant:Math.min(3,Math.max(1,s.ant||1)), rru:Math.min(5,Math.max(1,rru))}; }
+function applyG5(d,r){
+  d.g5=r; d.nr=r.nr||d.nr; d.nazwa=r.nName||d.nazwa;
+  d.nazwaOp = r.mno==='TMPL' ? [r.tmplCode,r.tmplName].filter(Boolean).join(' ') : [r.oplCode,r.oplName].filter(Boolean).join(' ');
+  if(!d.zakres && r.task) d.zakres=r.task;
+  const hw=r.sectors.filter(hwWork);
+  const pick=(hw.length && hw.length<=4 ? hw : r.sectors.filter(s=>!s.removed)).slice(0,4);
+  d.cfg=normCfg(d.cfg); d.cfg.sectors=Math.max(1,pick.length);
+  for(let i=0;i<4;i++){ const s=pick[i]; d.cfg.map[i]=s?s.no:null; if(s){ const x=secDefaults(s,r); d.cfg.secAnt[i]=x.ant; d.cfg.secRru[i]=x.rru; } }
+}
+function vForm(){
+  const p = S.draft;
+  const segs=(key,max,min=1)=>`<div class="seg" role="group">${Array.from({length:max-min+1},(_,i)=>i+min).map(v=>`<button type="button" data-act="cfg" data-k="${key}" data-v="${v}" aria-pressed="${p.cfg[key]===v}">${v}</button>`).join('')}</div>`;
+  const segi=(key,i,max)=>`<div class="seg" role="group" aria-label="${key==='secAnt'?'Anteny':'RRU'} S${i+1}">${Array.from({length:max},(_,k)=>k+1).map(v=>`<button type="button" data-act="cfgs" data-k="${key}" data-i="${i}" data-v="${v}" aria-pressed="${p.cfg[key][i]===v}">${v}</button>`).join('')}</div>`;
+  const g=p.g5;
+  const has=f=>p.reports.includes(f);
+  return `
+  <div class="topbar spread"><button class="btn-ghost" data-act="${S.p?'back-station':'home'}">← Wróć</button><span class="eyebrow">${S.p?'Edycja stacji':'Nowa stacja'}</span><span style="width:60px"></span></div>
+  <form id="pform" class="stack" autocomplete="off">
+    <div class="card stack g5card">
+      <div class="spread"><div><h3>Dokumentacja G5</h3><p class="muted small">${g?`Wczytano: <b>${esc(g.nr)} ${esc(g.nName)}</b> · ${g.sectors.length} sekt. · ${esc(g.task||'')}`:'Wczytaj PDF z G5, a numer, nazwy, zakres i sektory uzupełnią się same.'}</p></div></div>
+      <label for="g5file" class="btn ${g?'':'btn-primary'}" role="button" tabindex="0">${g?'Wczytaj inne G5':'Wczytaj G5 (PDF)'}</label>
+      <p class="notice" id="g5Err" hidden></p>
+    </div>
+    <div class="card stack">
+      <div class="grid2">
+        <label class="field">Numer stacji (N!)<input type="text" id="f_nr" inputmode="numeric" value="${esc(p.nr)}" placeholder="np. 92979" required></label>
+        <label class="field">Data wykonania<input type="date" id="f_data" value="${esc(p.data)}" required></label>
+      </div>
+      <label class="field">Nazwa obiektu Networks<input type="text" id="f_nazwa" value="${esc(p.nazwa)}" placeholder="np. PŁOCK 2"></label>
+      <label class="field">Nazwa obiektu OPL / TMPL<input type="text" id="f_nazwaOp" value="${esc(p.nazwaOp||'')}" placeholder="np. 11646 WYCZÓŁKI"></label>
+      <label class="field">Wykonawca / firma instalacyjna<input type="text" id="f_firma" value="${esc(p.firma)}" placeholder="np. ECS"></label>
+      <label class="field">Zakres prac<input type="text" id="f_zakres" value="${esc(p.zakres)}" placeholder="np. Swap GU9+F0 18/21"></label>
+      <label class="field">Numer zamówienia <span class="hint">Opcjonalnie. Trafi do nazwy ZIP, np. 74050_20210130_4201229474</span><input type="text" id="f_zam" inputmode="numeric" value="${esc(p.zam)}"></label>
+    </div>
+    <div class="card stack">
+      <h3>Szablon raportu</h3>
+      <div class="chips">${['v3','v1'].map(v=>`<button type="button" class="chip" data-act="tpl" data-v="${v}" aria-pressed="${(p.tpl||'v1')===v}" ${S.p&&Object.keys(S.p.slots||{}).some(k=>S.p.slots[k].takes.length)&&(S.p.tpl||'v1')!==v?'disabled':''}>${TPL[v].label}</button>`).join('')}</div>
+      ${S.p&&Object.keys(S.p.slots||{}).some(k=>S.p.slots[k].takes.length)?'<p class="muted small">Stacja ma już zdjęcia, więc szablonu nie da się zmienić (numeracja jest inna).</p>':'<p class="muted small">V3.1 ma zdjęcia przed i po pracach, uziemienia z dwóch stron, nadruki kabli DC/FO i prąd poboru siłowni.</p>'}
+    </div>
+    <div class="card stack">
+      <h3>Raporty do wykonania</h3>
+      <div class="chips">${REPORTS.map(r=>`<button type="button" class="chip" data-act="rep" data-f="${esc(r.f)}" aria-pressed="${has(r.f)}">${esc(r.name)}</button>`).join('')}</div>
+    </div>
+    <div class="card stack">
+      <h3>Konfiguracja stacji</h3>
+      <p class="muted small">Ukrywa zdjęcia sektorów i modułów, których na tej stacji nie ma. Numery zdjęć zostają jak w szablonie.</p>
+      ${(has('BTS')||has('System Antenowy'))?`<div class="cfgrow"><b>Sektory</b>${segs('sectors',4)}</div>`:''}
+      ${(has('BTS')||has('System Antenowy'))?Array.from({length:p.cfg.sectors},(_,i)=>`<div class="secbox stack">
+        <div class="spread"><b class="num" style="font-size:22px">S${i+1}</b>
+          ${g?`<select id="map_${i}" class="secsel" aria-label="Sektor z G5 dla S${i+1}"><option value="">— bez G5 —</option>${g.sectors.map(s=>`<option value="${s.no}" ${p.cfg.map[i]===s.no?'selected':''}>${esc(secLabel(s))}${s.removed?' · demontaż sektora':hwWork(s)?' · prace':''}</option>`).join('')}</select>`:''}</div>
+        ${g&&g5Sector(p,i)?`<p class="muted small">${esc(secEquip(g5Sector(p,i)))}</p>`:''}
+        ${has('System Antenowy')?`<div class="cfgrow"><span>Anteny</span>${segi('secAnt',i,3)}</div>`:''}
+        ${has('BTS')?`<div class="cfgrow"><span>RRU/RRH</span>${segi('secRru',i,5)}</div>`:''}
+      </div>`).join(''):''}
+      ${has('Radiolinia')?`<div class="cfgrow"><b>ODU</b>${segs('odu',4)}</div>`:''}
+      ${has('System zasilania-szafa sprzet')?`<div class="cfgrow"><b>Zestawy baterii</b>${segs('bat',4,0)}</div>`:''}
+      ${!p.reports.some(f=>f!=='Inne'&&f!=='Wezel TRM')?'<p class="muted small">Wybrane raporty nie mają ustawień sektorów.</p>':''}
+    </div>
+    <p class="notice" id="formErr" hidden></p>
+    <button class="btn-primary btn-big btn-block" type="submit">${S.p?'Zapisz zmiany':'Zacznij zdjęcia'}</button>
+  </form>`;
+}
+
+function vStation(){
+  const p=S.p; if(!S.tab||!p.reports.includes(S.tab)) S.tab=p.reports[0];
+  const f=S.tab; const s=totalStats(p); const pct=s.total?Math.round(100*s.done/s.total):0;
+  let items=itemsFor(p,f);
+  if(S.filter==='todo') items=items.filter(it=>!isDone(p,f,it.n)&&!isSkip(p,f,it.n));
+  if(S.filter==='done') items=items.filter(it=>isDone(p,f,it.n));
+  if(S.filter==='przed') items=items.filter(it=>it.phase==='przed');
+  S.mode=null; const next = sequence(p).find(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n)));
+  const przedLeft = tplOf(p)==='v3' ? (()=>{S.mode='przed'; const l=sequence(p).filter(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n))); S.mode=null; return l;})() : [];
+  return `
+  <div class="topbar stack" style="gap:8px">
+    <div class="spread"><button class="btn-ghost" data-act="home">← Stacje</button>
+      <button class="btn-ghost" data-act="edit">Edytuj dane</button></div>
+    <div class="spread"><div style="min-width:0"><h2>${esc(p.nr)} ${esc(p.nazwa||'')}</h2><div class="muted small">${esc(p.data)} · ${esc(p.firma||'')} ${p.zakres?'· '+esc(p.zakres):''} · szablon ${TPL[tplOf(p)].name}</div></div>
+      <div class="num" style="font-size:24px;white-space:nowrap">${s.done}/${s.total}</div></div>
+    <div class="progress"><i style="width:${pct}%"></i></div>
+    <div class="tabs" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.done}/${st.total}</span></button>`}).join('')}</div>
+  </div>
+  <div class="stack">
+    ${p.g5?`<details class="card"><summary style="cursor:pointer;font-weight:600">Dane z G5 · ${esc(p.g5.task||'')} · ${esc(p.g5.klass||'')} ${p.g5.height?esc(p.g5.height)+' m':''}</summary>
+      <dl class="facts" style="margin-top:10px">
+        ${Array.from({length:p.cfg.sectors},(_,i)=>{const s=g5Sector(p,i);return `<dt>S${i+1}</dt><dd>${s?esc(secLabel(s))+'<br><span class="muted" style="font-weight:400">'+esc(secEquip(s))+'</span>':'—'}</dd>`}).join('')}
+        ${(p.g5.equipment&&p.g5.equipment.install.length)?`<dt>Montaż</dt><dd>${p.g5.equipment.install.map(e=>esc(e.name)+' ×'+e.qty).join('<br>')}</dd>`:''}
+        ${(p.g5.equipment&&p.g5.equipment.deinstall.length)?`<dt>Demontaż</dt><dd style="font-weight:400">${p.g5.equipment.deinstall.map(e=>esc(e.name)+' ×'+e.qty).join('<br>')}</dd>`:''}
+        ${(p.g5.bbu||[]).map(b=>`<dt>${esc(b.name)}</dt><dd>${esc(b.type)}: ${b.slots.map(s=>`slot ${s.slot} ${esc(s.card)}${s.action==='No action'?'':' ('+esc(s.action.toLowerCase())+')'}`).join(', ')}</dd>`).join('')}
+      </dl></details>`:''}
+    ${przedLeft.length?`<div class="card stack" style="border-color:var(--warn);gap:8px"><b>Zanim zaczniesz prace: ${przedLeft.length} zdjęć PRZED</b><p class="muted small">Widok obiektu, szafy, przebieg jumperów i drogi kablowej, sprzęt do demontażu. Później nie da się ich zrobić.</p><button class="btn-primary" data-act="go-przed">Rób zdjęcia przed pracami</button></div>`:''}
+    <div class="row">
+      <button class="btn-primary" style="flex:1" data-act="go-next" ${next?'':'disabled'}>${next?`Rób po kolei · od nr ${next.n}${next.f!==f?' ('+esc(RMAP[next.f].short)+')':''}`:'Wszystkie wymagane zdjęcia są zrobione'}</button>
+      <button data-act="export">Pobierz ZIP</button>
+    </div>
+    <div class="row" style="justify-content:space-between"><span class="muted small">Masz zdjęcia z innego telefonu albo kopię?</span><button class="btn-ghost" data-act="import">Wczytaj ZIP</button></div>
+    <div class="spread">
+      <div class="chips">${[['all','Wszystkie'],['todo','Brakujące'],['przed','Przed pracami'],['done','Zrobione']].map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
+      <label class="row small muted" style="gap:6px"><input type="checkbox" id="extra" ${S.showExtra?'checked':''} style="width:20px;height:20px"> Dodatkowe</label>
+    </div>
+    <div class="items">
+      ${items.length?items.map(it=>{
+        const k=slotKey(f,it.n,p), sl=peek(p,k), done=!!sl.chosen, skip=sl.skip;
+        return `<button class="item ${done?'done':''} ${skip?'skip':''}" data-act="shoot" data-f="${esc(f)}" data-n="${it.n}">
+          <span class="plate">${it.n}</span>
+          <span style="min-width:0"><span class="t">${esc(it.title)}</span>
+            ${it.desc?`<span class="d">${esc(it.desc)}</span>`:''}
+            <span class="row" style="gap:4px;margin-top:4px">${it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it.share&&p.reports.length>1?'<span class="tag acc">wspólne dla raportów</span>':''}${it.ser?`<span class="tag">ujęcie ${it.ser.k} z ${it.ser.m}</span>`:''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${skip?'<span class="tag warn">pominięte</span>':''}</span></span>
+          <span>${done?`<img class="thumb" alt="" src="${photoURL(sl.chosen)}">`:`<span class="thumb empty"></span>`}${sl.takes.length>1?`<div class="cnt-badge">${sl.takes.length} ujęcia</div>`:''}</span>
+        </button>`}).join(''):`<div class="empty-state muted">Brak pozycji w tym filtrze.</div>`}
+    </div>
+    ${f==='Inne'?`<div class="card stack"><h3>Dodaj zdjęcie do „Inne”</h3>
+      <p class="muted small">Elementy niestandardowe i zauważone usterki. Opis trafi do pliku opisy.txt w ZIP, żeby przepisać go nad zdjęciem.</p>
+      <label class="field">Opis zdjęcia<input type="text" id="inneOpis" placeholder="np. Usterka: brak oznaczenia kabla DC w S2"></label>
+      <button data-act="add-inne">Dodaj pozycję nr ${nextInneN(p)}</button></div>`:''}
+  </div>`;
+}
+function nextInneN(p){ return Math.max(1,...(p.inne||[]).map(x=>x.n))+1; }
+
+function shootG5(p,f,it){
+  if(!p.g5||!it) return '';
+  const out=[];
+  if(it.tags&&it.tags.sec){ const s=g5Sector(p,it.tags.sec-1); if(s) out.push(`<b>S${it.tags.sec} = ${esc(s.name)}</b> · azymut ${esc(s.az)}° · ${esc(s.height)} m · ${esc(secEquip(s))}`); }
+  if(f==='BTS' && /BBU|AirScale|FSMF/i.test(it.title)){ const w=[]; for(const b of p.g5.bbu||[]) for(const s of b.slots) if(s.action!=='No action') w.push(`slot ${s.slot} ${s.card} (${s.action.toLowerCase()})`); if(w.length) out.push('<b>BBU:</b> '+esc(w.join(', '))); }
+  return out.length?`<div class="card small" style="padding:10px 12px;display:flex;flex-direction:column;gap:4px">${out.map(x=>'<div>'+x+'</div>').join('')}</div>`:'';
+}
+function vShoot(){
+  const p=S.p, {f,n}=S.cur; const it=findItem(p,f,n); const k=slotKey(f,n); const sl=peek(p,k);
+  const seq=sequence(p); const idx=seq.findIndex(x=>slotKey(x.f,x.n)===k);
+  const chosen = sl.chosen && S.photos.get(sl.chosen);
+  const land = chosen && chosen.w>chosen.h;
+  const small = chosen && Math.min(chosen.w,chosen.h)<1200;
+  const conf = S.confirm;
+  return `
+  <div class="topbar spread"><button class="btn-ghost" data-act="back-station">← Lista</button>
+    <span class="eyebrow">${S.mode==='przed'?'Przed pracami':esc(RMAP[f].short)} · ${idx+1} z ${seq.length}</span><span style="width:60px"></span></div>
+  <div class="stack">
+    <div class="marker ${sl.chosen?'done':''}">
+      <div class="big">${n}</div>
+      <div style="min-width:0;gap:4px" class="stack">
+        <div class="eyebrow">Zdjęcie ${n} · ${esc(it&&it.share&&p.reports.length>1?'wszystkie raporty':RMAP[f].name)}</div>
+        <h2>${esc(it?it.title:'')}</h2>
+      </div>
+    </div>
+    ${it&&it.ser?`<p class="notice info" style="font-weight:600">Ujęcie ${it.ser.k} z ${it.ser.m} tego samego elementu (nr ${n-it.ser.k+1}–${n-it.ser.k+it.ser.m}).</p>`:''}
+    ${it&&it.desc?`<p style="font-size:17px">${esc(it.desc)}</p>`:''}
+    ${shootG5(p,f,it)}
+    <div class="row" style="gap:6px">${it&&it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}<span class="tag">pionowo 3:4</span>${isOpt(p,it)?'<span class="tag">opcja</span>':''}${sl.skip?'<span class="tag warn">pominięte</span>':''}${it&&it.share&&p.reports.length>1?`<span class="tag acc">zapisze się w każdym folderze jako ${n}.jpg</span>`:''}</div>
+    <div class="preview">${chosen?`<img alt="Wybrane ujęcie zdjęcia ${n}" src="${photoURL(sl.chosen,false)}">`:`<div class="ph">Brak zdjęcia.<br>Zrób je aparatem albo wybierz z galerii. Zapisze się jako <b>${esc(f)}/${n}.jpg</b>.</div>`}</div>
+    ${S.lastError?`<p class="notice" role="alert">${esc(S.lastError)}</p>`:''}
+    ${land?`<p class="notice">To zdjęcie jest poziome. Wytyczne wymagają zdjęć pionowych 3:4.</p>`:''}
+    ${small?`<p class="notice">Rozdzielczość poniżej 1200×1600 wymaganych w wytycznych.</p>`:''}
+    ${sl.takes.length?`<div class="stack" style="gap:6px">
+      <div class="spread"><span class="eyebrow">Ujęcia (${sl.takes.length}) · stuknij, żeby wybrać</span>
+        ${sl.chosen?`<button class="${conf==='deltake'?'btn-danger':'btn-ghost'}" data-act="deltake">${conf==='deltake'?'Na pewno usunąć?':'Usuń wybrane'}</button>`:''}</div>
+      <div class="takes">${sl.takes.map((id,i)=>`<button class="take" data-act="choose" data-id="${id}" aria-pressed="${id===sl.chosen}" aria-label="Ujęcie ${i+1}"><img alt="" src="${photoURL(id)}"><span class="lbl">${id===sl.chosen?'✓ '+n+'.jpg':'#'+(i+1)}</span></button>`).join('')}</div>
+    </div>`:''}
+  </div>
+  <div class="sticky-actions stack" style="gap:8px">
+    <div class="row" style="flex-wrap:nowrap">
+      <label for="cam" class="btn ${sl.takes.length?'':'btn-primary'} btn-big" style="flex:2" role="button" tabindex="0">${sl.takes.length?'Zrób jeszcze raz':'Zrób zdjęcie'}</label>
+      <label for="gal" class="btn btn-big" style="flex:1;font-size:16px" role="button" tabindex="0">Galeria</label>
+    </div>
+    <div class="navrow">
+      <button data-act="prev" ${idx<=0?'disabled':''}>← Wstecz</button>
+      <button data-act="skip">${sl.skip?'Przywróć':'Pomiń'}</button>
+      <button class="${sl.chosen||sl.skip?'btn-primary':''}" data-act="next">${idx>=seq.length-1?'Koniec ✓':'Dalej →'}</button>
+    </div>
+  </div>`;
+}
+
+function zipName(p){ return [p.nr||'stacja', (p.data||'').replace(/-/g,''), p.zam].filter(Boolean).join('_').replace(/[\\/:*?"<>|\s]+/g,'_'); }
+function vExport(){
+  const p=S.p; let count=0, alt=0; const miss=[];
+  for(const f of p.reports){
+    const m=[];
+    for(const it of itemsFor(p,f,{all:true})){
+      if(hiddenByCfg(p,f,it)) continue;
+      const sl=peek(p,slotKey(f,it.n,p));
+      if(sl.chosen){count++; alt+=sl.takes.length-1;}
+      else if(!sl.skip && !isOpt(p,it)) m.push(it.n);
+    }
+    miss.push([f,m]);
+  }
+  return `
+  <div class="topbar spread"><button class="btn-ghost" data-act="back-station">← Lista</button><span class="eyebrow">Eksport</span><span style="width:60px"></span></div>
+  <div class="stack">
+    <h2>Paczka ${esc(zipName(p))}.zip</h2>
+    <div class="card stack">
+      <div class="spread"><b>Zdjęć w paczce</b><span class="num" style="font-size:24px">${count}</span></div>
+      ${miss.map(([f,m])=>`<div><div class="spread"><span>${esc(RMAP[f].name)}</span>${m.length?`<span class="tag warn">brakuje ${m.length}</span>`:'<span class="tag ok">komplet</span>'}</div>${m.length?`<div class="missing muted">nr ${m.join(', ')}</div>`:''}</div>`).join('')}
+    </div>
+    <div class="card stack">
+      <b>Co jest w środku</b>
+      <p class="small muted" style="font-family:ui-monospace,Menlo,monospace;line-height:1.6">${esc(zipName(p))}/<br>${p.reports.map(f=>`&nbsp;&nbsp;${esc(f)}/1.jpg, 2.jpg…`).join('<br>')}<br>&nbsp;&nbsp;info.txt${p.reports.includes('Inne')?'<br>&nbsp;&nbsp;Inne/opisy.txt':''}${S.includeAlt?'<br>&nbsp;&nbsp;_inne_ujecia/…':''}</p>
+      <label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="alt" ${S.includeAlt?'checked':''} style="width:22px;height:22px"> Dołącz niewybrane ujęcia (${alt})</label>
+      <p class="muted small">Niewybrane ujęcia trafiają do osobnego folderu _inne_ujecia, więc makro ich nie wstawi.</p>
+    </div>
+    <div class="card stack">
+      <b>Na komputerze</b>
+      <ol class="small" style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
+        <li>Rozpakuj ZIP.</li><li>Wrzuć Foto_raport.xlsm do folderu ${esc(zipName(p))}.</li><li>Uzupełnij „Site info” danymi z info.txt.</li><li>Kliknij „Wstaw zdjęcia”, potem „Utwórz PDF”.</li>
+      </ol>
+    </div>
+    <p id="expMsg" class="notice info" hidden></p>
+    <button class="btn-primary btn-big btn-block" data-act="do-export" ${count?'':'disabled'}>${NATIVE?'Zapisz ZIP w telefonie':'Pobierz ZIP'}</button>
+    ${NATIVE?'<button id="shareBtn" class="btn-block" data-act="share" hidden>Wyślij ZIP (WhatsApp, mail, Dysk…)</button>':''}
+  </div>`;
+}
+
+/* ======================= Zdjęcia ======================= */
+function imgFrom(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('decode')); i.src=src; }); }
+function readDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error||new Error('read')); r.readAsDataURL(file); }); }
+// dekodowanie z kilkoma metodami zapasowymi (blob URL -> data URL -> createImageBitmap)
+async function decodeImage(file){
+  const errs=[];
+  let u=null;
+  try{ u=URL.createObjectURL(file); const i=await imgFrom(u); return {src:i,w:i.naturalWidth,h:i.naturalHeight,done:()=>URL.revokeObjectURL(u)}; }
+  catch(e){ errs.push('blob'); if(u) URL.revokeObjectURL(u); }
+  try{ const i=await imgFrom(await readDataURL(file)); return {src:i,w:i.naturalWidth,h:i.naturalHeight,done:()=>{}}; }
+  catch(e){ errs.push('dataurl'); }
+  if(window.createImageBitmap){
+    try{ const b=await createImageBitmap(file,{imageOrientation:'from-image'}); return {src:b,w:b.width,h:b.height,done:()=>b.close&&b.close()}; }
+    catch(e){ errs.push('bitmap'); }
+  }
+  const heic=/hei[cf]/i.test(file.type)||/\.hei[cf]$/i.test(file.name||'');
+  const err=new Error(heic?'heic':'decode'); err.detail=`${file.type||'brak typu'}, ${(file.size/1048576).toFixed(1)} MB, ${errs.join('/')}`; throw err;
+}
+function canvasBlob(img,w,h,max,q){
+  const s=Math.min(1,max/Math.max(w,h)); const cw=Math.round(w*s), ch=Math.round(h*s);
+  const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+  const ctx=c.getContext('2d'); if(!ctx) return Promise.reject(new Error('canvas'));
+  ctx.drawImage(img,0,0,cw,ch);
+  return new Promise((res,rej)=>{
+    try{ c.toBlob(b=>{ if(b) return res({b,cw,ch});
+      try{ const d=c.toDataURL('image/jpeg',q); const bin=atob(d.split(',')[1]); const a=new Uint8Array(bin.length); for(let k=0;k<bin.length;k++) a[k]=bin.charCodeAt(k); res({b:new Blob([a],{type:'image/jpeg'}),cw,ch}); }
+      catch(e){ rej(new Error('encode')); } },'image/jpeg',q); }
+    catch(e){ rej(new Error('encode')); }
+  });
+}
+async function processFile(file){
+  const d=await decodeImage(file);
+  try{
+    if(!d.w||!d.h) throw new Error('decode');
+    let full;
+    try{ full=await canvasBlob(d.src,d.w,d.h,S.quality,0.9); }
+    catch(e){ full=await canvasBlob(d.src,d.w,d.h,1600,0.88); } // mniejsza rozdzielczość, gdy brakuje pamięci
+    const th=await canvasBlob(d.src,d.w,d.h,360,0.72);
+    return {blob:full.b,thumb:th.b,w:full.cw,h:full.ch};
+  } finally { d.done(); }
+}
+// Safari czasem nie zapisuje Blob w IndexedDB – wtedy zapisujemy bajty
+async function toStored(ph){ const o={...ph}; for(const k of ['blob','thumb']) if(o[k] instanceof Blob) o[k]={ab:await o[k].arrayBuffer(),type:o[k].type||'image/jpeg'}; return o; }
+function fromStored(ph){ for(const k of ['blob','thumb']){ const x=ph[k]; if(x && !(x instanceof Blob) && x.ab) ph[k]=new Blob([x.ab],{type:x.type||'image/jpeg'}); } return ph; }
+async function storePhoto(ph){
+  try{ await DB.put('photos',ph); return true; }
+  catch(e1){ try{ await DB.put('photos',await toStored(ph)); return true; } catch(e2){ return false; } }
+}
+async function addFiles(files,source){
+  if(!files.length||!S.cur) return;
+  const {f,n}=S.cur; const k=slotKey(f,n); busy(true,'Zapisywanie zdjęcia…');
+  let added=0; const errors=[]; let memOnly=false;
+  for(const file of files){
+    try{
+      const r=await processFile(file);
+      const ph={id:uid(),projectId:S.p.id,slot:k,created:Date.now(),...r};
+      if(!(await storePhoto(ph))) memOnly=true;
+      S.photos.set(ph.id,ph);
+      const sl=slot(S.p,k); sl.takes.push(ph.id); sl.chosen=ph.id; sl.skip=false; added++;
+    }catch(e){ errors.push(e); }
+  }
+  try{ await saveP(); }catch(e){}
+  S.lastError=null;
+  if(errors.length){ const e=errors[0];
+    S.lastError = e.message==='heic'
+      ? `Ta przeglądarka nie umie otworzyć zdjęcia HEIC (${e.detail}). Otwórz aplikację w Safari albo ustaw: Ustawienia → Aparat → Formaty → Najbardziej zgodne.`
+      : `Nie udało się przetworzyć zdjęcia (${e.message}${e.detail?', '+e.detail:''}). Zrób je jeszcze raz przyciskiem „Zrób zdjęcie”.`; }
+  if(memOnly) S.lastError=(S.lastError?S.lastError+' ':'')+'Uwaga: telefon nie pozwolił zapisać zdjęcia w pamięci strony. Jest widoczne do zamknięcia karty – pobierz ZIP przed zamknięciem.';
+  busy(false); S.confirm=null; render();
+  let bk=''; if(NATIVE && source==='cam'){ try{ bk=AndroidBridge.lastBackup(); }catch(e){} }
+  if(!errors.length && added) toast((k.startsWith('common/')&&S.p.reports.length>1?`Zapisano jako ${n}.jpg we wszystkich raportach`:`Zapisano jako ${f}/${n}.jpg`)+(bk?' · kopia w galerii':''));
+}
+for(const id of ['cam','gal']){
+  const el=document.getElementById(id);
+  el.addEventListener('change',()=>{ const fs=[...el.files]; el.value=''; addFiles(fs,id); });
+}
+
+/* ======================= Eksport ZIP ======================= */
+async function doExport(){
+  const p=S.p; const msg=document.getElementById('expMsg');
+  const show=t=>{ if(msg){msg.hidden=false; msg.textContent=t;} };
+  if(typeof JSZip==='undefined'){ show('Nie wczytała się biblioteka ZIP. Sprawdź internet i odśwież stronę.'); return; }
+  S.exporting=true; busy(true,'Pakowanie zdjęć…');
+  try{
+    const root=zipName(p); const zip=new JSZip(); const altDone=new Set(); const dir=zip.folder(root);
+    for(const f of p.reports){
+      const fd=dir.folder(f);
+      for(const it of itemsFor(p,f,{all:true})){
+        if(hiddenByCfg(p,f,it)) continue;
+        const sl=peek(p,slotKey(f,it.n,p)); if(!sl.chosen) continue;
+        const ph=S.photos.get(sl.chosen); if(ph) fd.file(it.n+'.jpg',ph.blob);
+        if(S.includeAlt && !(altDone.has(slotKey(f,it.n,p)))){ altDone.add(slotKey(f,it.n,p)); let v=1; for(const id of sl.takes){ if(id===sl.chosen) continue; v++; const a=S.photos.get(id); if(a) dir.folder('_inne_ujecia').folder(f).file(`${it.n}_v${v}.jpg`,a.blob);} }
+      }
+    }
+    dir.file('info.txt',[
+      'Nazwa obiektu OPL / TMP: '+(p.nazwaOp||''),
+      'Nazwa obiektu Networks: '+(p.nr?p.nr+' ':'')+(p.nazwa||''),
+      'Numer stacji Networks: '+(p.nr?p.nr+' ':'')+(p.nazwa||''),
+      'Firma instalacyjna: '+(p.firma||''),
+      'Zakres prac: '+(p.zakres||''),
+      'Data wykonania: '+(p.data||''),
+      p.zam?'Numer zamówienia: '+p.zam:''
+    ].filter(Boolean).join('\r\n'));
+    dir.file('_fotoraport_dane.json',JSON.stringify({app:'fotoraport',v:1,project:{nr:p.nr,nazwa:p.nazwa,nazwaOp:p.nazwaOp,data:p.data,firma:p.firma,zakres:p.zakres,zam:p.zam,reports:p.reports,cfg:p.cfg,g5:p.g5||null,tpl:tplOf(p),inne:p.inne||[]},skip:Object.keys(p.slots).filter(k=>p.slots[k].skip)}));
+    if(p.reports.includes('Inne') && (p.inne||[]).length) dir.folder('Inne').file('opisy.txt',p.inne.map(x=>`Zdjęcie ${x.n}: ${x.opis}`).join('\r\n'));
+    if(NATIVE){
+      const path=await nativeSaveZip(zip,root);
+      busy(false); toast('ZIP zapisany');
+      show(`Zapisano w telefonie: ${path}. Plik znajdziesz w aplikacji Pliki → Pobrane → FotoRaport.`);
+      const sb=document.getElementById('shareBtn'); if(sb) sb.hidden=false;
+      return;
+    }
+    const blob=await zip.generateAsync({type:'blob',compression:'STORE'},m=>{document.getElementById('busyText').textContent=`Pakowanie… ${Math.round(m.percent)}%`;});
+    busy(false);
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if(!dl){ show('Pobieranie plików nie działa w tym widoku. Otwórz tę stronę w aplikacji Claude albo w przeglądarce, będąc zalogowanym.'); return; }
+    try{ await dl.save({filename:root+'.zip',data:blob}); toast('ZIP zapisany'); show(`Zapisano ${root}.zip (${(blob.size/1048576).toFixed(1)} MB).`); }
+    catch(e){
+      const c=e&&e.code;
+      if(c==='declined') show('Pobieranie anulowane.');
+      else if(c==='too_large') show('Paczka jest za duża dla tej aplikacji. Ustaw mniejszą rozdzielczość albo pobierz bez dodatkowych ujęć.');
+      else if(c==='rate_limited') show('Okno zapisu jest już otwarte. Spróbuj za chwilę.');
+      else show('Nie udało się zapisać pliku ('+(c||'błąd')+').');
+    }
+  }catch(e){ busy(false); show('Błąd pakowania: '+(e.message||e)); }
+  finally{ S.exporting=false; }
+}
+
+/* ======================= Android (aplikacja natywna) ======================= */
+const NATIVE = !!window.AndroidBridge;
+function u8b64(u8){ let s=''; for(let i=0;i<u8.length;i+=0x8000) s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(s); }
+function nativeSaveZip(zip,root){
+  return new Promise((res,rej)=>{
+    const B=window.AndroidBridge; const id=B.fileBegin('download','',root+'.zip','application/zip');
+    if(!id) return rej(new Error('nie mogę utworzyć pliku w Pobranych'));
+    let buf=[],len=0,failed=false;
+    const flush=()=>{ if(!len) return; const all=new Uint8Array(len); let o=0; for(const c of buf){ all.set(c,o); o+=c.length; } buf=[]; len=0;
+      if(!B.fileAppend(id,u8b64(all))) throw new Error('błąd zapisu (brak miejsca?)'); };
+    const st=zip.generateInternalStream({type:'uint8array',compression:'STORE',streamFiles:true});
+    st.on('data',(c,m)=>{ if(failed) return; buf.push(c); len+=c.length;
+        if(len>=1048576){ try{ flush(); }catch(e){ failed=true; B.fileAbort(id); st.pause(); rej(e); return; } }
+        const bt=document.getElementById('busyText'); if(bt) bt.textContent=`Zapisywanie ZIP… ${Math.round(m.percent)}%`; })
+      .on('error',e=>{ if(!failed){ failed=true; B.fileAbort(id); rej(e); } })
+      .on('end',()=>{ if(failed) return; try{ flush(); const path=B.fileEnd(id); if(!path) throw new Error('nie udało się zamknąć pliku'); res(path); }catch(e){ B.fileAbort(id); rej(e); } })
+      .resume();
+  });
+}
+function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
+function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
+function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
+window.onAndroidBack=function(){
+  if(document.getElementById('busy') && !document.getElementById('busy').hidden) return true;
+  if(S.view==='shoot'||S.view==='export'){ S.mode=null; S.view='station'; render(); return true; }
+  if(S.view==='form'){ S.view=S.p?'station':'home'; render(); return true; }
+  if(S.view==='station'){ S.view='home'; S.p=null; loadProjects().then(()=>{ render(); showStorage(); }); return true; }
+  return false;
+};
+
+/* ======================= Akcje ======================= */
+async function openProject(id){
+  const p=S.projects.find(x=>x.id===id); if(!p) return;
+  p.cfg=normCfg(p.cfg); S.p=p; S.photos=new Map(); for(const u of S.urls.values()) URL.revokeObjectURL(u); S.urls=new Map();
+  try{ for(const ph of await DB.photosOf(id)) S.photos.set(ph.id,fromStored(ph)); }catch(e){}
+  S.tab=p.reports[0]; S.filter='all'; S.view='station'; render();
+}
+function go(f,n){ S.cur={f,n}; S.confirm=null; S.lastError=null; S.view='shoot'; render(); }
+function step(dir){
+  const seq=sequence(S.p); const k=slotKey(S.cur.f,S.cur.n);
+  const i=seq.findIndex(x=>slotKey(x.f,x.n)===k)+dir;
+  if(i<0) return; if(i>=seq.length){ const was=S.mode; S.mode=null; S.view='station'; render(); toast(was==='przed'?'Zdjęcia PRZED zrobione. Dla bezpieczeństwa pobierz teraz ZIP jako kopię.':'Koniec listy'); return; }
+  S.tab=seq[i].f; go(seq[i].f,seq[i].n);
+}
+
+document.addEventListener('click',async ev=>{
+  const b=ev.target.closest('[data-act]'); if(!b) return;
+  const a=b.dataset.act; const d=b.dataset;
+  if(a!=='delp'&&a!=='deltake') S.confirm=null;
+  switch(a){
+    case 'home': S.view='home'; S.p=null; await loadProjects(); render(); showStorage(); break;
+    case 'new':
+      S.p=null; S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('firma',''),zakres:'',zam:'',reports:['BTS','System Antenowy'],cfg:normCfg({...ls.get('cfg',{}),map:null}),g5:null,tpl:ls.get('tpl','v3')};
+      S.view='form'; render(); if(d.g5) document.getElementById('g5file').click(); break;
+    case 'edit': S.draft=JSON.parse(JSON.stringify({nr:S.p.nr,nazwa:S.p.nazwa,nazwaOp:S.p.nazwaOp||'',data:S.p.data,firma:S.p.firma,zakres:S.p.zakres,zam:S.p.zam,reports:S.p.reports,cfg:normCfg(S.p.cfg),g5:S.p.g5||null,tpl:S.p.tpl||'v1'})); S.view='form'; render(); break;
+    case 'rep': { syncDraft(); const r=S.draft.reports; const i=r.indexOf(d.f); if(i>=0) r.splice(i,1); else r.push(d.f); S.draft.reports=REPORTS.map(x=>x.f).filter(x=>r.includes(x)); keepScroll(render); break; }
+    case 'cfg': syncDraft(); S.draft.cfg[d.k]=+d.v; keepScroll(render); break;
+    case 'tpl': syncDraft(); S.draft.tpl=d.v; ls.set('tpl',d.v); keepScroll(render); break;
+    case 'cfgs': syncDraft(); S.draft.cfg[d.k][+d.i]=+d.v; keepScroll(render); break;
+    case 'open': openProject(d.id); break;
+    case 'delp':
+      if(S.confirm==='delp:'+d.id){
+        S.confirm=null; try{ for(const ph of await DB.photosOf(d.id)) await DB.del('photos',ph.id); await DB.del('projects',d.id);}catch(e){}
+        await loadProjects(); keepScroll(render); showStorage(); toast('Stacja usunięta');
+      } else { S.confirm='delp:'+d.id; keepScroll(render); }
+      break;
+    case 'back-station': S.mode=null; S.view='station'; render(); break;
+    case 'tab': S.tab=d.f; keepScroll(render); break;
+    case 'filter': S.filter=d.v; keepScroll(render); break;
+    case 'shoot': go(d.f,+d.n); break;
+    case 'go-next': { S.mode=null; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)&&!isOpt(S.p,findItem(S.p,x.f,x.n))); if(nx){S.tab=nx.f; go(nx.f,nx.n);} break; }
+    case 'go-przed': { S.mode='przed'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
+    case 'choose': { const sl=slot(S.p,slotKey(S.cur.f,S.cur.n)); sl.chosen=d.id; await saveP(); keepScroll(render); break; }
+    case 'deltake': {
+      const k=slotKey(S.cur.f,S.cur.n); const sl=slot(S.p,k);
+      if(S.confirm!=='deltake'){ S.confirm='deltake'; keepScroll(render); break; }
+      S.confirm=null; const id=sl.chosen; sl.takes=sl.takes.filter(x=>x!==id); sl.chosen=sl.takes[sl.takes.length-1]||null;
+      try{ await DB.del('photos',id);}catch(e){} S.photos.delete(id); await saveP(); keepScroll(render); toast('Ujęcie usunięte'); break;
+    }
+    case 'skip': { const sl=slot(S.p,slotKey(S.cur.f,S.cur.n)); sl.skip=!sl.skip; await saveP(); if(sl.skip) step(1); else keepScroll(render); break; }
+    case 'next': step(1); break;
+    case 'prev': step(-1); break;
+    case 'export': S.view='export'; render(); break;
+    case 'share': if(NATIVE) AndroidBridge.shareLast(); break;
+    case 'import': S.importNew=false; document.getElementById('zipfile').click(); break;
+    case 'import-new': S.importNew=true; document.getElementById('zipfile').click(); break;
+    case 'do-export': if(!S.exporting) doExport(); break;
+    case 'quality': S.quality=+d.v; ls.set('quality',S.quality); keepScroll(render); showStorage(); break;
+    case 'add-inne': {
+      const inp=document.getElementById('inneOpis'); const opis=(inp&&inp.value||'').trim();
+      if(!opis){ toast('Wpisz opis zdjęcia'); inp&&inp.focus(); break; }
+      const n=nextInneN(S.p); if(n>101){ toast('Szablon mieści 101 zdjęć'); break; }
+      (S.p.inne=S.p.inne||[]).push({n,opis}); await saveP(); go('Inne',n); break;
+    }
+  }
+});
+document.addEventListener('keydown',ev=>{ const l=ev.target.closest&&ev.target.closest('label[for]'); if(l&&(ev.key==='Enter'||ev.key===' ')){ev.preventDefault(); document.getElementById(l.htmlFor).click();} });
+document.addEventListener('change',ev=>{
+  if(ev.target.id==='extra'){ S.showExtra=ev.target.checked; keepScroll(render); }
+  if(ev.target.id==='alt'){ S.includeAlt=ev.target.checked; keepScroll(render); }
+  if(ev.target.classList&&ev.target.classList.contains('secsel')){ syncDraft(); const i=+ev.target.id.split('_')[1]; const no=ev.target.value===''?null:+ev.target.value;
+    S.draft.cfg.map[i]=no; const s=no!=null&&S.draft.g5.sectors.find(x=>x.no===no); if(s){const x=secDefaults(s,S.draft.g5); S.draft.cfg.secAnt[i]=x.ant; S.draft.cfg.secRru[i]=x.rru;} keepScroll(render); }
+});
+function syncDraft(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():undefined};
+  const m={nr:'f_nr',nazwa:'f_nazwa',nazwaOp:'f_nazwaOp',data:'f_data',firma:'f_firma',zakres:'f_zakres',zam:'f_zam'};
+  for(const k in m){ const v=g(m[k]); if(v!==undefined) S.draft[k]=v; }
+}
+function keepScroll(fn){ const y=window.scrollY; S._scrollTop=false; fn(); S._scrollTop=true; window.scrollTo(0,y); }
+document.addEventListener('submit',async ev=>{
+  if(ev.target.id!=='pform') return; ev.preventDefault(); syncDraft();
+  const d=S.draft, err=document.getElementById('formErr');
+  if(!d.nr){ err.hidden=false; err.textContent='Wpisz numer stacji.'; return; }
+  if(!d.reports.length){ err.hidden=false; err.textContent='Wybierz przynajmniej jeden raport.'; return; }
+  ls.set('firma',d.firma); ls.set('cfg',d.cfg);
+  if(S.p){ Object.assign(S.p,d); await saveP(); S.view='station'; render(); toast('Zapisano'); return; }
+  const p={id:uid(),...d,slots:{},inne:[],created:Date.now(),updated:Date.now()};
+  try{ await DB.put('projects',p); }catch(e){ err.hidden=false; err.textContent='Nie udało się zapisać stacji w pamięci telefonu.'; return; }
+  S.projects.push(p); try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}
+  await openProject(p.id);
+  const nx=sequence(p)[0]; if(nx) go(nx.f,nx.n);
+});
+
+/* ======================= Wczytywanie G5 (PDF) ======================= */
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('script')); document.head.appendChild(s); }); }
+async function pdfLib(){
+  if(window.FR_LOCAL_LIBS){ if(!pdfLib._m){ const m=await import('./pdf.js'); m.GlobalWorkerOptions.workerSrc='./pdf.worker.js'; pdfLib._m=m; } return pdfLib._m; }
+  if(window.pdfjsLib) return window.pdfjsLib;
+  const base='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  await loadScript(base+'pdf.worker.min.js'); await loadScript(base+'pdf.min.js');
+  try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc=base+'pdf.worker.min.js'; }catch(e){}
+  return window.pdfjsLib;
+}
+async function pdfLines(file){
+  const lib=await pdfLib();
+  const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false,disableFontFace:true,useSystemFonts:false}).promise;
+  const lines=[]; lines.cols=[];
+  for(let i=1;i<=doc.numPages;i++){
+    const page=await doc.getPage(i); const half=page.getViewport({scale:1}).width/2;
+    const tc=await page.getTextContent(); const rows=[];
+    for(const it of tc.items){ if(!it.str||!it.str.trim()) continue; const y=it.transform[5], x=it.transform[4];
+      let r=rows.find(r=>Math.abs(r.y-y)<3); if(!r){r={y,items:[]};rows.push(r);} r.items.push({x,s:it.str}); }
+    rows.sort((a,b)=>b.y-a.y);
+    for(const r of rows){ r.items.sort((a,b)=>a.x-b.x); lines.push(r.items.map(i=>i.s).join(' '));
+      lines.cols.push({l:r.items.filter(i=>i.x<half).map(i=>i.s).join(' '), r:r.items.filter(i=>i.x>=half).map(i=>i.s).join(' ')}); }
+  }
+  return lines;
+}
+document.getElementById('g5file').addEventListener('change',async ev=>{
+  const file=ev.target.files[0]; ev.target.value=''; if(!file||!S.draft) return;
+  if(S.view==='form') syncDraft();
+  busy(true,'Czytam G5…');
+  let r=null, err='';
+  try{ r=parseG5(await pdfLines(file)); if(!r) err='W tym PDF nie ma pola „N Code”. Czy to na pewno G5 N! Radio?'; }
+  catch(e){ err= e&&e.message==='script' ? 'Nie udało się pobrać czytnika PDF. Sprawdź internet i spróbuj ponownie.' : 'Nie udało się odczytać tego PDF-a.'; }
+  busy(false);
+  if(r){ applyG5(S.draft,r); S.view='form'; render(); toast(`G5: ${r.nr} · ${r.sectors.length} sektorów`); }
+  else { S.view='form'; render(); const e=document.getElementById('g5Err'); if(e){e.hidden=false;e.textContent=err;} }
+});
+
+/* ======================= Wczytywanie ZIP (kopia / zdjęcia z innego telefonu) ======================= */
+const FOLDERS=REPORTS.map(r=>r.f);
+async function importPhotoBlob(blob){
+  const d=await decodeImage(blob);
+  try{ const th=await canvasBlob(d.src,d.w,d.h,360,0.72);
+    // zdjęcia z ZIP-a są już JPG z tej aplikacji albo z makra – zostawiamy oryginał, chyba że są za duże
+    let full={b:blob,cw:d.w,ch:d.h};
+    if(Math.max(d.w,d.h)>S.quality*1.25 || !/jpe?g/i.test(blob.type||'image/jpeg')) full=await canvasBlob(d.src,d.w,d.h,S.quality,0.9);
+    return {blob:full.b,thumb:th.b,w:full.cw,h:full.ch};
+  } finally { d.done(); }
+}
+document.getElementById('zipfile').addEventListener('change',async ev=>{
+  const file=ev.target.files[0]; ev.target.value=''; if(!file) return;
+  if(typeof JSZip==='undefined'){ toast('Nie wczytała się obsługa ZIP. Sprawdź internet i odśwież.'); return; }
+  busy(true,'Czytam ZIP…');
+  let zip; try{ zip=await JSZip.loadAsync(file); }catch(e){ busy(false); toast('To nie jest poprawny plik ZIP.'); return; }
+  const names=Object.keys(zip.files).filter(n=>!zip.files[n].dir);
+  const metaName=names.find(n=>/(^|\/)_fotoraport_dane\.json$/i.test(n));
+  let meta=null; if(metaName){ try{ meta=JSON.parse(await zip.files[metaName].async('string')); }catch(e){} }
+  // stacja docelowa
+  if(S.importNew || !S.p){
+    const pr=(meta&&meta.project)||null;
+    if(!pr){ busy(false); toast('W tym ZIP-ie nie ma danych stacji. Załóż stację i użyj „Wczytaj ZIP” w jej widoku.'); return; }
+    const p={id:uid(),...pr,cfg:normCfg(pr.cfg),slots:{},created:Date.now(),updated:Date.now()};
+    for(const k of (meta.skip||[])) p.slots[k]={takes:[],chosen:null,skip:true};
+    await DB.put('projects',p); S.projects.push(p); await openProject(p.id);
+  }
+  const p=S.p; const tpl=tplOf(p);
+  const files=[];
+  for(const n of names){
+    const m=n.match(/(?:^|\/)(_inne_ujecia\/)?([^\/]+)\/(\d+)(?:_v(\d+))?\.jpe?g$/i); if(!m) continue;
+    const folder=FOLDERS.find(f=>f.toLowerCase()===m[2].toLowerCase()); if(!folder) continue;
+    files.push({name:n,f:folder,n:+m[3],alt:!!m[1],v:+(m[4]||0)});
+  }
+  files.sort((a,b)=>a.alt-b.alt);
+  if(!files.length){ busy(false); render(); toast('Nie znalazłem zdjęć w folderach BTS, System Antenowy itd.'); return; }
+  let added=0, skipped=0, same=0; const seenSlot=new Set();
+  for(let i=0;i<files.length;i++){
+    const x=files[i]; document.getElementById('busyText').textContent=`Wczytuję zdjęcia… ${i+1}/${files.length}`;
+    if(x.f==='Inne' && x.n>1 && !(p.inne||[]).some(q=>q.n===x.n)) (p.inne=p.inne||[]).push({n:x.n,opis:'Zdjęcie z ZIP-a – uzupełnij opis'});
+    const k=slotKey(x.f,x.n,p);
+    const sig=x.name.replace(/^.*?\/(?=(_inne_ujecia\/)?[^\/]+\/[^\/]+$)/,'')+'|'+(zip.files[x.name]._data&&zip.files[x.name]._data.uncompressedSize||'');
+    { const kk=k+'|'+(x.alt?'v'+x.v:'main'); if(seenSlot.has(kk)){ same++; continue; } seenSlot.add(kk); }
+    const sl=slot(p,k);
+    if(sl.takes.some(id=>S.photos.get(id)&&S.photos.get(id).src===file.name+':'+sig)){ skipped++; continue; }
+    try{
+      const blob=await zip.files[x.name].async('blob');
+      const r=await importPhotoBlob(new Blob([blob],{type:'image/jpeg'}));
+      const ph={id:uid(),projectId:p.id,slot:k,created:Date.now(),src:file.name+':'+sig,...r};
+      await storePhoto(ph); S.photos.set(ph.id,ph);
+      sl.takes.push(ph.id); if(!sl.chosen && !x.alt) sl.chosen=ph.id; sl.skip=false; added++;
+    }catch(e){ skipped++; }
+  }
+  try{ await saveP(); }catch(e){}
+  busy(false); S.view='station'; render();
+  toast(added?`Wczytano ${added} zdjęć${skipped?`, pominięto ${skipped} (już były)`:''}. Gdzie było już zdjęcie, nowe jest kolejnym ujęciem do wyboru.`:`Nic nowego – te zdjęcia już są w stacji.`);
+});
+
+async function loadProjects(){ try{ S.projects=await DB.all('projects')||[]; }catch(e){ S.projects=[]; S.dbError=e&&e.message||'brak dostępu'; } }
+async function showStorage(){
+  try{ if(!navigator.storage||!navigator.storage.estimate) return; const e=await navigator.storage.estimate(); const el=document.getElementById('storage');
+    if(el) el.textContent=`Zajęte na zdjęcia: ${(e.usage/1048576).toFixed(0)} MB. Usuń stację po wysłaniu raportu, żeby zwolnić miejsce.`; }catch(e){}
+}
+(async()=>{ render(); await loadProjects(); render(); showStorage(); })();
+</script>
+
+</body>
+</html>

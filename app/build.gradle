@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'pl.fotoraport.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "pl.fotoraport.app"
+        minSdk 29
+        targetSdk 34
+        // numer wersji ustawia GitHub przy każdym budowaniu (patrz .github/workflows/build.yml)
+        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
+        versionName "1." + (System.getenv("VERSION_CODE") ?: "0")
+    }
+
+    // Stały klucz podpisu: dzięki niemu nowa wersja instaluje się na starą i nie kasuje zdjęć w aplikacji.
+    signingConfigs {
+        fotoraport {
+            storeFile file('fotoraport.jks')
+            storePassword 'FotoRaport2026'
+            keyAlias 'fotoraport'
+            keyPassword 'FotoRaport2026'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.fotoraport
+        }
+        debug {
+            signingConfig signingConfigs.fotoraport
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.core:core:1.13.1'
+}
