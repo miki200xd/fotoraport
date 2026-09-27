@@ -119,6 +119,9 @@ select.secsel{font:inherit;font-size:15px;min-height:44px;padding:8px;border:1px
 .hidden-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:10px;font-weight:600;z-index:50;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
 .notice{border-radius:10px;padding:10px 12px;background:var(--warn-soft);color:var(--warn);font-size:14px;font-weight:500}
+.qbadge{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--accent);color:var(--accent-ink);padding:6px 12px;border-radius:999px;font-size:13px;font-weight:700;z-index:40;box-shadow:var(--shadow)}
+.preview{position:relative}
+.pendtag{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px}
 .notice.info{background:var(--sunk);color:var(--muted)}
 .missing{font-family:var(--display);font-size:17px;letter-spacing:.02em}
 .busy{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:60}
@@ -333,7 +336,8 @@ function parseG5(rawLines){
 const S = {
   view:'home', projects:[], p:null, photos:new Map(), urls:new Map(),
   tab:null, filter:'all', showExtra:false, cur:null, confirm:null, dbError:null,
-  quality: ls.get('quality',2400), includeAlt:false, exporting:false
+  quality: ls.get('quality',2400), includeAlt:false, exporting:false,
+  autoNext: ls.get('autoNext',false), backupQ: ls.get('backupQ',0)
 };
 const $app = document.getElementById('app');
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -371,7 +375,7 @@ function itemsFor(p,f,{all=false}={}){
     return true;
   });
 }
-function isDone(p,f,n){ return !!peek(p,slotKey(f,n,p)).chosen; }
+function isDone(p,f,n){ const k=slotKey(f,n,p); return !!peek(p,k).chosen || (S.pending&&S.pending[k]&&S.pending[k].length>0&&S.p&&S.p.id===p.id); }
 function isSkip(p,f,n){ return !!peek(p,slotKey(f,n,p)).skip; }
 function stats(p,f){
   const req = itemsFor(p,f).filter(it=>!isOpt(p,it));
@@ -448,6 +452,11 @@ function vHome(){
       <div class="cfgrow"><div><b>Rozdzielczość zapisu</b><div class="muted small">Dłuższy bok. Wytyczne: min. 1200×1600, pionowo 3:4.</div></div>
         <div class="seg" role="group" aria-label="Rozdzielczość">${[1600,2400,3200].map(q=>`<button data-act="quality" data-v="${q}" aria-pressed="${S.quality===q}">${q}</button>`).join('')}</div></div>
       <p class="muted small">Zdjęcia są obracane zgodnie z orientacją telefonu przed zapisem, więc w Excelu nie wejdą bokiem.</p>
+      <div class="cfgrow"><div><b>Po zdjęciu od razu następne</b><div class="muted small">Aplikacja sama przechodzi do kolejnego numeru. Powtórki robisz przyciskiem „Wstecz”.</div></div>
+        <div class="seg" role="group" aria-label="Auto dalej">${[[false,'Nie'],[true,'Tak']].map(([v,l])=>`<button data-act="autonext" data-v="${v}" aria-pressed="${S.autoNext===v}">${l}</button>`).join('')}</div></div>
+      ${NATIVE?`<div class="cfgrow"><div><b>Kopia w galerii</b><div class="muted small">Jakość kopii w albumie FotoRaport. Mniejsza = szybciej i mniej miejsca.</div></div>
+        <div class="seg" role="group" aria-label="Kopia w galerii">${[[0,'Oryginał'],[2400,'2400'],[1600,'1600'],[-1,'Wył.']].map(([v,l])=>`<button data-act="backupq" data-v="${v}" aria-pressed="${S.backupQ===v}">${l}</button>`).join('')}</div></div>`:''}
+      <p class="muted small">Wersja aplikacji ${APP_VERSION}</p>
       <p class="muted small" id="storage"></p>
     </div>
   </div>`;
@@ -571,13 +580,13 @@ function vStation(){
     </div>
     <div class="items">
       ${items.length?items.map(it=>{
-        const k=slotKey(f,it.n,p), sl=peek(p,k), done=!!sl.chosen, skip=sl.skip;
+        const k=slotKey(f,it.n,p), sl=peek(p,k), pd=pendingOf(k), done=!!sl.chosen||pd.length>0, skip=sl.skip;
         return `<button class="item ${done?'done':''} ${skip?'skip':''}" data-act="shoot" data-f="${esc(f)}" data-n="${it.n}">
           <span class="plate">${it.n}</span>
           <span style="min-width:0"><span class="t">${esc(it.title)}</span>
             ${it.desc?`<span class="d">${esc(it.desc)}</span>`:''}
             <span class="row" style="gap:4px;margin-top:4px">${it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it.share&&p.reports.length>1?'<span class="tag acc">wspólne dla raportów</span>':''}${it.ser?`<span class="tag">ujęcie ${it.ser.k} z ${it.ser.m}</span>`:''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${skip?'<span class="tag warn">pominięte</span>':''}</span></span>
-          <span>${done?`<img class="thumb" alt="" src="${photoURL(sl.chosen)}">`:`<span class="thumb empty"></span>`}${sl.takes.length>1?`<div class="cnt-badge">${sl.takes.length} ujęcia</div>`:''}</span>
+          <span>${pd.length?`<img class="thumb" alt="" src="${pd[pd.length-1].url}">`:done?`<img class="thumb" alt="" src="${photoURL(sl.chosen)}">`:`<span class="thumb empty"></span>`}${sl.takes.length>1?`<div class="cnt-badge">${sl.takes.length} ujęcia</div>`:''}</span>
         </button>`}).join(''):`<div class="empty-state muted">Brak pozycji w tym filtrze.</div>`}
     </div>
     ${f==='Inne'?`<div class="card stack"><h3>Dodaj zdjęcie do „Inne”</h3>
@@ -598,7 +607,8 @@ function shootG5(p,f,it){
 function vShoot(){
   const p=S.p, {f,n}=S.cur; const it=findItem(p,f,n); const k=slotKey(f,n); const sl=peek(p,k);
   const seq=sequence(p); const idx=seq.findIndex(x=>slotKey(x.f,x.n)===k);
-  const chosen = sl.chosen && S.photos.get(sl.chosen);
+  const pend = pendingOf(k); const pendLast = pend.length ? pend[pend.length-1] : null;
+  const chosen = !pendLast && sl.chosen && S.photos.get(sl.chosen);
   const land = chosen && chosen.w>chosen.h;
   const small = chosen && Math.min(chosen.w,chosen.h)<1200;
   const conf = S.confirm;
@@ -606,7 +616,7 @@ function vShoot(){
   <div class="topbar spread"><button class="btn-ghost" data-act="back-station">← Lista</button>
     <span class="eyebrow">${S.mode==='przed'?'Przed pracami':esc(RMAP[f].short)} · ${idx+1} z ${seq.length}</span><span style="width:60px"></span></div>
   <div class="stack">
-    <div class="marker ${sl.chosen?'done':''}">
+    <div class="marker ${sl.chosen||pend.length?'done':''}">
       <div class="big">${n}</div>
       <div style="min-width:0;gap:4px" class="stack">
         <div class="eyebrow">Zdjęcie ${n} · ${esc(it&&it.share&&p.reports.length>1?'wszystkie raporty':RMAP[f].name)}</div>
@@ -617,7 +627,7 @@ function vShoot(){
     ${it&&it.desc?`<p style="font-size:17px">${esc(it.desc)}</p>`:''}
     ${shootG5(p,f,it)}
     <div class="row" style="gap:6px">${it&&it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}<span class="tag">pionowo 3:4</span>${isOpt(p,it)?'<span class="tag">opcja</span>':''}${sl.skip?'<span class="tag warn">pominięte</span>':''}${it&&it.share&&p.reports.length>1?`<span class="tag acc">zapisze się w każdym folderze jako ${n}.jpg</span>`:''}</div>
-    <div class="preview">${chosen?`<img alt="Wybrane ujęcie zdjęcia ${n}" src="${photoURL(sl.chosen,false)}">`:`<div class="ph">Brak zdjęcia.<br>Zrób je aparatem albo wybierz z galerii. Zapisze się jako <b>${esc(f)}/${n}.jpg</b>.</div>`}</div>
+    <div class="preview">${pendLast?`<img alt="Zapisywane zdjęcie ${n}" src="${pendLast.url}"><span class="pendtag">Zapisuję w tle…</span>`:chosen?`<img alt="Wybrane ujęcie zdjęcia ${n}" src="${photoURL(sl.chosen,false)}">`:`<div class="ph">Brak zdjęcia.<br>Zrób je aparatem albo wybierz z galerii. Zapisze się jako <b>${esc(f)}/${n}.jpg</b>.</div>`}</div>
     ${S.lastError?`<p class="notice" role="alert">${esc(S.lastError)}</p>`:''}
     ${land?`<p class="notice">To zdjęcie jest poziome. Wytyczne wymagają zdjęć pionowych 3:4.</p>`:''}
     ${small?`<p class="notice">Rozdzielczość poniżej 1200×1600 wymaganych w wytycznych.</p>`:''}
@@ -629,13 +639,13 @@ function vShoot(){
   </div>
   <div class="sticky-actions stack" style="gap:8px">
     <div class="row" style="flex-wrap:nowrap">
-      <label for="cam" class="btn ${sl.takes.length?'':'btn-primary'} btn-big" style="flex:2" role="button" tabindex="0">${sl.takes.length?'Zrób jeszcze raz':'Zrób zdjęcie'}</label>
+      <label for="cam" class="btn ${(sl.takes.length||pend.length)?'':'btn-primary'} btn-big" style="flex:2" role="button" tabindex="0">${(sl.takes.length||pend.length)?'Zrób jeszcze raz':'Zrób zdjęcie'}</label>
       <label for="gal" class="btn btn-big" style="flex:1;font-size:16px" role="button" tabindex="0">Galeria</label>
     </div>
     <div class="navrow">
       <button data-act="prev" ${idx<=0?'disabled':''}>← Wstecz</button>
       <button data-act="skip">${sl.skip?'Przywróć':'Pomiń'}</button>
-      <button class="${sl.chosen||sl.skip?'btn-primary':''}" data-act="next">${idx>=seq.length-1?'Koniec ✓':'Dalej →'}</button>
+      <button class="${sl.chosen||sl.skip||pend.length?'btn-primary':''}" data-act="next">${idx>=seq.length-1?'Koniec ✓':'Dalej →'}</button>
     </div>
   </div>`;
 }
@@ -685,6 +695,10 @@ function readDataURL(file){ return new Promise((res,rej)=>{ const r=new FileRead
 // dekodowanie z kilkoma metodami zapasowymi (blob URL -> data URL -> createImageBitmap)
 async function decodeImage(file){
   const errs=[];
+  if(NATIVE && window.createImageBitmap){
+    try{ const b=await createImageBitmap(file,{imageOrientation:'from-image'}); return {src:b,w:b.width,h:b.height,done:()=>b.close&&b.close()}; }
+    catch(e){ errs.push('bitmap0'); }
+  }
   let u=null;
   try{ u=URL.createObjectURL(file); const i=await imgFrom(u); return {src:i,w:i.naturalWidth,h:i.naturalHeight,done:()=>URL.revokeObjectURL(u)}; }
   catch(e){ errs.push('blob'); if(u) URL.revokeObjectURL(u); }
@@ -703,7 +717,7 @@ function canvasBlob(img,w,h,max,q){
   const ctx=c.getContext('2d'); if(!ctx) return Promise.reject(new Error('canvas'));
   ctx.drawImage(img,0,0,cw,ch);
   return new Promise((res,rej)=>{
-    try{ c.toBlob(b=>{ if(b) return res({b,cw,ch});
+    try{ c.toBlob(b=>{ if(b) return res({b,cw,ch,canvas:c});
       try{ const d=c.toDataURL('image/jpeg',q); const bin=atob(d.split(',')[1]); const a=new Uint8Array(bin.length); for(let k=0;k<bin.length;k++) a[k]=bin.charCodeAt(k); res({b:new Blob([a],{type:'image/jpeg'}),cw,ch}); }
       catch(e){ rej(new Error('encode')); } },'image/jpeg',q); }
     catch(e){ rej(new Error('encode')); }
@@ -714,9 +728,9 @@ async function processFile(file){
   try{
     if(!d.w||!d.h) throw new Error('decode');
     let full;
-    try{ full=await canvasBlob(d.src,d.w,d.h,S.quality,0.9); }
-    catch(e){ full=await canvasBlob(d.src,d.w,d.h,1600,0.88); } // mniejsza rozdzielczość, gdy brakuje pamięci
-    const th=await canvasBlob(d.src,d.w,d.h,360,0.72);
+    try{ full=await canvasBlob(d.src,d.w,d.h,S.quality,0.88); }
+    catch(e){ full=await canvasBlob(d.src,d.w,d.h,1600,0.86); } // mniejsza rozdzielczość, gdy brakuje pamięci
+    const th=await canvasBlob(full.canvas||d.src,full.cw||d.w,full.ch||d.h,360,0.7);
     return {blob:full.b,thumb:th.b,w:full.cw,h:full.ch};
   } finally { d.done(); }
 }
@@ -727,29 +741,61 @@ async function storePhoto(ph){
   try{ await DB.put('photos',ph); return true; }
   catch(e1){ try{ await DB.put('photos',await toStored(ph)); return true; } catch(e2){ return false; } }
 }
-async function addFiles(files,source){
-  if(!files.length||!S.cur) return;
-  const {f,n}=S.cur; const k=slotKey(f,n); busy(true,'Zapisywanie zdjęcia…');
-  let added=0; const errors=[]; let memOnly=false;
+/* Zapis w tle: zdjęcie od razu pojawia się w aplikacji, przetwarzanie idzie w kolejce, można robić następne. */
+const Q={jobs:[],running:false};
+S.pending={}; // slotKey -> [{id,url}]
+function pendingOf(k){ return S.pending[k]||[]; }
+function queueBusy(){ return Q.running||Q.jobs.length>0; }
+function addFiles(files,source){
+  if(!files.length||!S.cur||!S.p) return;
+  const {f,n}=S.cur; const k=slotKey(f,n); const pid=S.p.id;
+  const wasEmpty=!peek(S.p,k).takes.length && !pendingOf(k).length;
   for(const file of files){
+    const id='q'+uid(); const url=URL.createObjectURL(file);
+    (S.pending[k]=S.pending[k]||[]).push({id,url});
+    Q.jobs.push({file,id,url,k,pid,f,n});
+  }
+  S.lastError=null; S.confirm=null;
+  const sl=slot(S.p,k); sl.skip=false;
+  toast(k.startsWith('common/')&&S.p.reports.length>1?`Zdjęcie ${n} – zapisuję w tle (wszystkie raporty)`:`${f}/${n}.jpg – zapisuję w tle`);
+  if(S.autoNext && source==='cam' && wasEmpty && S.view==='shoot') step(1); else keepScroll(render);
+  runQueue();
+}
+async function runQueue(){
+  if(Q.running) return; Q.running=true; updateQueueBadge();
+  while(Q.jobs.length){
+    const j=Q.jobs.shift(); updateQueueBadge();
+    let err=null, memOnly=false, ph=null;
     try{
-      const r=await processFile(file);
-      const ph={id:uid(),projectId:S.p.id,slot:k,created:Date.now(),...r};
+      const r=await processFile(j.file);
+      ph={id:uid(),projectId:j.pid,slot:j.k,created:Date.now(),...r};
       if(!(await storePhoto(ph))) memOnly=true;
       S.photos.set(ph.id,ph);
-      const sl=slot(S.p,k); sl.takes.push(ph.id); sl.chosen=ph.id; sl.skip=false; added++;
-    }catch(e){ errors.push(e); }
+    }catch(e){ err=e; }
+    // przypisanie do stacji (także gdy użytkownik zmienił w międzyczasie stację)
+    let p = S.p&&S.p.id===j.pid ? S.p : null;
+    if(!p){ try{ p=await DB.get('projects',j.pid); }catch(e){} }
+    if(p && ph){ const sl=slot(p,j.k); sl.takes.push(ph.id); sl.chosen=ph.id; sl.skip=false; p.updated=Date.now(); try{ await DB.put('projects',p); }catch(e){} }
+    S.pending[j.k]=pendingOf(j.k).filter(x=>x.id!==j.id); if(!S.pending[j.k].length) delete S.pending[j.k];
+    URL.revokeObjectURL(j.url);
+    if(err){
+      const msg = err.message==='heic'
+        ? `Zdjęcie ${j.f}/${j.n}: ten telefon nie umie otworzyć formatu HEIC (${err.detail}). Ustaw w aparacie JPG.`
+        : `Zdjęcie ${j.f}/${j.n} nie zapisało się (${err.message}${err.detail?', '+err.detail:''}). Zrób je jeszcze raz.`;
+      S.lastError=msg; toast(msg);
+    }
+    if(memOnly) S.lastError='Uwaga: telefon nie pozwolił zapisać zdjęcia w pamięci aplikacji. Pobierz ZIP przed zamknięciem.';
+    if(S.view==='shoot'||S.view==='station') keepScroll(render);
+    updateQueueBadge();
   }
-  try{ await saveP(); }catch(e){}
-  S.lastError=null;
-  if(errors.length){ const e=errors[0];
-    S.lastError = e.message==='heic'
-      ? `Ta przeglądarka nie umie otworzyć zdjęcia HEIC (${e.detail}). Otwórz aplikację w Safari albo ustaw: Ustawienia → Aparat → Formaty → Najbardziej zgodne.`
-      : `Nie udało się przetworzyć zdjęcia (${e.message}${e.detail?', '+e.detail:''}). Zrób je jeszcze raz przyciskiem „Zrób zdjęcie”.`; }
-  if(memOnly) S.lastError=(S.lastError?S.lastError+' ':'')+'Uwaga: telefon nie pozwolił zapisać zdjęcia w pamięci strony. Jest widoczne do zamknięcia karty – pobierz ZIP przed zamknięciem.';
-  busy(false); S.confirm=null; render();
-  let bk=''; if(NATIVE && source==='cam'){ try{ bk=AndroidBridge.lastBackup(); }catch(e){} }
-  if(!errors.length && added) toast((k.startsWith('common/')&&S.p.reports.length>1?`Zapisano jako ${n}.jpg we wszystkich raportach`:`Zapisano jako ${f}/${n}.jpg`)+(bk?' · kopia w galerii':''));
+  Q.running=false; updateQueueBadge();
+}
+function waitQueue(){ return new Promise(res=>{ const t=()=>queueBusy()?setTimeout(t,200):res(); t(); }); }
+function updateQueueBadge(){
+  let el=document.getElementById('qbadge');
+  const n=Q.jobs.length+(Q.running?1:0);
+  if(!el){ el=document.createElement('div'); el.id='qbadge'; el.className='qbadge'; document.body.appendChild(el); }
+  el.hidden=!n; el.textContent=n?`Zapisuję zdjęcia w tle: ${n}`:'';
 }
 for(const id of ['cam','gal']){
   const el=document.getElementById(id);
@@ -761,7 +807,9 @@ async function doExport(){
   const p=S.p; const msg=document.getElementById('expMsg');
   const show=t=>{ if(msg){msg.hidden=false; msg.textContent=t;} };
   if(typeof JSZip==='undefined'){ show('Nie wczytała się biblioteka ZIP. Sprawdź internet i odśwież stronę.'); return; }
-  S.exporting=true; busy(true,'Pakowanie zdjęć…');
+  S.exporting=true;
+  if(queueBusy()){ busy(true,'Kończę zapisywanie zdjęć…'); await waitQueue(); }
+  busy(true,'Pakowanie zdjęć…');
   try{
     const root=zipName(p); const zip=new JSZip(); const altDone=new Set(); const dir=zip.folder(root);
     for(const f of p.reports){
@@ -828,11 +876,14 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
+const APP_VERSION='1.2';
+function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
   if(document.getElementById('busy') && !document.getElementById('busy').hidden) return true;
   if(S.view==='shoot'||S.view==='export'){ S.mode=null; S.view='station'; render(); return true; }
   if(S.view==='form'){ S.view=S.p?'station':'home'; render(); return true; }
+  if(S.view==='home' && queueBusy()){ toast('Poczekaj chwilę – zapisuję zdjęcia'); return true; }
   if(S.view==='station'){ S.view='home'; S.p=null; loadProjects().then(()=>{ render(); showStorage(); }); return true; }
   return false;
 };
@@ -894,6 +945,8 @@ document.addEventListener('click',async ev=>{
     case 'import': S.importNew=false; document.getElementById('zipfile').click(); break;
     case 'import-new': S.importNew=true; document.getElementById('zipfile').click(); break;
     case 'do-export': if(!S.exporting) doExport(); break;
+    case 'autonext': S.autoNext=d.v==='true'; ls.set('autoNext',S.autoNext); keepScroll(render); break;
+    case 'backupq': S.backupQ=+d.v; ls.set('backupQ',S.backupQ); applyBackupQ(); keepScroll(render); break;
     case 'quality': S.quality=+d.v; ls.set('quality',S.quality); keepScroll(render); showStorage(); break;
     case 'add-inne': {
       const inp=document.getElementById('inneOpis'); const opis=(inp&&inp.value||'').trim();
@@ -1030,7 +1083,7 @@ async function showStorage(){
   try{ if(!navigator.storage||!navigator.storage.estimate) return; const e=await navigator.storage.estimate(); const el=document.getElementById('storage');
     if(el) el.textContent=`Zajęte na zdjęcia: ${(e.usage/1048576).toFixed(0)} MB. Usuń stację po wysłaniu raportu, żeby zwolnić miejsce.`; }catch(e){}
 }
-(async()=>{ render(); await loadProjects(); render(); showStorage(); })();
+(async()=>{ applyBackupQ(); render(); await loadProjects(); render(); showStorage(); })();
 </script>
 
 </body>
