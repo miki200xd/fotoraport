@@ -91,6 +91,7 @@ public class MainActivity extends Activity {
     // jakość kopii w galerii: 0 = oryginał, >0 = dłuższy bok w px, -1 = bez kopii
     private volatile int backupMaxSide = 0;
     private final ExecutorService backupExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService gpsExecutor = Executors.newSingleThreadExecutor();
 
     // pliki zapisywane kawałkami z JavaScriptu
     private final Map<String, Uri> openUris = new HashMap<>();
@@ -398,12 +399,19 @@ public class MainActivity extends Activity {
 
         if (requestCode == REQ_CAMERA) {
             if (resultCode == RESULT_OK && cameraFile != null && cameraFile.length() > 0) {
-                addGpsIfMissing(cameraFile);
+                // dopisanie GPS przepisuje cały plik – w tle, żeby ekran nie stawał; zdjęcie trafia do aplikacji zaraz potem
                 final File src = cameraFile;
+                final Uri uri = cameraUri;
                 final String sd = captureSubdir, nm = captureName;
                 final int max = backupMaxSide;
-                if (max >= 0) backupExecutor.execute(() -> backupCameraPhoto(src, sd, nm, max));
-                result = new Uri[]{cameraUri};
+                final ValueCallback<Uri[]> cb = filePathCallback;
+                filePathCallback = null;
+                gpsExecutor.execute(() -> {
+                    addGpsIfMissing(src);
+                    runOnUiThread(() -> cb.onReceiveValue(new Uri[]{uri}));
+                    if (max >= 0) backupExecutor.execute(() -> backupCameraPhoto(src, sd, nm, max));
+                });
+                return;
             }
         } else if (requestCode == REQ_FILE) {
             if (resultCode == RESULT_OK && data != null) {
