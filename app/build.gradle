@@ -12,7 +12,7 @@ android {
         targetSdk 34
         // numer wersji ustawia GitHub przy każdym budowaniu (patrz .github/workflows/build.yml)
         versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
-        versionName "1.8"
+        versionName "1.9"
     }
 
     // Dwie osobne aplikacje z jednego kodu, instalowane obok siebie:

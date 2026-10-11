@@ -176,7 +176,8 @@ const REPORTS = [
   {f:'Radiolinia', name:'Radiolinia', short:'Radiolinia'},
   {f:'System zasilania-szafa sprzet', name:'Zasilanie / szafa sprzętowa', short:'Zasilanie'},
   {f:'Wezel TRM', name:'Węzeł TRM', short:'Węzeł TRM'},
-  {f:'Inne', name:'Inne', short:'Inne'}
+  {f:'Inne', name:'Inne', short:'Inne'},
+  {f:'Azymuty', name:'Azymuty i ramki (poza raportem)', short:'Azymuty', aside:true}
 ];
 const RMAP = Object.fromEntries(REPORTS.map(r=>[r.f,r]));
 
@@ -230,6 +231,20 @@ function buildCatalog(raw,ver){
   return cat;
 }
 const CATALOGS={v1:buildCatalog(RAW.v1,'v1'), v3:buildCatalog(RAW.v3,'v3')};
+// Azymuty i ramki – poza raportem Excel (WT „Ustawianie azymutu anten sektorowych” v1.1):
+// ramka z antenami (spod ramki w górę, a gdy się nie da – 2 inne widoki) + miernik na każdej antenie z horyzontem
+const AZ_MAXA=3;
+function azCatalog(){
+  const a=[]; const add=o=>a.push({desc:'',extra:false,opt:false,phase:'',deinst:false,share:null,...o,n:a.length+1});
+  for(let s=1;s<=4;s++){
+    add({title:`S${s} – ramka z antenami (od dołu)`,desc:'Spod ramki pionowo w górę albo znad ramki w dół: ramka i wszystkie anteny na niej.',tags:{sec:s},az:{kind:'ramka',k:1}});
+    add({title:`S${s} – ramka, widok prostopadły`,desc:'Tylko gdy nie da się zrobić zdjęcia spod / znad ramki: widok prostopadły do płaszczyzny ramki.',opt:true,tags:{sec:s},az:{kind:'ramka',k:2}});
+    add({title:`S${s} – ramka, widok równoległy`,desc:'Tylko gdy nie da się zrobić zdjęcia spod / znad ramki: widok równoległy do płaszczyzny ramki.',opt:true,tags:{sec:s},az:{kind:'ramka',k:3}});
+    for(let n=1;n<=AZ_MAXA;n++) add({title:`S${s} ANT${n} – miernik na antenie`,desc:'Miernik poprawnie zamocowany na antenie, w kadrze widać linię horyzontu. Jedno zdjęcie na antenę.',tags:{sec:s,ant:n},az:{kind:'ant',a:n}});
+  }
+  return a;
+}
+for(const v in CATALOGS) CATALOGS[v].Azymuty=azCatalog();
 const CATIDX={}; for(const v in CATALOGS){ CATIDX[v]={}; for(const f in CATALOGS[v]){ CATIDX[v][f]={}; for(const it of CATALOGS[v][f]) CATIDX[v][f][it.n]=it; } }
 function tplOf(p){ const t=p&&p.tpl; return (t&&CATALOGS[t])?t:'v1'; }
 
@@ -384,7 +399,7 @@ function hiddenByCfg(p,f,it){
   if(t.sec && t.sec>c.sectors) return true;
   const si=(t.sec||1)-1;
   if(f==='BTS' && t.rru && t.rru>((c.secRru&&c.secRru[si])||c.rru)) return true;
-  if(f==='System Antenowy' && t.ant && t.ant>((c.secAnt&&c.secAnt[si])||c.ant)) return true;
+  if((f==='System Antenowy'||f==='Azymuty') && t.ant && t.ant>((c.secAnt&&c.secAnt[si])||c.ant)) return true;
   if(f==='Radiolinia' && t.odu && t.odu>c.odu) return true;
   if(t.bat && t.bat>c.bat) return true;
   return false;
@@ -700,7 +715,7 @@ function vExport(){
     </div>
     <div class="card stack">
       <b>Co jest w środku</b>
-      <p class="small muted" style="font-family:ui-monospace,Menlo,monospace;line-height:1.6">${esc(zipName(p))}/<br>${p.reports.map(f=>`&nbsp;&nbsp;${esc(f)}/1.jpg, 2.jpg…`).join('<br>')}<br>&nbsp;&nbsp;info.txt${p.reports.includes('Inne')?'<br>&nbsp;&nbsp;Inne/opisy.txt':''}${S.includeAlt?'<br>&nbsp;&nbsp;_inne_ujecia/…':''}</p>
+      <p class="small muted" style="font-family:ui-monospace,Menlo,monospace;line-height:1.6">${esc(zipName(p))}/<br>${p.reports.map(f=>f==='Azymuty'?`&nbsp;&nbsp;${AZ_DIR}/${esc(String(p.nr||'stacja'))}_Sec1_Ant1_1.jpg… (poza raportem)`:`&nbsp;&nbsp;${esc(f)}/1.jpg, 2.jpg…`).join('<br>')}<br>&nbsp;&nbsp;info.txt${p.reports.includes('Inne')?'<br>&nbsp;&nbsp;Inne/opisy.txt':''}${S.includeAlt?'<br>&nbsp;&nbsp;_inne_ujecia/…':''}</p>
       <label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="alt" ${S.includeAlt?'checked':''} style="width:22px;height:22px"> Dołącz niewybrane ujęcia (${alt})</label>
       <p class="muted small">Niewybrane ujęcia trafiają do osobnego folderu _inne_ujecia, więc makro ich nie wstawi.</p>
     </div>
@@ -867,6 +882,32 @@ for(const id of ['cam','gal']){
 }
 
 /* ======================= Eksport ZIP ======================= */
+// Azymuty: osobny folder (makro go pomija), nazwy wg WT: N!Code_SecX_AntY_Z.jpg / N!Code_SecX_ramka_Z.jpg, plik ≤ 0,5 MB
+const AZ_DIR='_AZYMUTY_poza_raportem';
+function azName(p,it){
+  const code=String(p.nr||'stacja').replace(/[\\/:*?"<>|\s]+/g,'_');
+  const g=g5Sector(p,it.tags.sec-1); const sx=g&&g.no!=null?g.no:it.tags.sec;
+  return it.az.kind==='ant' ? `${code}_Sec${sx}_Ant${it.az.a}_1.jpg` : `${code}_Sec${sx}_ramka_${it.az.k}.jpg`;
+}
+async function under500k(blob){
+  const LIMIT=500*1024; if(blob.size<=LIMIT) return blob;
+  const ex=await exifOf(blob); const d=await decodeImage(blob); let last=blob;
+  try{
+    for(const max of [1600,1280,1024]) for(const q of [0.82,0.7,0.58]){
+      const r=await canvasBlob(d.src,d.w,d.h,max,q); last=await withExif(r.b,ex);
+      if(last.size<=LIMIT) return last;
+    }
+  } finally { d.done(); }
+  return last;
+}
+async function exportAzymuty(p,dir){
+  const az=dir.folder(AZ_DIR);
+  for(const it of itemsFor(p,'Azymuty',{all:true})){
+    if(hiddenByCfg(p,'Azymuty',it)) continue;
+    const sl=peek(p,slotKey('Azymuty',it.n,p)); if(!sl.chosen) continue;
+    const ph=S.photos.get(sl.chosen); if(ph) az.file(azName(p,it),await under500k(ph.blob));
+  }
+}
 async function doExport(){
   const p=S.p; const msg=document.getElementById('expMsg');
   const show=t=>{ if(msg){msg.hidden=false; msg.textContent=t;} };
@@ -877,6 +918,7 @@ async function doExport(){
   try{
     const root=zipName(p); const zip=new JSZip(); const altDone=new Set(); const dir=zip.folder(root);
     for(const f of p.reports){
+      if(f==='Azymuty'){ await exportAzymuty(p,dir); continue; }
       const fd=dir.folder(f);
       for(const it of itemsFor(p,f,{all:true})){
         if(hiddenByCfg(p,f,it)) continue;
@@ -955,7 +997,10 @@ window.onAndroidBack=function(){
 /* ======================= Akcje ======================= */
 async function openProject(id){
   const p=S.projects.find(x=>x.id===id); if(!p) return;
-  p.cfg=normCfg(p.cfg); S.p=p; S.photos=new Map(); for(const u of S.urls.values()) URL.revokeObjectURL(u); S.urls=new Map();
+  p.cfg=normCfg(p.cfg);
+  // stacje założone przed wersją z azymutami też dostają zakładkę „Azymuty”
+  if(!p.reports.includes('Azymuty') && (p.reports.includes('BTS')||p.reports.includes('System Antenowy'))) p.reports.push('Azymuty');
+  S.p=p; S.photos=new Map(); for(const u of S.urls.values()) URL.revokeObjectURL(u); S.urls=new Map();
   try{ for(const ph of await DB.photosOf(id)) S.photos.set(ph.id,fromStored(ph)); }catch(e){}
   S.tab=p.reports[0]; S.filter='all'; S.view='station'; render();
 }
@@ -974,7 +1019,7 @@ document.addEventListener('click',async ev=>{
   switch(a){
     case 'home': S.view='home'; S.p=null; await loadProjects(); render(); showStorage(); break;
     case 'new':
-      S.p=null; S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('firma',''),zakres:'',zam:'',reports:['BTS','System Antenowy'],cfg:normCfg({...ls.get('cfg',{}),map:null}),g5:null,tpl:ls.get('tpl','v3')};
+      S.p=null; S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('firma',''),zakres:'',zam:'',reports:['BTS','System Antenowy','Azymuty'],cfg:normCfg({...ls.get('cfg',{}),map:null}),g5:null,tpl:ls.get('tpl','v3')};
       S.view='form'; render(); if(d.g5) document.getElementById('g5file').click(); break;
     case 'edit': S.draft=JSON.parse(JSON.stringify({nr:S.p.nr,nazwa:S.p.nazwa,nazwaOp:S.p.nazwaOp||'',data:S.p.data,firma:S.p.firma,zakres:S.p.zakres,zam:S.p.zam,reports:S.p.reports,cfg:normCfg(S.p.cfg),g5:S.p.g5||null,tpl:S.p.tpl||'v1'})); S.view='form'; render(); break;
     case 'rep': { syncDraft(); const r=S.draft.reports; const i=r.indexOf(d.f); if(i>=0) r.splice(i,1); else r.push(d.f); S.draft.reports=REPORTS.map(x=>x.f).filter(x=>r.includes(x)); keepScroll(render); break; }
