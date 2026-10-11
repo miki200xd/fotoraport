@@ -47,4 +47,7 @@ jobs:
           files: |
             FotoRaport.apk
             CellnexNokia.apk
-          make_latest: true
+          # „najnowsze” (to, co aplikacja proponuje jako aktualizację) tylko z gałęzi main;
+          # buildy z innych gałęzi to wersje testowe (pre-release)
+          make_latest: ${{ github.ref == 'refs/heads/main' }}
+          prerelease: ${{ github.ref != 'refs/heads/main' }}

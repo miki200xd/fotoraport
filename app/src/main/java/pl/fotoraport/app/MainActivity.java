@@ -1,6 +1,7 @@
 package pl.fotoraport.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ContentResolver;
@@ -28,7 +29,14 @@ import android.widget.Toast;
 import androidx.core.content.FileProvider;
 import androidx.webkit.WebViewAssetLoader;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -132,7 +140,58 @@ public class MainActivity extends Activity {
             web.restoreState(savedInstanceState);
         } else {
             web.loadUrl(APP_URL);
+            checkForUpdate();
         }
+    }
+
+    // --- sprawdzanie aktualizacji: najnowsze wydanie na GitHubie (tag „wersja-N”, N = versionCode) ---
+    private static final String UPDATE_API = "https://api.github.com/repos/miki200xd/fotoraport/releases/latest";
+
+    private void checkForUpdate() {
+        final String apkName = "pl.plusdoc.zdjecia".equals(getPackageName()) ? "CellnexNokia.apk" : "FotoRaport.apk";
+        new Thread(() -> {
+            try {
+                final long installed = getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
+                HttpURLConnection c = (HttpURLConnection) new URL(UPDATE_API).openConnection();
+                c.setConnectTimeout(6000);
+                c.setReadTimeout(6000);
+                c.setRequestProperty("Accept", "application/vnd.github+json");
+                if (c.getResponseCode() != 200) return;   // brak internetu / repo prywatne → po cichu nic
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+                    String line;
+                    while ((line = r.readLine()) != null) sb.append(line);
+                }
+                JSONObject rel = new JSONObject(sb.toString());
+                String digits = rel.optString("tag_name").replaceAll("[^0-9]", "");
+                if (digits.isEmpty()) return;
+                final long latest = Long.parseLong(digits);
+                if (latest <= installed) return;
+                String url = rel.optString("html_url");
+                JSONArray assets = rel.optJSONArray("assets");
+                if (assets != null) {
+                    for (int i = 0; i < assets.length(); i++) {
+                        JSONObject a = assets.getJSONObject(i);
+                        if (apkName.equals(a.optString("name"))) url = a.optString("browser_download_url");
+                    }
+                }
+                final String download = url;
+                runOnUiThread(() -> {
+                    if (isFinishing()) return;
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Dostępna aktualizacja")
+                            .setMessage("Jest nowa wersja aplikacji (" + latest + "), masz wersję " + installed + ".\n\n"
+                                    + "Pobierz plik APK i otwórz go, żeby zainstalować. Stacje i zdjęcia zostają.")
+                            .setPositiveButton("Pobierz", (d, w) -> {
+                                try {
+                                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(download)));
+                                } catch (ActivityNotFoundException ignored) { }
+                            })
+                            .setNegativeButton("Później", null)
+                            .show();
+                });
+            } catch (Exception ignored) { }
+        }).start();
     }
 
     @Override
