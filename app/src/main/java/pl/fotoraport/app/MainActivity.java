@@ -14,6 +14,7 @@ import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
@@ -140,12 +141,25 @@ public class MainActivity extends Activity {
             web.restoreState(savedInstanceState);
         } else {
             web.loadUrl(APP_URL);
-            checkForUpdate();
         }
     }
 
     // --- sprawdzanie aktualizacji: najnowsze wydanie na GitHubie (tag „wersja-N”, N = versionCode) ---
     private static final String UPDATE_API = "https://api.github.com/repos/miki200xd/fotoraport/releases/latest";
+    // przy uruchomieniu i przy powrocie do aplikacji, ale nie częściej niż co 4 godziny
+    private static final long UPDATE_INTERVAL_MS = 4L * 60 * 60 * 1000;
+    private static long lastUpdateCheck = 0;
+    private AlertDialog updateDialog;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        long now = SystemClock.elapsedRealtime();
+        if (lastUpdateCheck == 0 || now - lastUpdateCheck > UPDATE_INTERVAL_MS) {
+            lastUpdateCheck = now;
+            checkForUpdate();
+        }
+    }
 
     private void checkForUpdate() {
         final String apkName = "pl.plusdoc.zdjecia".equals(getPackageName()) ? "CellnexNokia.apk" : "FotoRaport.apk";
@@ -177,8 +191,9 @@ public class MainActivity extends Activity {
                 }
                 final String download = url;
                 runOnUiThread(() -> {
-                    if (isFinishing()) return;
-                    new AlertDialog.Builder(MainActivity.this)
+                    if (isFinishing() || isDestroyed()) return;
+                    if (updateDialog != null && updateDialog.isShowing()) return;
+                    updateDialog = new AlertDialog.Builder(MainActivity.this)
                             .setTitle("Dostępna aktualizacja")
                             .setMessage("Jest nowa wersja aplikacji (" + latest + "), masz wersję " + installed + ".\n\n"
                                     + "Pobierz plik APK i otwórz go, żeby zainstalować. Stacje i zdjęcia zostają.")
