@@ -4,6 +4,10 @@
     <!-- tylko do sprawdzania, czy jest nowa wersja aplikacji (GitHub Releases) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- lokalizacja dopisywana do zdjęć z aparatu (gdy aparat sam jej nie zapisze) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

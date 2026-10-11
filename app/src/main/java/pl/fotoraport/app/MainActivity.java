@@ -1,5 +1,6 @@
 package pl.fotoraport.app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -7,9 +8,13 @@ import android.content.ClipData;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
@@ -39,6 +44,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -63,6 +69,19 @@ public class MainActivity extends Activity {
     private WebView web;
     private ValueCallback<Uri[]> filePathCallback;
     private File cameraFile;
+
+    // --- lokalizacja: dopisywana do zdjęć z aparatu, gdy aparat sam nie zapisał GPS ---
+    private static final int REQ_LOCATION = 103;
+    private static final long FIX_MAX_AGE_MS = 10 * 60 * 1000;
+    private LocationManager locationManager;
+    private volatile Location lastFix;
+    // wszystkie cztery metody jawnie: na Androidzie 10 nie mają jeszcze domyślnych implementacji
+    private final LocationListener locationListener = new LocationListener() {
+        @Override public void onLocationChanged(Location l) { keepBetterFix(l); }
+        @Override public void onStatusChanged(String provider, int status, Bundle extras) { }
+        @Override public void onProviderEnabled(String provider) { }
+        @Override public void onProviderDisabled(String provider) { }
+    };
     private Uri cameraUri;
 
     // cel kopii zdjęcia z aparatu (ustawia strona przed otwarciem aparatu)
@@ -101,6 +120,10 @@ public class MainActivity extends Activity {
 
         web = new WebView(this);
         setContentView(web);
+
+        if (!hasLocationPermission()) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOCATION);
+        }
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -154,6 +177,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        startLocation();
         long now = SystemClock.elapsedRealtime();
         if (lastUpdateCheck == 0 || now - lastUpdateCheck > UPDATE_INTERVAL_MS) {
             lastUpdateCheck = now;
@@ -207,6 +231,100 @@ public class MainActivity extends Activity {
                 });
             } catch (Exception ignored) { }
         }).start();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLocation();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == REQ_LOCATION) startLocation();
+    }
+
+    private boolean hasLocationPermission() {
+        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void startLocation() {
+        if (!hasLocationPermission()) return;
+        try {
+            if (locationManager == null) locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+            if (locationManager == null) return;
+            for (String p : new String[]{LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER}) {
+                if (!locationManager.isProviderEnabled(p)) continue;
+                keepBetterFix(locationManager.getLastKnownLocation(p));
+                locationManager.requestLocationUpdates(p, 5000, 0, locationListener);
+            }
+        } catch (SecurityException | IllegalArgumentException ignored) { }
+    }
+
+    private void stopLocation() {
+        try {
+            if (locationManager != null) locationManager.removeUpdates(locationListener);
+        } catch (Exception ignored) { }
+    }
+
+    private void keepBetterFix(Location l) {
+        if (l == null) return;
+        Location cur = lastFix;
+        boolean curFresh = cur != null && System.currentTimeMillis() - cur.getTime() < 2 * 60 * 1000;
+        // nowsza pozycja wygrywa, chyba że obecna jest świeża i dużo dokładniejsza
+        if (cur == null || l.getTime() > cur.getTime() && !(curFresh && l.getAccuracy() > cur.getAccuracy() * 3)) lastFix = l;
+    }
+
+    /** Dopisuje GPS do zdjęcia z aparatu, jeśli aparat sam go nie zapisał (wyłączone tagi lokalizacji). */
+    private void addGpsIfMissing(File f) {
+        Location l = lastFix;
+        if (f == null || l == null || System.currentTimeMillis() - l.getTime() > FIX_MAX_AGE_MS) return;
+        try {
+            ExifInterface ex = new ExifInterface(f.getAbsolutePath());
+            if (ex.getLatLong(new float[2])) return;
+            double lat = l.getLatitude(), lon = l.getLongitude();
+            ex.setAttribute(ExifInterface.TAG_GPS_LATITUDE, dms(lat));
+            ex.setAttribute(ExifInterface.TAG_GPS_LATITUDE_REF, lat >= 0 ? "N" : "S");
+            ex.setAttribute(ExifInterface.TAG_GPS_LONGITUDE, dms(lon));
+            ex.setAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF, lon >= 0 ? "E" : "W");
+            if (l.hasAltitude()) {
+                ex.setAttribute(ExifInterface.TAG_GPS_ALTITUDE, Math.round(Math.abs(l.getAltitude()) * 100) + "/100");
+                ex.setAttribute(ExifInterface.TAG_GPS_ALTITUDE_REF, l.getAltitude() >= 0 ? "0" : "1");
+            }
+            ex.saveAttributes();
+        } catch (Exception ignored) { }
+    }
+
+    private static String dms(double v) {
+        v = Math.abs(v);
+        int d = (int) v;
+        double mf = (v - d) * 60;
+        int m = (int) mf;
+        long s = Math.round((mf - m) * 60 * 10000);
+        return d + "/1," + m + "/1," + s + "/10000";
+    }
+
+    /** Przenosi GPS, datę i aparat z oryginału do pomniejszonej kopii (obrót jest już w pikselach). */
+    private static void copyExif(File from, File to) {
+        String[] tags = {
+                ExifInterface.TAG_GPS_LATITUDE, ExifInterface.TAG_GPS_LATITUDE_REF,
+                ExifInterface.TAG_GPS_LONGITUDE, ExifInterface.TAG_GPS_LONGITUDE_REF,
+                ExifInterface.TAG_GPS_ALTITUDE, ExifInterface.TAG_GPS_ALTITUDE_REF,
+                ExifInterface.TAG_GPS_TIMESTAMP, ExifInterface.TAG_GPS_DATESTAMP,
+                ExifInterface.TAG_DATETIME, ExifInterface.TAG_DATETIME_ORIGINAL,
+                ExifInterface.TAG_MAKE, ExifInterface.TAG_MODEL};
+        try {
+            ExifInterface a = new ExifInterface(from.getAbsolutePath());
+            ExifInterface b = new ExifInterface(to.getAbsolutePath());
+            for (String t : tags) {
+                String v = a.getAttribute(t);
+                if (v != null) b.setAttribute(t, v);
+            }
+            b.setAttribute(ExifInterface.TAG_ORIENTATION, String.valueOf(ExifInterface.ORIENTATION_NORMAL));
+            b.saveAttributes();
+        } catch (Exception ignored) { }
     }
 
     @Override
@@ -280,6 +398,7 @@ public class MainActivity extends Activity {
 
         if (requestCode == REQ_CAMERA) {
             if (resultCode == RESULT_OK && cameraFile != null && cameraFile.length() > 0) {
+                addGpsIfMissing(cameraFile);
                 final File src = cameraFile;
                 final String sd = captureSubdir, nm = captureName;
                 final int max = backupMaxSide;
@@ -324,7 +443,19 @@ public class MainActivity extends Activity {
             try (OutputStream out = cr.openOutputStream(uri)) {
                 if (out == null) throw new Exception("brak dostępu do galerii");
                 if (maxSide > 0) {
-                    writeScaled(src, out, maxSide);
+                    // pomniejszenie gubi EXIF, więc najpierw plik tymczasowy, do niego GPS i data z oryginału
+                    File tmp = File.createTempFile("kopia_", ".jpg", getCacheDir());
+                    try {
+                        try (OutputStream t = new FileOutputStream(tmp)) { writeScaled(src, t, maxSide); }
+                        copyExif(src, tmp);
+                        try (InputStream in = new FileInputStream(tmp)) {
+                            byte[] buf = new byte[65536];
+                            int n;
+                            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                        }
+                    } finally {
+                        tmp.delete();
+                    }
                 } else {
                     try (InputStream in = new FileInputStream(src)) {
                         byte[] buf = new byte[65536];

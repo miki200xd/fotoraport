@@ -12,7 +12,7 @@ android {
         targetSdk 34
         // numer wersji ustawia GitHub przy każdym budowaniu (patrz .github/workflows/build.yml)
         versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
-        versionName "1.6"
+        versionName "1.7"
     }
 
     // Dwie osobne aplikacje z jednego kodu, instalowane obok siebie:
@@ -29,7 +29,7 @@ android {
         plusdoc {
             dimension "app"
             applicationId "pl.plusdoc.zdjecia"
-            versionName "1.4"
+            versionName "1.5"
             resValue "string", "app_name", "Cellnex-Nokia"
             resValue "string", "media_dir", "CellnexNokia"
         }

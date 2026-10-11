@@ -320,7 +320,9 @@ function buildEclipse(){
   extras(3);
   // dopisane na końcu (numery bez zmian), na liście zaraz po widoku sprzętu w szafie
   const cab=E[F].filter(x=>x.title==='Szafa – sprzęt przy otwartych drzwiach').pop().o;
-  add({title:'Szafa – śruby mocujące do fundamentu / ramy',desc:'Każda szafa outdoor (AAOB / siłownia): wszystkie śruby i kotwy po dokręceniu, z podkładkami i nakrętkami. Zrób tyle ujęć, żeby było widać każdą śrubę.',warn:true,o:cab+0.5},2);
+  const cabBolt={title:'Szafa – śruby mocujące do fundamentu / ramy',desc:'4 śruby pod szafą – jedno zdjęcie na każdą śrubę, po dokręceniu, z podkładką i nakrętką.',warn:true,o:cab+0.5};
+  add(cabBolt,2);
+  add(cabBolt,2); // 3. i 4. śruba dopisane później – też na końcu, żeby numery się nie zmieniły
   folder('05_GPS');
   add({title:'Antena GPS – widok i mocowanie',desc:'Antena z mocowaniem, widać otoczenie (brak zasłonięcia nieba).'});
   add({title:'Kabel GPS – złącze, opis, uziemienie',desc:'Złącze przy antenie, opis kabla, uziemienie jeśli jest.'});
@@ -334,15 +336,18 @@ function buildEclipse(){
   add({title:'Miejsce niezgodne z projektem (ABD scen. 3)',desc:'Tylko gdy montaż różni się od DTF/M2. Z tych zdjęć powstaje red-pen na DTF.',opt:true},3);
   extras(3);
   folder('07_SILOWNIA');
-  add({title:'Widok ogólny szaf siłowni',desc:''});
-  add({title:'Tabliczka z numerem seryjnym siłowni',desc:''});
-  add({title:'Kable w zaciskach siłowni i w RT',desc:'Z drogą prowadzenia i mocowaniem.'},2);
-  add({title:'Uziemienie siłowni',desc:'Od strony szafy i szyny uziemiającej.'});
-  add({title:'Panel zabezpieczeń z oznaczeniami',desc:'Oznaczenia na kablach i tabliczce.'});
-  add({title:'Baterie z numerami seryjnymi',desc:''},2);
-  add({title:'Przepusty kabli zewnętrznych',desc:''});
-  add({title:'Wyświetlacz: prąd i napięcie',desc:'Odczyt obciążenia po uruchomieniu sprzętu.'});
+  add({title:'Widok ogólny szaf siłowni',desc:'Ogólny widok szafy / szaf siłowni.'});
+  add({title:'Tabliczka z numerem seryjnym siłowni',desc:'Tabliczka znamionowa siłowni, numer seryjny czytelny.'});
+  add({title:'Kable w zaciskach siłowni i w RT',desc:'Kable zasilające wpięte w zaciski siłowni oraz do zabezpieczeń w RT, z widoczną drogą prowadzenia i mocowaniem okablowania.'},2);
+  add({title:'Uziemienie siłowni',desc:'Od strony szafy oraz od strony szyny uziemiającej.'});
+  add({title:'Panel zabezpieczeń z oznaczeniami',desc:'Oznaczenia na okablowaniu i na tabliczce.'});
+  add({title:'Baterie z numerami seryjnymi',desc:'Każda bateria, numer seryjny czytelny.'},2);
+  add({title:'Przepusty kabli zewnętrznych',desc:'Miejsca wprowadzenia kabli zewnętrznych do szafy.'});
+  add({title:'Wyświetlacz: prąd i napięcie',desc:'Wyświetlacz z widoczną wartością prądu i napięcia, po uruchomieniu sprzętu.'});
   extras(3);
+  // dopisane na końcu (numery bez zmian), na liście zaraz po bateriach
+  const bat=E[F].filter(x=>x.title==='Baterie z numerami seryjnymi').pop().o;
+  add({title:'Prostowniki z numerami seryjnymi',desc:'Każdy prostownik w siłowni, numer seryjny czytelny bez powiększania.',o:bat+0.5},2);
   folder('08_TESTY_S25');
   for(let s=1;s<=E_MAXS;s++){
     add({title:`S${s} – test DL, UL, ping`,desc:'Zrzut ekranu z Samsunga S25 po teście przepływności w tym sektorze. Wynik czytelny.',screen:true,tags:{sec:s}});
@@ -1032,7 +1037,44 @@ function canvasBlob(img,w,h,max,q){
     catch(e){ rej(new Error('encode')); }
   });
 }
+// EXIF (GPS, data, aparat) z oryginału – canvas przy zmniejszaniu go gubi, więc przepisujemy segment APP1
+async function exifOf(file){
+  try{
+    const b=new Uint8Array(await file.slice(0,262144).arrayBuffer());
+    if(b[0]!==0xFF||b[1]!==0xD8) return null;
+    let i=2;
+    while(i+9<b.length && b[i]===0xFF){
+      const m=b[i+1], len=(b[i+2]<<8)|b[i+3];
+      if(m===0xDA) return null;
+      if(m===0xE1 && b[i+4]===0x45&&b[i+5]===0x78&&b[i+6]===0x69&&b[i+7]===0x66){
+        if(i+2+len>b.length) return null;
+        const seg=b.slice(i,i+2+len); exifNormalize(seg); return seg;
+      }
+      i+=2+len;
+    }
+  }catch(e){}
+  return null;
+}
+// obrót jest już w pikselach → Orientation=1; miniatura (IFD1) odcięta, bo byłaby obrócona inaczej
+function exifNormalize(seg){
+  const t=10; if(seg.length<t+8) return; const le=seg[t]===0x49;
+  const r16=o=>le?seg[o]|(seg[o+1]<<8):(seg[o]<<8)|seg[o+1];
+  const r32=o=>le?(seg[o]|(seg[o+1]<<8)|(seg[o+2]<<16))+seg[o+3]*16777216:seg[o]*16777216+((seg[o+1]<<16)|(seg[o+2]<<8)|seg[o+3]);
+  const ifd=t+r32(t+4); if(ifd+2>seg.length) return; const n=r16(ifd);
+  for(let k=0;k<n;k++){ const e=ifd+2+k*12; if(e+12>seg.length) return;
+    if(r16(e)===0x0112){ if(le){seg[e+8]=1;seg[e+9]=0;} else {seg[e+8]=0;seg[e+9]=1;} } }
+  const nx=ifd+2+n*12; if(nx+4<=seg.length) seg.fill(0,nx,nx+4);
+}
+async function withExif(blob,seg){
+  if(!seg) return blob;
+  try{
+    const h=new Uint8Array(await blob.slice(0,6).arrayBuffer()); if(h[0]!==0xFF||h[1]!==0xD8) return blob;
+    const at=(h[2]===0xFF&&h[3]===0xE0)?4+((h[4]<<8)|h[5]):2; // za APP0 (JFIF), jeśli jest
+    return new Blob([blob.slice(0,at),seg,blob.slice(at)],{type:'image/jpeg'});
+  }catch(e){ return blob; }
+}
 async function processFile(file){
+  const ex=await exifOf(file);
   const d=await decodeImage(file);
   try{
     if(!d.w||!d.h) throw new Error('decode');
@@ -1040,7 +1082,7 @@ async function processFile(file){
     try{ full=await canvasBlob(d.src,d.w,d.h,S.quality,0.88); }
     catch(e){ full=await canvasBlob(d.src,d.w,d.h,1600,0.86); } // mniejsza rozdzielczość, gdy brakuje pamięci
     const th=await canvasBlob(full.canvas||d.src,full.cw||d.w,full.ch||d.h,360,0.7);
-    return {blob:full.b,thumb:th.b,w:full.cw,h:full.ch};
+    return {blob:await withExif(full.b,ex),thumb:th.b,w:full.cw,h:full.ch};
   } finally { d.done(); }
 }
 // Safari czasem nie zapisuje Blob w IndexedDB – wtedy zapisujemy bajty
@@ -1372,7 +1414,7 @@ async function importPhotoBlob(blob){
   try{ const th=await canvasBlob(d.src,d.w,d.h,360,0.72);
     // zdjęcia z ZIP-a są już JPG z tej aplikacji albo z makra – zostawiamy oryginał, chyba że są za duże
     let full={b:blob,cw:d.w,ch:d.h};
-    if(Math.max(d.w,d.h)>S.quality*1.25 || !/jpe?g/i.test(blob.type||'image/jpeg')) full=await canvasBlob(d.src,d.w,d.h,S.quality,0.9);
+    if(Math.max(d.w,d.h)>S.quality*1.25 || !/jpe?g/i.test(blob.type||'image/jpeg')){ full=await canvasBlob(d.src,d.w,d.h,S.quality,0.9); full.b=await withExif(full.b,await exifOf(blob)); }
     return {blob:full.b,thumb:th.b,w:full.cw,h:full.ch};
   } finally { d.done(); }
 }
