@@ -12,18 +12,18 @@ android {
         targetSdk 34
         // numer wersji ustawia GitHub przy każdym budowaniu (patrz .github/workflows/build.yml)
         versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
-        versionName "1.4"
+        versionName "1.5"
     }
 
     // Dwie osobne aplikacje z jednego kodu, instalowane obok siebie:
-    //  - fotoraport: Foto Raport (OPL / TMPL), assets z src/main
+    //  - fotoraport: Networks! (dawniej Foto Raport; OPL / TMPL), assets z src/main
     //  - plusdoc:    Cellnex-Nokia (ECLIPSE), assets z src/plusdoc
     flavorDimensions "app"
     productFlavors {
         fotoraport {
             dimension "app"
             applicationId "pl.fotoraport.app"
-            resValue "string", "app_name", "Foto Raport"
+            resValue "string", "app_name", "Networks!"
             resValue "string", "media_dir", "FotoRaport"
         }
         plusdoc {

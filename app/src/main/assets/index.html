@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script>window.FR_LOCAL_LIBS=true;</script>
 <style>html,body{margin:0}img{max-width:100%}</style>
-<title>Foto Raport Stacji</title>
+<title>Networks!</title>
 <script src="jszip.min.js"></script>
 <style>
 :root{
@@ -138,18 +138,20 @@ select.secsel{font:inherit;font-size:15px;min-height:44px;padding:8px;border:1px
 #splash img{width:min(68vw,340px);height:auto}
 #splash .line{width:56px;height:3px;border-radius:2px;background:var(--wac);margin-block:6px}
 #splash .app{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:.02em}
+#splash .sub{font-size:15px;color:var(--muted);margin-top:-8px}
 #splash .by{font-size:13px;color:var(--wac);letter-spacing:.16em;text-transform:uppercase;font-weight:600}
 @media (prefers-color-scheme: dark){ #splash{--wac:#6EAAF0} }
 </style>
 </head>
 <body>
-<div id="splash" role="img" aria-label="Foto Raport Stacji – aplikacja firmy WAC">
+<div id="splash" role="img" aria-label="Networks! – aplikacja firmy WAC">
   <picture>
     <source srcset="wac_logo_dark.png" media="(prefers-color-scheme: dark)">
     <img src="wac_logo.png" alt="WAC – Wireless Advance Connect">
   </picture>
   <div class="line"></div>
-  <div class="app">Foto Raport Stacji</div>
+  <div class="app">Networks!</div>
+  <div class="sub">Dokumentacja zdjęciowa stacji</div>
   <div class="by">powered by WAC</div>
 </div>
 <script>
@@ -442,7 +444,7 @@ function vHome(){
   return `
   <header class="stack" style="padding-block:8px 16px">
     <div class="eyebrow">Raport zdjęciowy · OPL / TMPL</div>
-    <h1>Foto Raport Stacji</h1>
+    <h1>Networks!</h1>
     <p class="muted">Aplikacja prowadzi Cię przez listę zdjęć z szablonu Foto_raport i od razu nadaje im numery. Na koniec pobierasz ZIP z folderami BTS, System Antenowy itd., gotowy do makra „Wstaw zdjęcia”.</p>
   </header>
   ${S.dbError?`<div class="notice" style="margin-bottom:12px">Ta przeglądarka nie pozwala zapisywać zdjęć w pamięci (${esc(S.dbError)}). Otwórz stronę w zwykłym oknie przeglądarki, nie w trybie prywatnym.</div>`:''}

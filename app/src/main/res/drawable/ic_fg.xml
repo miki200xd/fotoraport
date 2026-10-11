@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Ikona Dokumentacja-N!: aparat w kolorach NetWorkS! (szary korpus, bordowy obiektyw = kropka z logo, nad nim fale) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
+    <!-- fale radiowe z logo NetWorkS! -->
+    <path android:strokeColor="#B0003A" android:strokeWidth="3.6" android:strokeLineCap="round"
+        android:pathData="M43,27 Q54,20 65,27" />
+    <path android:strokeColor="#B0003A" android:strokeWidth="3.2" android:strokeLineCap="round"
+        android:pathData="M46.5,32.5 Q54,28 61.5,32.5" />
+    <path android:strokeColor="#B0003A" android:strokeWidth="2.8" android:strokeLineCap="round"
+        android:pathData="M50,37.5 Q54,35.5 58,37.5" />
     <!-- korpus aparatu -->
+    <path android:fillColor="#6E6E6E"
+        android:pathData="M35,47 L44,47 L48,42 L60,42 L64,47 L73,47 Q78,47 78,52 L78,74 Q78,79 73,79 L35,79 Q30,79 30,74 L30,52 Q30,47 35,47 Z" />
+    <!-- obiektyw: biały pierścień i bordowa kropka -->
     <path android:fillColor="#FFFFFF"
-        android:pathData="M34,42 L44,42 L48,36 L60,36 L64,42 L74,42 Q78,42 78,46 L78,70 Q78,74 74,74 L34,74 Q30,74 30,70 L30,46 Q30,42 34,42 Z" />
-    <!-- obiektyw -->
-    <path android:fillColor="#D9500B"
-        android:pathData="M54,47 A11,11 0 1,1 53.99,47 Z" />
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M54,52 A6,6 0 1,1 53.99,52 Z" />
+        android:pathData="M54,51 A12,12 0 1,1 53.99,51 Z" />
+    <path android:fillColor="#B0003A"
+        android:pathData="M54,55.5 A7.5,7.5 0 1,1 53.99,55.5 Z" />
 </vector>
