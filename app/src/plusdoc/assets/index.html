@@ -130,8 +130,35 @@ select.secsel{font:inherit;font-size:15px;min-height:44px;padding:8px;border:1px
 @media (prefers-reduced-motion:no-preference){ .item,.take,button{transition:background-color .15s,border-color .15s} }
 </style>
 
+<style>
+/* Ekran startowy z logo WAC (wac_logo.png / wac_logo_dark.png); znika po ~1,6 s albo po dotknięciu */
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:var(--bg);color:var(--ink);transition:opacity .45s ease;padding:24px;text-align:center;--wac:#0066B4}
+#splash.hide{opacity:0;pointer-events:none}
+#splash img{width:min(68vw,340px);height:auto}
+#splash .line{width:56px;height:3px;border-radius:2px;background:var(--wac);margin-block:6px}
+#splash .app{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:.02em}
+#splash .sub{font-size:15px;color:var(--muted);margin-top:-8px}
+#splash .by{font-size:13px;color:var(--wac);letter-spacing:.16em;text-transform:uppercase;font-weight:600}
+@media (prefers-color-scheme: dark){ #splash{--wac:#6EAAF0} }
+</style>
 </head>
 <body>
+<div id="splash" role="img" aria-label="Cellnex-Nokia – aplikacja firmy WAC">
+  <picture>
+    <source srcset="wac_logo_dark.png" media="(prefers-color-scheme: dark)">
+    <img src="wac_logo.png" alt="WAC – Wireless Advance Connect">
+  </picture>
+  <div class="line"></div>
+  <div class="app">Cellnex-Nokia</div>
+  <div class="sub">Dokumentacja zdjęciowa ECLIPSE</div>
+  <div class="by">powered by WAC</div>
+</div>
+<script>
+(function(){var sp=document.getElementById('splash'),done=false;
+ function hide(){if(done)return;done=true;sp.classList.add('hide');setTimeout(function(){sp.remove()},500)}
+ setTimeout(hide,1600);sp.addEventListener('click',hide);})();
+</script>
 <main id="app" aria-live="polite"></main>
 <input id="cam" class="hidden-input" type="file" accept="image/*" capture="environment" aria-label="Aparat">
 <input id="gal" class="hidden-input" type="file" accept="image/*" multiple aria-label="Galeria">
@@ -254,6 +281,14 @@ function buildEclipse(){
     add({title:`S${s} RF${m} – złącza RF moduł–jumper`,desc:'Złącza RF i RET, opisy na jumperach i opisy portów modułu.',warn:true,tags:{sec:s,rru:m},o:after+0.3});
     add({title:`S${s} RF${m} – DC, FO i uziemienie modułu`,desc:'Wtyczka DC, wkładka SFP i kabel FO z opisami, przewód uziemiający modułu.',tags:{sec:s,rru:m},o:after+0.4});
   }
+  // Śruby CueDee (wymóg Nokii od 27.08.2026) – też dopisane na końcu, na liście zaraz po „moduł i mocowanie” danego RF
+  const boltDesc='Wszystkie śruby mocujące wspornik CueDee do modułu muszą być widoczne. Tylko oryginalne śruby kołnierzowe M8x25, wkręcone prosto, dokręcone kluczem dynamometrycznym 20 Nm.';
+  for(let s=1;s<=E_MAXS;s++){
+    for(let m=1;m<=E_MAXR4;m++){
+      const mount=E[F].find(x=>x.tags.sec===s&&x.tags.rru===m&&/moduł i mocowanie/.test(x.title));
+      add({title:`S${s} RF${m} – śruby CueDee po dokręceniu`,desc:boltDesc,warn:true,tags:{sec:s,rru:m},o:mount.o+0.05});
+    }
+  }
   folder('03_JUMPERY_FO_DC_UZIEMIENIA');
   for(let s=1;s<=E_MAXS;s++){
     add({title:`S${s} – droga jumperów antena → moduł`,desc:'Cała droga jumperów, najlepiej w jednym kadrze.',tags:{sec:s}});
@@ -283,6 +318,9 @@ function buildEclipse(){
   add({title:'Rack MW / szafa transmisyjna',desc:'Rack, w którym stoi sprzęt transmisyjny.',cond:'mw'});
   add({title:'Szafy zamknięte po pracach',desc:'Każda szafa outdoor z zamkniętymi pokrywami.'});
   extras(3);
+  // dopisane na końcu (numery bez zmian), na liście zaraz po widoku sprzętu w szafie
+  const cab=E[F].filter(x=>x.title==='Szafa – sprzęt przy otwartych drzwiach').pop().o;
+  add({title:'Szafa – śruby mocujące do fundamentu / ramy',desc:'Każda szafa outdoor (AAOB / siłownia): wszystkie śruby i kotwy po dokręceniu, z podkładkami i nakrętkami. Zrób tyle ujęć, żeby było widać każdą śrubę.',warn:true,o:cab+0.5},2);
   folder('05_GPS');
   add({title:'Antena GPS – widok i mocowanie',desc:'Antena z mocowaniem, widać otoczenie (brak zasłonięcia nieba).'});
   add({title:'Kabel GPS – złącze, opis, uziemienie',desc:'Złącze przy antenie, opis kabla, uziemienie jeśli jest.'});
@@ -311,7 +349,7 @@ function buildEclipse(){
     add({title:`S${s} – parametry radiowe`,desc:'Zrzut z ARFCN, PCI i RSRP (5G) oraz EARFCN i PCI (4G). Z niego wpisujesz Site Test.',screen:true,tags:{sec:s}});
     add({title:`S${s} – pozycja GPS przy pomiarze`,desc:'Współrzędne dziesiętne, np. 52.4203 / 19.5582. Nie 52.25 / 19.33 (to stopnie i minuty).',warn:true,screen:true,tags:{sec:s}});
   }
-  add({title:'Połączenia alarmowe 112 / 997 / 998 / 999',desc:'Zrzut rejestru połączeń. Rozłóż je na sektory wg wzoru Site Test.',screen:true});
+  add({title:'Połączenia alarmowe 112 / 997 / 998 / 999',desc:'Zrzut rejestru połączeń. Rozłóż je na sektory wg wzoru Site Test. Zamiast U2100 dzwonisz po VoLTE – na ekranie ma być znaczek VoLTE.',screen:true});
   add({title:'Aligner – podsumowanie azymutów',desc:'Zrzut z Alignera. Sam plik raportu i tak wrzuć na dysk (AZIMUTHS).',screen:true});
   extras(2);
   for(const f in E) E[f].sort((x,y)=>x.o-y.o);
