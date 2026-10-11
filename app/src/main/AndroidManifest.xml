@@ -3,6 +3,8 @@
 
     <!-- tylko do sprawdzania, czy jest nowa wersja aplikacji (GitHub Releases) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- aktualizacja instalowana z poziomu aplikacji (Android pyta raz o zgodę) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- lokalizacja dopisywana do zdjęć z aparatu (gdy aparat sam jej nie zapisze) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />

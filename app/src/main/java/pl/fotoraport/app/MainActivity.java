@@ -21,6 +21,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -30,6 +31,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
@@ -179,6 +181,13 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         startLocation();
+        // powrót z ustawień „instaluj z tego źródła” → pobieranie rusza samo
+        if (pendingUpdateUrl != null && getPackageManager().canRequestPackageInstalls()) {
+            String u = pendingUpdateUrl;
+            pendingUpdateUrl = null;
+            downloadAndInstall(u);
+            return;
+        }
         long now = SystemClock.elapsedRealtime();
         if (lastUpdateCheck == 0 || now - lastUpdateCheck > UPDATE_INTERVAL_MS) {
             lastUpdateCheck = now;
@@ -221,16 +230,104 @@ public class MainActivity extends Activity {
                     updateDialog = new AlertDialog.Builder(MainActivity.this)
                             .setTitle("Dostępna aktualizacja")
                             .setMessage("Jest nowa wersja aplikacji (" + latest + "), masz wersję " + installed + ".\n\n"
-                                    + "Pobierz plik APK i otwórz go, żeby zainstalować. Stacje i zdjęcia zostają.")
-                            .setPositiveButton("Pobierz", (d, w) -> {
-                                try {
-                                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(download)));
-                                } catch (ActivityNotFoundException ignored) { }
-                            })
+                                    + "Aplikacja sama ją pobierze i otworzy instalację. Stacje i zdjęcia zostają.")
+                            .setPositiveButton("Aktualizuj", (d, w) -> startUpdate(download))
                             .setNegativeButton("Później", null)
                             .show();
                 });
             } catch (Exception ignored) { }
+        }).start();
+    }
+
+    // --- aktualizacja w aplikacji: pobranie APK do pamięci podręcznej i od razu instalator ---
+    private String pendingUpdateUrl;
+
+    private void startUpdate(String url) {
+        if (url == null || !url.endsWith(".apk")) {   // brak pliku w wydaniu → strona wydania w przeglądarce
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception ignored) { }
+            return;
+        }
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            // jednorazowo: Android musi pozwolić tej aplikacji instalować aktualizacje
+            pendingUpdateUrl = url;
+            new AlertDialog.Builder(this)
+                    .setTitle("Jedno pozwolenie")
+                    .setMessage("Za pierwszym razem Android pyta, czy ta aplikacja może instalować aktualizacje.\n\n"
+                            + "Włącz „Zezwalaj z tego źródła” i wróć strzałką – pobieranie ruszy samo.")
+                    .setPositiveButton("Dalej", (d, w) -> {
+                        try {
+                            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    Uri.parse("package:" + getPackageName())));
+                        } catch (Exception e) {
+                            pendingUpdateUrl = null;
+                            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception ignored) { }
+                        }
+                    })
+                    .setNegativeButton("Anuluj", (d, w) -> pendingUpdateUrl = null)
+                    .show();
+            return;
+        }
+        downloadAndInstall(url);
+    }
+
+    private void downloadAndInstall(String url) {
+        final ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(100);
+        bar.setIndeterminate(true);
+        int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        bar.setPadding(pad, pad, pad, pad);
+        final AlertDialog progress = new AlertDialog.Builder(this)
+                .setTitle("Pobieram aktualizację…")
+                .setView(bar)
+                .setCancelable(false)
+                .show();
+        new Thread(() -> {
+            File apk = new File(new File(getCacheDir(), "update"), "aktualizacja.apk");
+            try {
+                File dir = apk.getParentFile();
+                if (dir != null) dir.mkdirs();
+                HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                c.setConnectTimeout(15000);
+                c.setReadTimeout(30000);
+                c.setInstanceFollowRedirects(true);
+                if (c.getResponseCode() != 200) throw new Exception("serwer odpowiedział " + c.getResponseCode());
+                final long total = c.getContentLengthLong();
+                long done = 0;
+                int lastPct = -1;
+                try (InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(apk)) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) {
+                        out.write(buf, 0, n);
+                        done += n;
+                        if (total > 0) {
+                            final int pct = (int) (done * 100 / total);
+                            if (pct != lastPct) {
+                                lastPct = pct;
+                                runOnUiThread(() -> { bar.setIndeterminate(false); bar.setProgress(pct); });
+                            }
+                        }
+                    }
+                }
+                runOnUiThread(() -> {
+                    progress.dismiss();
+                    try {
+                        Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apk);
+                        Intent i = new Intent(Intent.ACTION_VIEW);
+                        i.setDataAndType(uri, "application/vnd.android.package-archive");
+                        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                    } catch (Exception e) {
+                        toast("Nie udało się otworzyć instalatora: " + e.getMessage());
+                    }
+                });
+            } catch (Exception e) {
+                apk.delete();
+                runOnUiThread(() -> {
+                    progress.dismiss();
+                    toast("Nie udało się pobrać aktualizacji (" + e.getMessage() + "). Sprawdź internet i spróbuj ponownie.");
+                });
+            }
         }).start();
     }
 
