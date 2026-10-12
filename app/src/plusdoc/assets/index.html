@@ -399,9 +399,9 @@ function extraCatalog(kind){
   } else if(kind==='pop'){
     for(let i=1;i<=6;i++){ add(`Poprawka ${i} – przed`,'Usterka / miejsce do poprawy przed pracą.'); add(`Poprawka ${i} – po`,'To samo miejsce po poprawce, ten sam kadr.'); }
     add('Dodatkowe zdjęcie','Coś spoza listy.',2);
-  } else if(kind==='dok'){ const D={doc:true};
-    add('WZ / dokument wydania materiału','Cała strona, czytelne numery i podpisy. „Skanuj dokument” sam przytnie i wyprostuje kartkę.',2,D);
-    add('List przewozowy / zwrot sprzętu','Dokument zwrotu zdemontowanego sprzętu – „Skanuj dokument”, kilka stron naraz.',2,D);
+  } else if(kind==='dok'){ const D={doc:true}; // dokumenty, które dostajemy przy odbiorze materiału
+    add('WZ – wydanie materiału z magazynu','Każda strona WZ, czytelne pozycje, ilości i podpisy. „Skanuj dokument” sam przytnie i wyprostuje kartkę, kilka stron naraz.',3,D);
+    add('Dokument dostawy / list przewozowy','Dokument od dostawcy lub kuriera, który przyszedł z materiałem.',2,D);
     add('Protokół odbioru / przekazania','Cała strona, czytelne podpisy.',2,D);
     add('Inny dokument','Np. zlecenie, notatka z obiektu.',3,D);
   }
