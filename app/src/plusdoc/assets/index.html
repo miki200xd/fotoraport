@@ -354,6 +354,11 @@ function buildEclipse(){
   // dopisane na końcu (numery bez zmian), na liście zaraz po bateriach
   const bat=E[F].filter(x=>x.title==='Baterie z numerami seryjnymi').pop().o;
   add({title:'Prostowniki z numerami seryjnymi',desc:'Każdy prostownik w siłowni, numer seryjny czytelny bez powiększania.',sn:true,o:bat+0.5},2);
+  // dopisane 12.10.2026 (Michał): zasilanie AC pod klapą i pobór mocy – na końcu, na liście przy kablach w zaciskach / wyświetlaczu
+  const cab7=E[F].filter(x=>x.title==='Kable w zaciskach siłowni i w RT').pop().o;
+  const disp=E[F].filter(x=>x.title==='Wyświetlacz: prąd i napięcie').pop().o;
+  add({title:'Zasilanie AC pod klapą',desc:'Otwarta klapa przyłącza AC: kable zasilające w zaciskach, zabezpieczenia AC i opisy, widoczne mocowanie kabli. Potem klapa zamknięta.',o:cab7+0.5});
+  add({title:'Pobór mocy',desc:'Ekran sterownika / wyświetlacz z poborem mocy (W) całej stacji po uruchomieniu sprzętu – wartość czytelna.',o:disp+0.5});
   folder('08_TESTY_S25');
   for(let s=1;s<=E_MAXS;s++){
     add({title:`S${s} – test DL, UL, ping`,desc:'Zrzut ekranu z Samsunga S25 po teście przepływności w tym sektorze. Wynik czytelny.',screen:true,tags:{sec:s}});
