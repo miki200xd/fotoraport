@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- listwa PDU (żółta) -->
+    <path android:fillColor="#F9C80E" android:pathData="M30,28 L44,28 Q46,28 46,30 L46,80 Q46,82 44,82 L30,82 Q28,82 28,80 L28,30 Q28,28 30,28 Z" />
+    <path android:fillColor="#1E2A38" android:pathData="M32,36 h10 v6 h-10 Z M32,48 h10 v6 h-10 Z M32,60 h10 v6 h-10 Z M32,72 h10 v6 h-10 Z" />
+    <!-- kod QR -->
+    <path android:fillColor="#FFFFFF" android:pathData="M52,38 h28 v28 h-28 Z" />
+    <path android:fillColor="#1E2A38" android:pathData="M55,41 h9 v9 h-9 Z M68,41 h9 v9 h-9 Z M55,54 h9 v9 h-9 Z M68,56 h4 v4 h-4 Z M73,61 h4 v2 h-4 Z M68,62 h3 v1 h-3 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M57,43 h5 v5 h-5 Z M70,43 h5 v5 h-5 Z M57,56 h5 v5 h-5 Z" />
+    <path android:fillColor="#1E2A38" android:pathData="M58.5,44.5 h2 v2 h-2 Z M71.5,44.5 h2 v2 h-2 Z M58.5,57.5 h2 v2 h-2 Z" />
+    <!-- linia skanowania -->
+    <path android:fillColor="#3DDC84" android:pathData="M49,51 h34 v2 h-34 Z" />
+</vector>

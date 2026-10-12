@@ -31,6 +31,7 @@ jobs:
         run: |
           cp app/build/outputs/apk/fotoraport/release/app-fotoraport-release.apk FotoRaport.apk
           cp app/build/outputs/apk/plusdoc/release/app-plusdoc-release.apk CellnexNokia.apk
+          cp app/build/outputs/apk/pdu/release/app-pdu-release.apk PduSkaner.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -38,6 +39,7 @@ jobs:
           path: |
             FotoRaport.apk
             CellnexNokia.apk
+            PduSkaner.apk
 
       - name: Publikacja w „Releases” (stały link do pobrania)
         uses: softprops/action-gh-release@v2
@@ -47,6 +49,7 @@ jobs:
           files: |
             FotoRaport.apk
             CellnexNokia.apk
+            PduSkaner.apk
           # „najnowsze” (to, co aplikacja proponuje jako aktualizację) tylko z gałęzi main;
           # buildy z innych gałęzi to wersje testowe (pre-release)
           make_latest: ${{ github.ref == 'refs/heads/main' }}

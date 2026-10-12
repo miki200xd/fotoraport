@@ -24,6 +24,7 @@ import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -65,6 +66,9 @@ import java.util.concurrent.Executors;
 public class MainActivity extends Activity {
 
     private static final int REQ_CAMERA = 101;
+    // PDU Skaner: podgląd z aparatu w WebView (getUserMedia) – uprawnienie CAMERA tylko w tej aplikacji
+    private static final int REQ_CAMERA_PERM = 104;
+    private PermissionRequest pendingCamRequest;
     private static final int REQ_FILE = 102;
     private static final String APP_URL = "https://appassets.androidplatform.net/assets/index.html";
 
@@ -124,7 +128,7 @@ public class MainActivity extends Activity {
         web = new WebView(this);
         setContentView(web);
 
-        if (!hasLocationPermission()) {
+        if (!isPduApp() && !hasLocationPermission()) {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOCATION);
         }
 
@@ -158,6 +162,21 @@ public class MainActivity extends Activity {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 return openChooser(callback, params);
+            }
+
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
+                runOnUiThread(() -> {
+                    boolean video = false;
+                    for (String r : request.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) video = true;
+                    if (!video || !isPduApp()) { request.deny(); return; }
+                    if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+                    } else {
+                        pendingCamRequest = request;
+                        requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA_PERM);
+                    }
+                });
             }
         });
 
@@ -196,7 +215,8 @@ public class MainActivity extends Activity {
     }
 
     private void checkForUpdate() {
-        final String apkName = "pl.plusdoc.zdjecia".equals(getPackageName()) ? "CellnexNokia.apk" : "FotoRaport.apk";
+        final String apkName = "pl.plusdoc.zdjecia".equals(getPackageName()) ? "CellnexNokia.apk"
+                : isPduApp() ? "PduSkaner.apk" : "FotoRaport.apk";
         new Thread(() -> {
             try {
                 final long installed = getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
@@ -341,6 +361,16 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (requestCode == REQ_LOCATION) startLocation();
+        if (requestCode == REQ_CAMERA_PERM && pendingCamRequest != null) {
+            boolean ok = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
+            if (ok) pendingCamRequest.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+            else pendingCamRequest.deny();
+            pendingCamRequest = null;
+        }
+    }
+
+    private boolean isPduApp() {
+        return "pl.wac.pduskaner".equals(getPackageName());
     }
 
     private boolean hasLocationPermission() {

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PDU Skaner</title>
+<style>
+:root{--bg:#f2f4f7;--card:#fff;--tx:#1d2733;--mut:#6b7785;--ac:#1565c0;--ok:#1b8a3a;--warn:#c77700;--bad:#c62828;--ln:#dde2e8}
+@media (prefers-color-scheme:dark){:root{--bg:#12171d;--card:#1c232c;--tx:#e8edf2;--mut:#93a0ad;--ln:#2c3540}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.35 system-ui,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1e2a38;color:#fff;position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;flex:1}
+header button{background:#2f4156;color:#fff;border:0;border-radius:8px;padding:7px 10px;font-size:14px}
+.wrap{padding:10px;max-width:720px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:10px;margin-bottom:10px}
+.row{display:flex;gap:8px;align-items:center}
+label.f{display:block;font-size:12px;color:var(--mut);margin:0 0 2px}
+input,select{width:100%;font:inherit;padding:8px 9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--tx)}
+input.big{font-size:20px;font-weight:600}
+button.b{font:inherit;border:0;border-radius:9px;padding:10px 12px;background:var(--ac);color:#fff;font-weight:600}
+button.g{background:var(--ln);color:var(--tx);font-weight:500}
+button.ok{background:var(--ok)}
+button.bad{background:var(--bad)}
+#cam{position:relative;background:#000;border-radius:12px;overflow:hidden;height:34vh;min-height:200px}
+#cam video{width:100%;height:100%;object-fit:cover;display:block}
+#aim{position:absolute;left:10%;right:10%;top:18%;bottom:18%;border:3px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.25);pointer-events:none;transition:border-color .15s}
+#aim.hit{border-color:#3ddc84}
+#camMsg{position:absolute;left:0;right:0;bottom:6px;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 3px #000}
+#camBtns{position:absolute;top:6px;right:6px;display:flex;gap:6px}
+#camBtns button{background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:8px;padding:7px 9px;font-size:14px}
+.rails{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:520px){.rails{grid-template-columns:1fr}}
+.rail{border:2px solid var(--ln);border-radius:12px;padding:8px;background:var(--card)}
+.rail.act{border-color:var(--ac);box-shadow:0 0 0 2px rgba(21,101,192,.18)}
+.rail h3{margin:0 0 6px;font-size:15px;display:flex;align-items:center;gap:6px}
+.rail h3 select{width:auto;padding:3px 6px;font-size:13px}
+.badge{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--ln);color:var(--tx);font-weight:600}
+.badge.m{background:#1565c0;color:#fff}.badge.s{background:#f9a825;color:#000}
+.badge.a{background:#e53935;color:#fff}.badge.bb{background:#1e88e5;color:#fff}
+.fld{display:flex;align-items:center;gap:6px;margin:4px 0}
+.fld span.k{width:62px;font-size:12px;color:var(--mut);flex:none}
+.fld input{padding:6px 7px;font-size:14px;font-family:ui-monospace,Consolas,monospace}
+.fld i{font-style:normal;width:18px;text-align:center;flex:none}
+.chk{font-size:12px;margin-top:4px;color:var(--mut)}
+.chk .o{color:var(--ok)}.chk .w{color:var(--warn)}.chk .x{color:var(--bad)}
+#log{font-size:12px;color:var(--mut);min-height:16px;margin-top:6px}
+#banner{display:none;padding:9px 10px;border-radius:10px;margin-bottom:10px;font-weight:600}
+#banner.w{display:block;background:#fff3cd;color:#7a4d00}
+#banner.x{display:block;background:#fde0e0;color:#8e1b1b}
+#banner.o{display:block;background:#dff3e4;color:#145c28}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{border-bottom:1px solid var(--ln);padding:5px 4px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:500}
+td.mono{font-family:ui-monospace,Consolas,monospace}
+tr.sel td{background:rgba(21,101,192,.08)}
+.hide{display:none!important}
+.foot{font-size:11px;color:var(--mut);text-align:center;margin:14px 0 30px}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+#dlg.on{display:flex}
+#dlg .card{max-width:420px;width:100%}
+</style>
+</head>
+<body>
+<header>
+  <h1>PDU Skaner</h1>
+  <button id="bList">Lista (<span id="cnt">0</span>)</button>
+</header>
+
+<div class="wrap" id="vScan">
+  <div id="banner"></div>
+
+  <div class="card">
+    <div class="row">
+      <div style="flex:1"><label class="f">Sala</label><input id="room" placeholder="RZ2B" autocapitalize="characters"></div>
+      <div style="flex:1.2"><label class="f">Szafa</label><input id="rack" class="big" placeholder="F7" autocapitalize="characters"></div>
+      <div style="flex:1"><label class="f">Stara nazwa / uwagi</label><input id="note" placeholder="B5"></div>
+    </div>
+  </div>
+
+  <div id="cam">
+    <video id="vid" playsinline muted></video>
+    <div id="aim"></div>
+    <div id="camBtns"><button id="bTorch" class="hide">🔦</button><button id="bCam">⏸</button></div>
+    <div id="camMsg">Uruchamiam aparat…</div>
+  </div>
+  <div id="log"></div>
+
+  <div class="rails" style="margin-top:8px">
+    <div class="rail" id="r0"></div>
+    <div class="rail" id="r1"></div>
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <button class="b g" id="bClear" style="flex:1">Wyczyść</button>
+    <button class="b ok" id="bSave" style="flex:2">Zapisz szafę i dalej ›</button>
+  </div>
+  <div class="foot">Skanuj po kolei: QR zasilania (góra), kod kreskowy S/N, QR ETH1 i ETH2.<br>Kolejność nie ma znaczenia – aplikacja sama rozpoznaje kody. Pola można poprawić ręcznie.<br>powered by WAC</div>
+</div>
+
+<div class="wrap hide" id="vList">
+  <div class="card">
+    <div class="row" style="flex-wrap:wrap">
+      <button class="b" id="bCsv" style="flex:1">Zapisz CSV (Excel)</button>
+      <button class="b g" id="bShare" style="flex:1">Wyślij plik</button>
+      <button class="b g" id="bCopy" style="flex:1">Kopiuj tabelę</button>
+    </div>
+    <div id="expMsg" class="chk"></div>
+  </div>
+  <div class="card" style="overflow-x:auto"><table id="tbl"></table></div>
+  <div class="row"><button class="b g" id="bBack" style="flex:1">‹ Wróć do skanowania</button></div>
+  <div class="row" style="margin-top:20px"><button class="b bad" id="bWipe" style="flex:1">Usuń całą listę</button></div>
+  <div class="foot">Dotknij szafy, żeby ją otworzyć i poprawić.</div>
+</div>
+
+<div id="dlg"><div class="card"><div id="dlgTx" style="margin-bottom:12px"></div>
+  <div class="row"><button class="b g" id="dlgNo" style="flex:1">Anuluj</button><button class="b" id="dlgYes" style="flex:1">OK</button></div></div></div>
+
+<script src="zxing.min.js"></script>
+<script>
+// lista PDU z „PDUs DC110.xlsx” (Rack, SN Master, SN Slave, MAC ETH1 Master) – do sprawdzania na miejscu
+const PDU_LIST=[{"rack":"RZ3AB5","m":"R1A40000316","s":"R1A50000304","mac":"00:0D:5D:3E:9E:30"},{"rack":"RZ3AB6","m":"R1A40000327","s":"R1A50000287","mac":"00:0D:5D:3E:9B:7E"},{"rack":"RZ3AB7","m":"R1A40000315","s":"R1A50000307","mac":"00:0D:5D:3E:9E:EA"},{"rack":"RZ3AB8","m":"R1A40000305","s":"R1A50000301","mac":"00:0D:5D:3E:9E:D5"},{"rack":"RZ3AB9","m":"R1A40000302","s":"R1A50000316","mac":"00:0D:5D:3E:9E:D2"},{"rack":"RZ3AB10","m":"R1A40000300","s":"R1A50000298","mac":"00:0D:5D:3E:9E:C9"},{"rack":"RZ3AB11","m":"R1A40000301","s":"R1A50000318","mac":"00:0D:5D:3E:9E:CF"},{"rack":"RZ3AB12","m":"R1A40000303","s":"R1A50000310","mac":"00:0D:5D:3E:9E:DE"},{"rack":"RZ3AB13","m":"R1A40000328","s":"R1A50000309","mac":"00:0D:5D:3E:9B:7B"},{"rack":"RZ3AB14","m":"R1A40000330","s":"R1A50000306","mac":"00:0D:5D:3E:9B:66"},{"rack":"RZ3AB15","m":"R1A40000322","s":"R1A50000302","mac":"00:0D:5D:3E:9B:78"},{"rack":"RZ3AB16","m":"R1A40000318","s":"R1A50000308","mac":"00:0D:5D:3E:9B:63"},{"rack":"RZ3AB17","m":"R1A40000319","s":"R1A50000300","mac":"00:0D:5D:3E:9E:E7"},{"rack":"RZ3AB18","m":"R1A40000307","s":"R1A50000305","mac":"00:0D:5D:3E:9B:72"},{"rack":"RZ3AB19","m":"R1A40000298","s":"R1A50000292","mac":"00:0D:5D:3E:9E:E1"},{"rack":"RZ3AB20","m":"R1A40000299","s":"R1A50000311","mac":"00:0D:5D:3E:9E:E4"},{"rack":"RZ3AB21","m":"R1A40000297","s":"R1A50000303","mac":"00:0D:5D:3E:9E:CC"},{"rack":"RZ3AC7","m":"R1A40000326","s":"R1A50000312","mac":"00:0D:5D:3E:9B:75"},{"rack":"RZ3AC8","m":"R1A40000321","s":"R1A50000290","mac":"00:0D:5D:3E:9D:D3"},{"rack":"RZ3AC10","m":"R1A40000313","s":"R1A50000314","mac":"00:0D:5D:3E:9E:39"},{"rack":"RZ3AC11","m":"R1A40000308","s":"R1A50000317","mac":"00:0D:5D:3E:9D:DC"},{"rack":"RZ3AC12","m":"R1A40000309","s":"R1A50000313","mac":"00:0D:5D:3E:9E:A2"},{"rack":"RZ3AC13","m":"R1A40000296","s":"R1A50000241","mac":"00:0D:5D:3E:9B:15"},{"rack":"RZ3AC14","m":"R1A40000275","s":"R1A50000245","mac":"00:0D:5D:3E:9B:69"},{"rack":"RZ3AC15","m":"R1A40000271","s":"R1A50000253","mac":"00:0D:5D:3E:9B:8A"},{"rack":"RZ3AC16","m":"R1A40000249","s":"R1A50000243","mac":"00:0D:5D:3E:9F:8C"},{"rack":"RZ3AC18","m":"R1A40000282","s":"R1A50000248","mac":"00:0D:5D:3E:9B:6C"},{"rack":"RZ3AC19","m":"R1A40000292","s":"R1A50000255","mac":"00:0D:5D:3E:1C:A4"},{"rack":"RZ3AC20","m":"R1A40000286","s":"R1A50000252","mac":"00:0D:5D:3E:9B:0F"},{"rack":"RZ3AD7","m":"R1A40000287","s":"R1A50000234","mac":"00:0D:5D:3E:9B:81"},{"rack":"RZ3AD8","m":"R1A40000241","s":"R1A50000240","mac":"00:0D:5D:3E:9F:77"},{"rack":"RZ3AD10","m":"R1A40000252","s":"R1A50000230","mac":"00:0D:5D:3E:9F:9B"},{"rack":"RZ3AD11","m":"R1A40000256","s":"R1A50000238","mac":"00:0D:5D:3E:9F:62"},{"rack":"RZ3AD12","m":"R1A40000255","s":"R1A50000226","mac":"00:0D:5D:3E:9F:68"},{"rack":"RZ3AD13","m":"R1A40000257","s":"R1A50000233","mac":"00:0D:5D:3E:9F:95"},{"rack":"RZ3AD14","m":"R1A40000251","s":"R1A50000257","mac":"00:0D:5D:3E:9F:98"},{"rack":"RZ3AD15","m":"R1A40000253","s":"R1A50000235","mac":"00:0D:5D:3E:9F:6B"},{"rack":"RZ3AD16","m":"R1A40000248","s":"R1A50000227","mac":"00:0D:5D:3E:9F:7A"},{"rack":"RZ3AD18","m":"R1A40000246","s":"R1A50000258","mac":"00:0D:5D:3E:9F:59"},{"rack":"RZ3AD19","m":"R1A40000245","s":"R1A50000266","mac":"00:0D:5D:3E:9F:9E"},{"rack":"RZ3AD20","m":"R1A40000290","s":"R1A50000229","mac":"00:0D:5D:3E:9B:21"},{"rack":"RZ3AE7","m":"R1A40000243","s":"R1A50000237","mac":"00:0D:5D:3E:9F:86"},{"rack":"RZ3AE8","m":"R1A40000250","s":"R1A50000277","mac":"00:0D:5D:3E:9F:80"},{"rack":"RZ3AE10","m":"R1A40000281","s":"R1A50000285","mac":"00:0D:5D:3E:9B:42"},{"rack":"RZ3AE11","m":"R1A40000244","s":"R1A50000282","mac":"00:0D:5D:3E:9F:5C"},{"rack":"RZ3AE12","m":"R1A40000242","s":"R1A50000244","mac":"00:0D:5D:3E:9F:89"},{"rack":"RZ3AE13","m":"R1A40000266","s":"R1A50000232","mac":"00:0D:5D:3E:9D:E2"},{"rack":"RZ3AE14","m":"R1A40000267","s":"R1A50000259","mac":"00:0D:5D:3E:9D:DF"},{"rack":"RZ3AE15","m":"R1A40000240","s":"R1A50000271","mac":"00:0D:5D:3E:9F:71"},{"rack":"RZ3AE16","m":"R1A40000269","s":"R1A50000267","mac":"00:0D:5D:3E:9D:E5"},{"rack":"RZ3AE18","m":"R1A40000254","s":"R1A50000236","mac":"00:0D:5D:3E:9F:8F"},{"rack":"RZ3AE19","m":"R1A40000237","s":"R1A50000246","mac":"00:0D:5D:3E:9F:65"},{"rack":"RZ3AE20","m":"R1A40000279","s":"R1A50000242","mac":"00:0D:5D:3E:9B:2A"},{"rack":"RZ3AF7","m":"R1A40000270","s":"R1A50000276","mac":"00:0D:5D:3E:9B:2D"},{"rack":"RZ3AF8","m":"R1A40000276","s":"R1A50000256","mac":"00:0D:5D:3E:9B:30"},{"rack":"RZ3AF10","m":"R1A40000260","s":"R1A50000265","mac":"00:0D:5D:3E:9B:3C"},{"rack":"RZ3AF11","m":"R1A40000288","s":"R1A50000250","mac":"00:0D:5D:3E:9B:84"},{"rack":"RZ3AF12","m":"R1A40000273","s":"R1A50000261","mac":"00:0D:5D:3E:9B:87"},{"rack":"RZ3AF13","m":"R1A40000293","s":"R1A50000262","mac":"00:0D:5D:3E:9B:0C"},{"rack":"RZ3AF14","m":"R1A40000259","s":"R1A50000249","mac":"00:0D:5D:3E:9F:92"},{"rack":"RZ3AF15","m":"R1A40000280","s":"R1A50000274","mac":"00:0D:5D:3E:9B:03"},{"rack":"RZ3AF16","m":"R1A40000261","s":"R1A50000263","mac":"00:0D:5D:3E:9F:7D"},{"rack":"RZ3AF18","m":"R1A40000274","s":"R1A50000247","mac":"00:0D:5D:3E:9B:00"},{"rack":"RZ3AF19","m":"R1A40000263","s":"R1A50000280","mac":"00:0D:5D:3E:9B:39"},{"rack":"RZ3AF20","m":"R1A40000283","s":"R1A50000275","mac":"00:0D:5D:3E:9B:1B"},{"rack":"RZ3AG5","m":"R1A40000295","s":"R1A50000279","mac":"00:0D:5D:3E:9B:09"},{"rack":"RZ3AG6","m":"R1A40000262","s":"R1A50000264","mac":"00:0D:5D:3E:9B:33"},{"rack":"RZ3AG7","m":"R1A40000278","s":"R1A50000260","mac":"00:0D:5D:3E:9B:27"},{"rack":"RZ3AG8","m":"R1A40000239","s":"R1A50000268","mac":"00:0D:5D:3E:9F:74"},{"rack":"RZ3AG9","m":"R1A40000265","s":"R1A50000228","mac":"00:0D:5D:3E:9B:24"},{"rack":"RZ3AG10","m":"R1A40000285","s":"R1A50000239","mac":"00:0D:5D:3E:9B:12"},{"rack":"RZ3AG11","m":"R1A40000247","s":"R1A50000270","mac":"00:0D:5D:3E:9F:83"},{"rack":"RZ3AG12","m":"R1A40000289","s":"R1A50000273","mac":"00:0D:5D:3E:9B:6F"},{"rack":"RZ3AG13","m":"R1A40000294","s":"R1A50000251","mac":"00:0D:5D:3E:9B:18"},{"rack":"RZ3AG14","m":"R1A40000277","s":"R1A50000272","mac":"00:0D:5D:3E:9B:3F"},{"rack":"RZ3AG15","m":"R1A40000258","s":"R1A50000284","mac":"00:0D:5D:3E:9F:6E"},{"rack":"RZ3AG16","m":"R1A40000238","s":"R1A50000281","mac":"00:0D:5D:3E:9F:5F"},{"rack":"RZ3AG17","m":"R1A40000284","s":"R1A50000254","mac":"00:0D:5D:3E:9B:1E"},{"rack":"RZ3AG18","m":"R1A40000291","s":"R1A50000283","mac":"00:0D:5D:3E:9A:FD"},{"rack":"RZ3AG19","m":"R1A40000264","s":"R1A50000278","mac":"00:0D:5D:3E:9B:36"},{"rack":"RZ3AG20","m":"R1A40000268","s":"R1A50000269","mac":"00:0D:5D:3E:9D:D0"},{"rack":"RZ3AG21","m":"R1A40000272","s":"R1A50000231","mac":"00:0D:5D:3E:9B:06"},{"rack":"RZ2AG12","m":"R1A40000314","s":"R1A50000289","mac":"00:0D:5D:3E:9E:3C"},{"rack":"RZ2AG13","m":"R1A40000312","s":"R1A50000295","mac":"00:0D:5D:3E:9E:2A"},{"rack":"RZ2AG14","m":"R1A40000320","s":"R1A50000299","mac":"00:0D:5D:3E:9D:CD"},{"rack":"RZ2AG15","m":"R1A40000306","s":"R1A50000293","mac":"00:0D:5D:3E:9E:45"},{"rack":"RZ2AG16","m":"R1A40000304","s":"R1A50000291","mac":"00:0D:5D:3E:9E:D8"},{"rack":"RZ2AG17","m":"R1A40000325","s":"R1A50000315","mac":"00:0D:5D:3E:9D:D6"},{"rack":"RZ2AH12","m":"R1A40000317","s":"R1A50000319","mac":"00:0D:5D:3E:9E:27"},{"rack":"RZ2AH13","m":"R1A40000329","s":"R1A50000297","mac":"00:0D:5D:3E:9D:D9"},{"rack":"RZ2AH14","m":"R1A40000323","s":"R1A50000286","mac":"00:0D:5D:3E:9D:E8"},{"rack":"RZ2AH15","m":"R1A40000310","s":"R1A50000288","mac":"00:0D:5D:3E:9E:36"},{"rack":"RZ2AH16","m":"R1A40000311","s":"R1A50000296","mac":"00:0D:5D:3E:9E:33"},{"rack":"RZ2AH17","m":"R1A40000324","s":"R1A50000294","mac":"00:0D:5D:3E:9E:9F"}];
+const BY_SN={}, BY_MAC={};
+for(const r of PDU_LIST){
+  if(r.m) BY_SN[r.m]={rack:r.rack,role:'Master'};
+  if(r.s) BY_SN[r.s]={rack:r.rack,role:'Slave'};
+  if(r.mac) BY_MAC[r.mac]={rack:r.rack,sn:r.m};
+}
+
+const $=id=>document.getElementById(id);
+const KEY='pduSkaner.v1';
+const FIELDS=[['feed','Zasilanie'],['sn','S/N'],['eth1','ETH1'],['eth2','ETH2']];
+const emptyRail=side=>({side,feed:'',sn:'',eth1:'',eth2:''});
+let S=load();
+function load(){
+  try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.cur) return s; }catch(e){}
+  return {records:[],cur:{room:'RZ2B',rack:'',note:'',rails:[emptyRail('lewa'),emptyRail('prawa')]},act:0};
+}
+function save(){ localStorage.setItem(KEY,JSON.stringify(S)); }
+
+/* ---------- rozpoznawanie zeskanowanego tekstu ---------- */
+const MAC_RE=/([0-9A-F]{2})[:\-]?([0-9A-F]{2})[:\-]?([0-9A-F]{2})[:\-]?([0-9A-F]{2})[:\-]?([0-9A-F]{2})[:\-]?([0-9A-F]{2})/i;
+function classify(text,format){
+  const t=String(text).trim();
+  const up=t.toUpperCase();
+  if(/PDU-\d/i.test(t)) return {k:'feed',v:t.replace(/\s*[\r\n]+\s*/g,' ').trim()};
+  const sn=up.match(/\bR\d[A-Z]\d{7,9}\b/);
+  if(sn) return {k:'sn',v:sn[0]};
+  const hasSep=/[0-9A-F]{2}[:\-][0-9A-F]{2}/i.test(t);
+  const m=up.match(MAC_RE);
+  if(m && (hasSep||/ETH/i.test(t)||/^[0-9A-F]{12}$/i.test(up))){
+    const mac=m.slice(1,7).join(':');
+    const which=/ETH\s*2/i.test(t)?'eth2':/ETH\s*1/i.test(t)?'eth1':'';
+    return {k:'mac',v:mac,which};
+  }
+  if(/^S\/?N[:\s]/i.test(t)) return {k:'sn',v:t.replace(/^S\/?N[:\s]*/i,'').trim()};
+  if(format && /CODE_?128|CODE_?39|code_128|code_39/i.test(format) && /^[A-Z0-9\-]{6,20}$/.test(up)) return {k:'sn',v:up};
+  return {k:'other',v:t};
+}
+const macNum=m=>parseInt(m.replace(/:/g,''),16);
+
+/* ---------- przypisywanie do listwy ---------- */
+let lastVal='', lastAt=0;
+function onScan(text,format){
+  const now=Date.now();
+  if(text===lastVal && now-lastAt<2500) return;
+  lastVal=text; lastAt=now;
+  const c=classify(text,format);
+  const rails=S.cur.rails;
+  // ten sam kod już jest w tej szafie → nic nie rób
+  const all=rails.flatMap(r=>[r.feed,r.sn,r.eth1,r.eth2]);
+  if(c.k!=='other' && all.includes(c.v)){ flash(); log('Już jest: '+c.v); return; }
+  if(c.k==='other'){ log('Nierozpoznany kod: '+c.v.slice(0,60)); return; }
+  let r=rails[S.act];
+  // aktywna listwa ma już tę wartość innego rodzaju → przejdź na drugą, jeśli tam jest miejsce
+  const full=x=>c.k==='mac' ? (x.eth1&&x.eth2) : !!x[c.k];
+  if(full(r)){
+    const o=1-S.act;
+    if(!full(rails[o])){ S.act=o; r=rails[o]; }
+    else { warn(`Obie listwy mają już ${c.k==='mac'?'ETH1 i ETH2':c.k==='sn'?'S/N':'zasilanie'}. Zeskanowano: ${c.v}`); beep(220,.25); render(); return; }
+  }
+  if(c.k==='mac'){
+    if(c.which){ r[c.which]=c.v; }
+    else if(!r.eth1 && !r.eth2) r.eth1=c.v;
+    else { // drugi MAC: mniejszy = ETH1, większy = ETH2
+      const a=r.eth1||r.eth2; const pair=[a,c.v].sort((x,y)=>macNum(x)-macNum(y));
+      r.eth1=pair[0]; r.eth2=pair[1];
+    }
+  } else r[c.k]=c.v;
+  beep(1150,.08); vib(40); flash();
+  log(`✓ ${labelOf(c.k==='mac'?(r.eth2===c.v?'eth2':'eth1'):c.k)} listwy ${S.act+1}: ${c.v}`);
+  // komplet na listwie → następna
+  if(r.sn&&r.eth1&&r.eth2){
+    const o=1-S.act; const ro=rails[o];
+    if(!(ro.sn&&ro.eth1&&ro.eth2)){ S.act=o; setTimeout(()=>{beep(880,.08);setTimeout(()=>beep(880,.08),120);},150); }
+    else { setTimeout(()=>{beep(1300,.12);setTimeout(()=>beep(1600,.18),150);},150); vib([60,60,60]); }
+  }
+  save(); render();
+}
+const labelOf=k=>({feed:'Zasilanie',sn:'S/N',eth1:'ETH1',eth2:'ETH2'})[k]||k;
+
+/* ---------- sprawdzanie z listą i duplikatów ---------- */
+function railInfo(r){
+  const out=[]; let role='';
+  if(r.sn){
+    const l=BY_SN[r.sn];
+    if(l){ role=l.role; out.push(['o',`na liście: ${l.rack} · ${l.role}`]); }
+    else if(PDU_LIST.length) out.push(['w','S/N nie ma na liście']);
+    if(!role){ if(/^R1A4/.test(r.sn)) role='Master'; else if(/^R1A5/.test(r.sn)) role='Slave'; }
+  }
+  if(r.eth1 && PDU_LIST.length){
+    const l=BY_MAC[r.eth1];
+    if(l){
+      if(r.sn && l.sn!==r.sn) out.push(['x',`ETH1 na liście należy do ${l.sn} (${l.rack})`]);
+      else out.push(['o','ETH1 zgodny z listą']);
+    } else if(role==='Master') out.push(['w','ETH1 inny niż na liście'+(BY_SN[r.sn]?': '+(PDU_LIST.find(x=>x.m===r.sn)||{}).mac:'')]);
+  }
+  if(r.eth1&&r.eth2 && macNum(r.eth2)-macNum(r.eth1)!==1) out.push(['w','ETH1/ETH2 nie są kolejne – sprawdź, czy z jednej listwy']);
+  for(const k of ['sn','eth1','eth2']){
+    if(!r[k]) continue;
+    const d=S.records.find(x=>!sameRack(x,S.cur) && x.rails.some(y=>y[k]===r[k]));
+    if(d) out.push(['x',`${labelOf(k)} już zapisany w ${d.room} ${d.rack}!`]);
+  }
+  return {role,out};
+}
+function rackCheck(){
+  const [a,b]=S.cur.rails.map(r=>r.sn&&BY_SN[r.sn]);
+  if(a&&b&&a.rack!==b.rack) return ['x',`Listwy z różnych szaf na liście: ${a.rack} / ${b.rack}`];
+  if(a&&b&&a.role===b.role) return ['w',`Obie listwy to ${a.role}`];
+  const ra=S.cur.rails.map(r=>railInfo(r).role);
+  if(ra[0]&&ra[0]===ra[1]) return ['w',`Obie listwy to ${ra[0]}`];
+  return null;
+}
+const sameRack=(x,c)=>norm(x.room)===norm(c.room)&&norm(x.rack)===norm(c.rack);
+const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
+
+/* ---------- widok ---------- */
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+function feedBadge(f){ const m=String(f).match(/PDU-(\d)\.([AB])/i); if(!m) return ''; const A=m[2].toUpperCase()==='A'; return `<span class="badge ${A?'a':'bb'}">${A?'A':'B'} · PDU-${m[1]}</span>`; }
+function render(){
+  $('room').value=S.cur.room; $('rack').value=S.cur.rack; $('note').value=S.cur.note||'';
+  S.cur.rails.forEach((r,i)=>{
+    const inf=railInfo(r);
+    const el=$('r'+i); el.className='rail'+(S.act===i?' act':'');
+    el.innerHTML=`<h3>Listwa ${i+1}
+      <select data-side="${i}"><option value="lewa"${r.side==='lewa'?' selected':''}>lewa</option><option value="prawa"${r.side==='prawa'?' selected':''}>prawa</option></select>
+      ${inf.role?`<span class="badge ${inf.role==='Master'?'m':'s'}">${inf.role}</span>`:''}${feedBadge(r.feed)}</h3>
+      ${FIELDS.map(([k,l])=>`<div class="fld"><span class="k">${l}</span><input data-r="${i}" data-k="${k}" value="${esc(r[k])}" autocapitalize="characters"><i>${r[k]?'✓':'·'}</i></div>`).join('')}
+      <div class="chk">${inf.out.map(([c,t])=>`<div class="${c}">${c==='o'?'✓':c==='w'?'⚠':'✗'} ${esc(t)}</div>`).join('')}</div>`;
+  });
+  const rc=rackCheck(), errs=S.cur.rails.flatMap(r=>railInfo(r).out).filter(x=>x[0]==='x');
+  const b=$('banner');
+  if(rc&&rc[0]==='x'||errs.length){ b.className='x'; b.textContent=(rc&&rc[0]==='x'?rc[1]:errs[0][1]); }
+  else if(rc){ b.className='w'; b.textContent=rc[1]; }
+  else if(S.cur.rails.every(r=>r.sn&&r.eth1&&r.eth2)){ b.className='o'; b.textContent='Komplet: obie listwy zeskanowane – zapisz szafę.'; }
+  else b.className='';
+  $('cnt').textContent=S.records.length;
+}
+document.addEventListener('click',e=>{ const r=e.target.closest('.rail'); if(r&&!e.target.closest('select')){ const i=+r.id.slice(1); if(S.act!==i){ S.act=i; save(); render(); } } });
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.side!=null){ S.cur.rails[+t.dataset.side].side=t.value; save(); render(); return; }
+  if(t.dataset.k){
+    let v=t.value.trim(); const k=t.dataset.k;
+    if((k==='eth1'||k==='eth2')&&v){ const m=v.toUpperCase().match(MAC_RE); if(m) v=m.slice(1,7).join(':'); }
+    if(k==='sn') v=v.toUpperCase();
+    S.cur.rails[+t.dataset.r][k]=v; save(); render(); return;
+  }
+});
+for(const id of ['room','rack','note']) $(id).addEventListener('input',()=>{ S.cur[id]=id==='note'?$(id).value:$(id).value.toUpperCase().trim(); save(); });
+$('rack').addEventListener('change',()=>{ const ex=S.records.find(x=>sameRack(x,S.cur)); if(ex && S.cur.rails.every(r=>!r.sn&&!r.eth1)) { S.cur=JSON.parse(JSON.stringify(ex)); log('Otwarto zapisaną szafę '+ex.rack); } save(); render(); });
+
+let logT; function log(t){ $('log').textContent=t; clearTimeout(logT); logT=setTimeout(()=>$('log').textContent='',6000); }
+function warn(t){ const b=$('banner'); b.className='x'; b.textContent=t; }
+function flash(){ const a=$('aim'); a.classList.add('hit'); setTimeout(()=>a.classList.remove('hit'),300); }
+let actx; function beep(f,d){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); const o=actx.createOscillator(),g=actx.createGain(); o.frequency.value=f; g.gain.value=.15; o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime+d);}catch(e){} }
+function vib(p){ try{ navigator.vibrate&&navigator.vibrate(p); }catch(e){} }
+
+function ask(text,yes){ $('dlgTx').innerHTML=text; $('dlg').classList.add('on'); $('dlgYes').onclick=()=>{ $('dlg').classList.remove('on'); yes(); }; $('dlgNo').onclick=()=>$('dlg').classList.remove('on'); }
+
+/* ---------- zapis szafy ---------- */
+function nextRack(r){ const m=String(r).match(/^(.*?)(\d+)$/); return m? m[1]+(+m[2]+1) : r; }
+$('bSave').onclick=()=>{
+  const c=S.cur;
+  if(!c.rack){ warn('Wpisz numer szafy.'); $('rack').focus(); return; }
+  if(c.rails.every(r=>!r.sn&&!r.eth1&&!r.eth2&&!r.feed)){ warn('Nic nie zeskanowano.'); return; }
+  const missing=c.rails.map((r,i)=>['sn','eth1','eth2'].filter(k=>!r[k]).map(k=>`L${i+1} ${labelOf(k)}`)).flat();
+  const doSave=()=>{
+    const rec=JSON.parse(JSON.stringify(c)); rec.at=new Date().toISOString();
+    const i=S.records.findIndex(x=>sameRack(x,c));
+    if(i>=0) S.records[i]=rec; else S.records.push(rec);
+    S.cur={room:c.room,rack:nextRack(c.rack),note:/^\D*\d+$/.test(c.note||'')?nextRack(c.note):'',rails:[emptyRail(c.rails[0].side),emptyRail(c.rails[1].side)]};
+    S.act=0; save(); render(); beep(1500,.15); log(`Zapisano ${rec.room} ${rec.rack}. Następna: ${S.cur.rack}`);
+  };
+  const exists=S.records.some(x=>sameRack(x,c));
+  if(missing.length||exists) ask((missing.length?`Brakuje: <b>${missing.join(', ')}</b>.<br>`:'')+(exists?`Szafa <b>${esc(c.room)} ${esc(c.rack)}</b> jest już zapisana – nadpisać?<br>`:'')+'Zapisać mimo to?',doSave);
+  else doSave();
+};
+$('bClear').onclick=()=>ask('Wyczyścić obie listwy tej szafy?',()=>{ S.cur.rails=[emptyRail(S.cur.rails[0].side),emptyRail(S.cur.rails[1].side)]; S.act=0; save(); render(); });
+
+/* ---------- lista i eksport ---------- */
+function rows(){
+  const out=[];
+  for(const x of S.records) x.rails.forEach((r,i)=>{
+    const l=BY_SN[r.sn]; const inf=railInfo(r);
+    out.push([x.room,x.rack,x.note||'',i+1,r.side,inf.role,r.feed,r.sn,r.eth1,r.eth2,l?l.rack:'',inf.out.filter(o=>o[0]!=='o').map(o=>o[1]).join(' | ')||'OK',(x.at||'').slice(0,16).replace('T',' ')]);
+  });
+  return out;
+}
+const HEAD=['Sala','Szafa','Uwagi','Listwa','Strona','Typ','Zasilanie (QR)','S/N','ETH1 MAC','ETH2 MAC','Na liście (szafa)','Kontrola','Data'];
+function showList(){
+  $('vScan').classList.add('hide'); $('vList').classList.remove('hide'); stopCam();
+  $('tbl').innerHTML=`<tr><th>Szafa</th><th>L</th><th>Typ</th><th>S/N</th><th>ETH1 / ETH2</th><th>Zasilanie</th></tr>`+
+    S.records.map((x,ri)=>x.rails.map((r,i)=>{ const inf=railInfo(r); const bad=inf.out.some(o=>o[0]!=='o');
+      return `<tr data-ri="${ri}">${i===0?`<td rowspan="2"><b>${esc(x.room)} ${esc(x.rack)}</b><br>${esc(x.note||'')}</td>`:''}<td>${i+1} ${esc(r.side[0]||'')}</td><td>${esc(inf.role)}</td><td class="mono">${esc(r.sn)}${bad?' ⚠':''}</td><td class="mono">${esc(r.eth1)}<br>${esc(r.eth2)}</td><td>${esc(r.feed)}</td></tr>`; }).join('')).join('');
+}
+$('tbl').onclick=e=>{ const tr=e.target.closest('tr[data-ri]'); if(!tr) return; const x=S.records[+tr.dataset.ri];
+  ask(`Otworzyć <b>${esc(x.room)} ${esc(x.rack)}</b> do poprawy?`,()=>{ S.cur=JSON.parse(JSON.stringify(x)); delete S.cur.at; S.act=0; save(); back(); }); };
+function back(){ $('vList').classList.add('hide'); $('vScan').classList.remove('hide'); render(); startCam(); }
+$('bList').onclick=()=> $('vList').classList.contains('hide')?showList():back();
+$('bBack').onclick=back;
+$('bWipe').onclick=()=>ask('Usunąć <b>wszystkie</b> zapisane szafy? Najpierw zapisz CSV.',()=>{ S.records=[]; save(); showList(); render(); });
+const csvCell=v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+function fname(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return `PDU_${(S.records[0]&&S.records[0].room)||'DC'}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.csv`; }
+$('bCsv').onclick=()=>{
+  if(!S.records.length){ $('expMsg').textContent='Lista jest pusta.'; return; }
+  const txt='﻿'+[HEAD,...rows()].map(r=>r.map(csvCell).join(';')).join('\r\n');
+  const name=fname();
+  if(window.AndroidBridge){
+    const id=AndroidBridge.fileBegin('download','',name,'text/csv');
+    if(!id){ $('expMsg').textContent='Nie udało się zapisać.'; return; }
+    const bytes=new TextEncoder().encode(txt); let bin=''; for(const b of bytes) bin+=String.fromCharCode(b);
+    AndroidBridge.fileAppend(id,btoa(bin));
+    const p=AndroidBridge.fileEnd(id);
+    $('expMsg').innerHTML=p?`Zapisano: <b>${esc(p)}</b> – „Wyślij plik”, żeby przesłać.`:'Błąd zapisu.';
+  } else {
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv'})); a.download=name; a.click();
+    $('expMsg').textContent='Pobrano '+name;
+  }
+};
+$('bShare').onclick=()=>{ if(window.AndroidBridge) AndroidBridge.shareLast(); };
+$('bCopy').onclick=async()=>{
+  const txt=[HEAD,...rows()].map(r=>r.join('\t')).join('\n');
+  try{ await navigator.clipboard.writeText(txt); }catch(e){ const t=document.createElement('textarea'); t.value=txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+  $('expMsg').textContent='Skopiowano – wklej w Excelu.';
+};
+
+/* ---------- aparat i dekodowanie ---------- */
+let stream=null, running=false, timer=null, detector=null, zx=null, torchOn=false, wantCam=true;
+const canvas=document.createElement('canvas'), cctx=canvas.getContext('2d',{willReadFrequently:true});
+async function initDecoders(){
+  if('BarcodeDetector' in window){
+    try{ const f=await BarcodeDetector.getSupportedFormats(); if(f.includes('qr_code')) detector=new BarcodeDetector({formats:['qr_code','code_128','code_39','data_matrix'].filter(x=>f.includes(x))}); }catch(e){}
+  }
+  if(window.ZXing){
+    const h=new Map();
+    h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.QR_CODE,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.CODE_39,ZXing.BarcodeFormat.DATA_MATRIX]);
+    h.set(ZXing.DecodeHintType.TRY_HARDER,true);
+    zx=new ZXing.MultiFormatReader(); zx.setHints(h);
+  }
+}
+async function startCam(){
+  wantCam=true; if(running) return;
+  $('camMsg').textContent='Uruchamiam aparat…';
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
+    const v=$('vid'); v.srcObject=stream; await v.play();
+    const tr=stream.getVideoTracks()[0];
+    try{ const cap=tr.getCapabilities?tr.getCapabilities():{}; $('bTorch').classList.toggle('hide',!cap.torch);
+      if(cap.focusMode&&cap.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{}); }catch(e){}
+    running=true; $('bCam').textContent='⏸'; $('camMsg').textContent='Celuj kodem w ramkę';
+    loop();
+  }catch(e){ $('camMsg').textContent='Brak dostępu do aparatu ('+(e.name||e)+'). Zezwól w ustawieniach aplikacji.'; }
+}
+function stopCam(){
+  running=false; clearTimeout(timer);
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  torchOn=false; $('bCam').textContent='▶'; $('camMsg').textContent='Aparat wstrzymany – dotknij ▶';
+}
+async function loop(){
+  if(!running) return;
+  const v=$('vid');
+  try{
+    if(v.readyState>=2){
+      let found=[];
+      if(detector){
+        const res=await detector.detect(v);
+        found=res.map(r=>({t:r.rawValue,f:r.format}));
+      }
+      if(!found.length && zx){
+        // wycinek z ramki celownika (środek kadru), zmniejszony do ~1100 px
+        const vw=v.videoWidth, vh=v.videoHeight, el=v.getBoundingClientRect();
+        const sc=Math.max(el.width/vw, el.height/vh), ox=(vw*sc-el.width)/2, oy=(vh*sc-el.height)/2;
+        const a=$('aim').getBoundingClientRect();
+        let sx=(a.left-el.left+ox)/sc, sy=(a.top-el.top+oy)/sc, sw=a.width/sc, sh=a.height/sc;
+        sx=Math.max(0,sx); sy=Math.max(0,sy); sw=Math.min(vw-sx,sw); sh=Math.min(vh-sy,sh);
+        const k=Math.min(1,1100/Math.max(sw,sh));
+        canvas.width=Math.round(sw*k); canvas.height=Math.round(sh*k);
+        cctx.drawImage(v,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+        try{
+          const src=new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+          const r=zx.decodeWithState(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src)));
+          found=[{t:r.getText(),f:ZXing.BarcodeFormat[r.getBarcodeFormat()]}];
+        }catch(e){ /* brak kodu w kadrze */ }
+      }
+      for(const x of found) onScan(x.t,x.f);
+    }
+  }catch(e){}
+  timer=setTimeout(loop,90);
+}
+$('bCam').onclick=()=>{ if(running){ wantCam=false; stopCam(); } else startCam(); };
+$('bTorch').onclick=async()=>{ if(!stream) return; torchOn=!torchOn; try{ await stream.getVideoTracks()[0].applyConstraints({advanced:[{torch:torchOn}]}); }catch(e){} };
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ const w=wantCam; stopCam(); wantCam=w; } else if(wantCam && $('vList').classList.contains('hide')) startCam(); });
+
+render();
+initDecoders().then(startCam);
+// do testów: window.__scan('tekst','QR_CODE')
+window.__scan=onScan;
+</script>
+</body>
+</html>

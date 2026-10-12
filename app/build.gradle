@@ -18,6 +18,7 @@ android {
     // Dwie osobne aplikacje z jednego kodu, instalowane obok siebie:
     //  - fotoraport: Networks! (dawniej Foto Raport; OPL / TMPL), assets z src/main
     //  - plusdoc:    Cellnex-Nokia (ECLIPSE), assets z src/plusdoc
+    //  - pdu:        PDU Skaner (inwentaryzacja listew PDU w DC: S/N + MAC ETH1/ETH2), assets z src/pdu
     flavorDimensions "app"
     productFlavors {
         fotoraport {
@@ -32,6 +33,13 @@ android {
             versionName "1.6"
             resValue "string", "app_name", "Cellnex-Nokia"
             resValue "string", "media_dir", "CellnexNokia"
+        }
+        pdu {
+            dimension "app"
+            applicationId "pl.wac.pduskaner"
+            versionName "1.0"
+            resValue "string", "app_name", "PDU Skaner"
+            resValue "string", "media_dir", "PduSkaner"
         }
     }
 
