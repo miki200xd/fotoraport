@@ -324,6 +324,11 @@ function buildEclipse(){
   const cabBolt={title:'Szafa – śruby mocujące do fundamentu / ramy',desc:'4 śruby pod szafą – jedno zdjęcie na każdą śrubę, po dokręceniu, z podkładką i nakrętką.',warn:true,o:cab+0.5};
   add(cabBolt,2);
   add(cabBolt,2); // 3. i 4. śruba dopisane później – też na końcu, żeby numery się nie zmieniły
+  // baterie w szafie (AAOB: 1–3 pakiety Shoto) – też na końcu, na liście zaraz po tabliczkach sprzętu
+  const tab=E[F].filter(x=>x.title==='Tabliczki sprzętu w szafie').pop().o;
+  const batDesc='Każda bateria w szafie osobno, naklejka z numerem seryjnym czytelna (kod kreskowy / 2D w kadrze).';
+  add({title:'Baterie w szafie z numerami seryjnymi',desc:batDesc,sn:true,o:tab+0.5});
+  add({title:'Baterie w szafie z numerami seryjnymi',desc:batDesc+' Tylko gdy jest 2. / 3. bateria.',sn:true,opt:true,o:tab+0.5},2);
   folder('05_GPS');
   add({title:'Antena GPS – widok i mocowanie',desc:'Antena z mocowaniem, widać otoczenie (brak zasłonięcia nieba).'});
   add({title:'Kabel GPS – złącze, opis, uziemienie',desc:'Złącze przy antenie, opis kabla, uziemienie jeśli jest.'});
