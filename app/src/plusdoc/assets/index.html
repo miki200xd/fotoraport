@@ -164,6 +164,7 @@ select.secsel{font:inherit;font-size:15px;min-height:44px;padding:8px;border:1px
 <input id="gal" class="hidden-input" type="file" accept="image/*" multiple aria-label="Galeria">
 <input id="zipfile" class="hidden-input" type="file" accept=".zip,application/zip,application/x-zip-compressed" aria-label="Plik ZIP ze zdjęciami">
 <input id="g5file" class="hidden-input" type="file" accept="application/pdf,.pdf" aria-label="Plik G5 PDF">
+<input id="ims2file" class="hidden-input" type="file" accept="*/*" aria-label="Plik IMS2 z BTS">
 <input id="pnfile" class="hidden-input" type="file" accept="application/pdf,.pdf" aria-label="Plik PRENOSS PDF">
 <div id="toast" class="toast" hidden></div>
 <div id="busy" class="busy" hidden><div id="busyText">Zapisywanie…</div></div>
@@ -1236,6 +1237,76 @@ async function snScanBlob(blob){
   } finally { bmp.close&&bmp.close(); }
   return [...found.values()];
 }
+/* ---- IMS2: backup konfiguracji BTS (WebEM „Backup”/„IM snapshot”) – inwentarz sprzętu z numerami seryjnymi ----
+   Plik: nagłówek BTSOAM + ZIP (meta.xml = schemat) + kilka strumieni gzip z obiektami protobuf.
+   W EQM_L: 0x12 len S/N, 0x1a len kod produktu (np. 475547A.102), dalej nazwa modułu (AZHN, ABIQ…).
+   Anteny: RETU_A w konfiguracji – model (np. RRVV65BR4VBV201) i S/N anteny odczytany przez RET. */
+async function ims2Gunzip(u){
+  // wejście podawane po kawałku i czytane na bieżąco – po końcu strumienia gzip są inne dane, a błąd „junk” nie może zgubić wyniku
+  const ds=new DecompressionStream('gzip'); const w=ds.writable.getWriter();
+  const rd=ds.readable.getReader(); const ch=[]; let n=0, err=false;
+  const reading=(async()=>{ try{ for(;;){ const {value,done}=await rd.read(); if(done) break; ch.push(value); n+=value.length; } }catch(e){ err=true; } })();
+  try{ for(let o=0;o<u.length;o+=16384){ await w.write(u.subarray(o,Math.min(u.length,o+16384))); } await w.close(); }catch(e){ err=true; }
+  await reading;
+  const out=new Uint8Array(n); let o=0; for(const c of ch){ out.set(c,o); o+=c.length; } return {data:out,err};
+}
+// bajty 1:1 na znaki (TextDecoder('latin1') to w praktyce windows-1252 i psuje bajty 0x80–0x9f, np. znacznik pola 0x9a)
+function ims2Str(u){ let s=''; for(let i=0;i<u.length;i+=0x8000) s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return s; }
+// kody produktów Nokii → nazwa (z plików IMS2 BT15576, BT15303, 86942)
+const IMS2_NAMES={'475547A':'AZHN','476714A':'AHPMDK','475767A':'AHEGHA','474254A':'AHGA','476397A':'ABIQ','473096A':'ABIA','475266B':'ABIO','475773A':'AMIA','473764A':'FCTM','473095A':'FCTJ','475765A':'ASIL','086028A':'BBU','091827B':'BBU','091827C':'BBU'};
+async function ims2Parse(buf){
+  const u=new Uint8Array(buf); let e=-1;
+  for(let i=u.length-22;i>=0;i--) if(u[i]===0x50&&u[i+1]===0x4b&&u[i+2]===5&&u[i+3]===6){ e=i; break; }
+  if(!/BTSOAM/.test(new TextDecoder('latin1').decode(u.subarray(0,64))) && e<0) throw new Error('to nie jest plik IMS2 z BTS');
+  const parts=[];
+  for(let i=e>=0?e+22:0;i<u.length-10;i++){
+    if(u[i]!==0x1f||u[i+1]!==0x8b||u[i+2]!==8) continue;
+    const r=await ims2Gunzip(u.subarray(i)); if(r.data.length>1000) parts.push(ims2Str(r.data)); // każdy strumień gzip osobno (moduły RF i anteny są w dalszych)
+  }
+  if(!parts.length) parts.push(ims2Str(u.subarray(e>=0?e+22:0))); // backup z WebEM: obiekty bez kompresji
+  const T=parts.join('\n'); const items=new Map();
+  const pathAt=i=>{ const a=T.lastIndexOf('/MRBTS-',i); if(a<0) return ''; const z=T.indexOf('\x00',a); return T.slice(a,z<0?a+200:Math.min(z,a+200)); };
+  const kindOf=pth=>/RETU|ANTL/.test(pth)?'Antena':/RMOD/.test(pth)?'Moduł RF':/BBMOD_L-\d+\/BBU/.test(pth)?'BBU':/BBMOD/.test(pth)?(/BOARD/.test(pth)?'Płyta karty BB':'Karta BB'):/SMOD/.test(pth)?'Moduł systemowy':/CABINET_L-\d+$/.test(pth)?'Subrack AirScale':'Sprzęt';
+  // moduły (EQM_L / EQM): pole S/N i pole kodu produktu leżą obok siebie, w dowolnej kolejności.
+  // Nowsze SBTS: znaczniki 1-bajtowe (0x12 S/N, 0x1a kod), starsze (SBTS23): 3-bajtowe (np. f2 f3 04 / fa f3 04).
+  const TAG='(?:[\\x80-\\xff]{0,3}[\\x00-\\x7f])';
+  const RECS=[[new RegExp('([\\x05-\\x1e])([A-Z0-9]{5,30})'+TAG+'([\\x05-\\x14])([0-9A-Z]{5,12}\\.\\d{3})','g'),0],
+              [new RegExp('([\\x05-\\x14])([0-9A-Z]{5,12}\\.\\d{3})'+TAG+'([\\x05-\\x1e])([A-Z0-9]{5,30})','g'),1]];
+  let m;
+  for(const [REC,pnFirst] of RECS) while((m=REC.exec(T))){
+    if(m[1].charCodeAt(0)!==m[2].length||m[3].charCodeAt(0)!==m[4].length) { REC.lastIndex=m.index+1; continue; }
+    const sn=pnFirst?m[4]:m[2], pn=pnFirst?m[2]:m[4];
+    if(/^0+$/.test(sn)||/^[0-9A-Z]{5,12}\.\d{3}$/.test(sn)||!/[A-Z]/.test(sn)||!/\d/.test(sn)) continue;
+    const prev=items.get(sn); if(prev&&prev.name) continue;
+    const pth=pathAt(m.index); if(!/\/EQM(_L)?-/.test(pth)) continue;
+    let r=T.slice(m.index+m[0].length,m.index+m[0].length+260), name='';
+    if(r[0]==='"'){ const n1=r.substr(2,r.charCodeAt(1)); if(/^[0-9A-Z]{5,12}\.\d{3}$/.test(n1)){ r=r.slice(2+n1.length); if(r[0]==='*') name=r.substr(2,r.charCodeAt(1)); } else name=n1; }
+    if(!name||/^[\d.]+$/.test(name)){ name=''; // moduł RF: nazwa w polu 0x9a 0x01 <len> (AZHN, AHPMDK…)
+      const q=r.match(/\x9a\x01([\x02-\x10])([A-Za-z0-9 \-]{2,16})/); if(q&&q[1].charCodeAt(0)<=q[2].length) name=q[2].slice(0,q[1].charCodeAt(0)); }
+    if(prev){ if(name&&!/^[\d.]+$/.test(name)) prev.name=name; continue; }
+    items.set(sn,{kind:kindOf(pth),name,pn,sn,path:pth.replace(/^\/MRBTS-\d+\/(RAT-\d+\/BTS_L-\d+\/)?EQM(_L)?-\d+\//,'')});
+  }
+  // anteny (RETU): "<len>MODEL*<len>S/N
+  const ANT=/"([\x06-\x1e])(?=[A-Z0-9])/g;
+  while((m=ANT.exec(T))){
+    const i=m.index+2, L=m[1].charCodeAt(0), model=T.substr(i,L);
+    if(!/^[A-Z0-9][A-Z0-9\-]+$/.test(model)||T[i+L]!=='*') continue;
+    const L2=T.charCodeAt(i+L+1), sn=T.substr(i+L+2,L2);
+    if(L2<8||L2>20||!/^[A-Z0-9]+$/.test(sn)) continue;
+    const pth=pathAt(m.index); if(!/RETU/.test(pth)||items.has(sn)) continue;
+    const al=pth.match(/ALD_A-(\d+)/);
+    items.set(sn,{kind:'Antena',name:model,pn:model,sn,path:al?'RET ALD-'+al[1]:pth.slice(-40)});
+  }
+  // brakujące nazwy: z innych pozycji tego pliku albo ze znanych kodów (starsze SBTS nie zapisują nazwy modułu)
+  const byPn={...IMS2_NAMES}; for(const it of items.values()) if(it.name) byPn[it.pn.split('.')[0]]=it.name;
+  for(const it of items.values()) if(!it.name) it.name=byPn[it.pn.split('.')[0]]||'';
+  return [...items.values()].sort((a,b)=>a.kind.localeCompare(b.kind)||a.path.localeCompare(b.path,undefined,{numeric:true}));
+}
+function ims2Match(p){ // które numery z IMS2 mają zdjęcie z odczytanym S/N
+  const mine=new Set(); for(const r of snAll(p)){ for(const v of [r.sn,r.sn2]) if(v) mine.add(String(v).toUpperCase()); }
+  const has=sn=>{ const s=sn.toUpperCase(); if(mine.has(s)) return true; for(const x of mine) if(x.length>=8&&(s.includes(x)||x.includes(s))) return true; return false; };
+  return ((p.ims2&&p.ims2.items)||[]).map(it=>({...it,ok:has(it.sn)}));
+}
 function snOf(p,k){ return (p.sn=p.sn||{})[k] || (p.sn[k]={dev:[],codes:[],state:''}); }
 let snChain=Promise.resolve();
 function snQueue(pid,k,blob,force){ snChain=snChain.then(()=>snRun(pid,k,blob,force)).catch(()=>{}); return snChain; }
@@ -1281,7 +1352,11 @@ function vSN(){
   <div class="stack">
     <p class="muted small">Odczytane z kodów na zdjęciach tabliczek (DataMatrix / kreskowe). Stuknij wiersz, żeby przejść do zdjęcia i poprawić. W ZIP-ie jest plik <b>numery_seryjne.csv</b>.</p>
     ${Object.values(dup).some(v=>v>1)?'<p class="notice">Ten sam numer seryjny jest przypisany do kilku pozycji (zaznaczone na czerwono).</p>':''}
-    <div class="row" style="gap:6px"><button data-act="sn-copy" ${rows.length?'':'disabled'}>Kopiuj tabelę</button></div>
+    <div class="row" style="gap:6px"><button data-act="sn-copy" ${rows.length?'':'disabled'}>Kopiuj tabelę</button>
+      <button data-act="ims2-load">${p.ims2?'Wczytaj inny IMS2':'Wczytaj IMS2 z BTS'}</button></div>
+    ${p.ims2?(()=>{ const L=ims2Match(p); const ok=L.filter(x=>x.ok).length; return `<details class="card" ${L.some(x=>!x.ok)?'open':''}><summary style="cursor:pointer;font-weight:600">Sprzęt z IMS2 · ${ok}/${L.length} ze zdjęciem</summary>
+      <p class="muted small" style="margin:6px 0">${esc(p.ims2.file)} · wczytany ${esc(p.ims2.date)}. ✓ = ten numer jest odczytany ze zdjęcia tabliczki.</p>
+      <div class="stack" style="gap:4px">${L.map(x=>`<div class="row small" style="gap:8px;align-items:baseline"><span style="width:18px;color:${x.ok?'var(--ok,#1b8a3a)':'var(--warn,#c77700)'};font-weight:700">${x.ok?'✓':'—'}</span><span style="flex:1;min-width:0"><b>${esc(x.kind)}${x.name&&x.name!==x.pn?' '+esc(x.name):''}</b> · ${esc(x.pn)} · <b>${esc(x.sn)}</b><br><span class="muted">${esc(x.path)}</span></span></div>`).join('')}</div></details>`; })():''}
     <div class="items">${rows.length?rows.map(r=>`<button class="item ${r.sn?'done':''}" data-act="shoot" data-f="${esc(r.f)}" data-n="${r.n}">
       <span class="plate">${r.n}</span><span style="min-width:0"><span class="t">${esc(r.title)}</span>
       <span class="d"><b style="${dup[r.sn]>1?'color:var(--danger,#c62828)':''}">${esc(r.sn||(r.lot?'partia '+r.lot:'brak S/N'))}</b>${r.pn?' · '+esc(r.pn):''}</span></span><span></span></button>`).join(''):'<div class="empty-state muted">Jeszcze nic. Zrób zdjęcie tabliczki – numer odczyta się sam.</div>'}</div>
@@ -1342,9 +1417,11 @@ async function doExport(){
       'Data wykonania: '+(p.data||''),
       p.zam?'Numer zamówienia: '+p.zam:''
     ].filter(Boolean).join('\r\n'));
-    dir.file('_fotoraport_dane.json',JSON.stringify({app:'fotoraport',v:1,project:{nr:p.nr,nazwa:p.nazwa,nazwaOp:p.nazwaOp,data:p.data,firma:p.firma,zakres:p.zakres,zam:p.zam,reports:p.reports,cfg:p.cfg,g5:p.g5||null,pn:p.pn||null,tpl:tplOf(p),inne:p.inne||[],sn:p.sn||{}},skip:Object.keys(p.slots).filter(k=>p.slots[k].skip)}));
+    dir.file('_fotoraport_dane.json',JSON.stringify({app:'fotoraport',v:1,project:{nr:p.nr,nazwa:p.nazwa,nazwaOp:p.nazwaOp,data:p.data,firma:p.firma,zakres:p.zakres,zam:p.zam,reports:p.reports,cfg:p.cfg,g5:p.g5||null,pn:p.pn||null,tpl:tplOf(p),inne:p.inne||[],sn:p.sn||{},ims2:p.ims2||null},skip:Object.keys(p.slots).filter(k=>p.slots[k].skip)}));
     if(p.reports.includes('Inne') && (p.inne||[]).length) dir.folder('Inne').file('opisy.txt',p.inne.map(x=>`Zdjęcie ${x.n}: ${x.opis}`).join('\r\n'));
     if(snAll(p).length) dir.file('numery_seryjne.csv',snCSV(p));
+    if(p.ims2&&p.ims2.items.length){ const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+      dir.file('sprzet_z_IMS2.csv','\ufeff'+[['Rodzaj','Nazwa','Kod produktu','Numer seryjny','Miejsce w BTS','Zdjęcie tabliczki'].map(q).join(';')].concat(ims2Match(p).map(x=>[x.kind,x.name,x.pn,x.sn,x.path,x.ok?'tak':'brak'].map(q).join(';'))).join('\r\n')); }
     if(NATIVE){
       const path=await nativeSaveZip(zip,root);
       busy(false); toast('ZIP zapisany');
@@ -1459,6 +1536,7 @@ document.addEventListener('click',async ev=>{
     case 'prev': step(-1); break;
     case 'export': S.view='export'; render(); break;
     case 'sn-list': S.view='sn'; render(); break;
+    case 'ims2-load': document.getElementById('ims2file').click(); break;
     case 'sn-scan': { const sl=peek(S.p,d.k); const ph=sl.chosen&&S.photos.get(sl.chosen); if(!ph){ toast('Najpierw zrób zdjęcie tabliczki'); break; }
       toast('Czytam kody ze zdjęcia…'); snQueue(S.p.id,d.k,ph.blob,true); break; }
     case 'sn-add': { snOf(S.p,d.k).dev.push({pn:'',sn:'',lot:'',date:'',src:'ręcznie'}); await saveP(); keepScroll(render); break; }
@@ -1569,6 +1647,15 @@ async function importPhotoBlob(blob){
     return {blob:full.b,thumb:th.b,w:full.cw,h:full.ch};
   } finally { d.done(); }
 }
+document.getElementById('ims2file').addEventListener('change',async ev=>{
+  const f=ev.target.files[0]; ev.target.value=''; if(!f||!S.p) return;
+  busy(true,'Czytam IMS2…');
+  try{ const items=await ims2Parse(await f.arrayBuffer()); busy(false);
+    if(!items.length){ toast('W tym pliku nie znalazłem numerów seryjnych sprzętu'); return; }
+    S.p.ims2={file:f.name,date:today(),items}; await saveP(); keepScroll(render);
+    toast(`IMS2: ${items.length} pozycji sprzętu z numerami seryjnymi`); }
+  catch(e){ busy(false); toast('Nie udało się odczytać IMS2: '+(e.message||e)); }
+});
 document.getElementById('zipfile').addEventListener('change',async ev=>{
   const file=ev.target.files[0]; ev.target.value=''; if(!file) return;
   if(typeof JSZip==='undefined'){ toast('Nie wczytała się obsługa ZIP. Sprawdź internet i odśwież.'); return; }
