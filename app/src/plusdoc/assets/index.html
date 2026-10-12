@@ -1160,8 +1160,18 @@ for(const id of ['cam','gal']){
 // Kody czytane z ZDJĘCIA (bez uprawnienia CAMERA): BarcodeDetector (Android) albo ZXing jako zapas.
 // Nokia: DataMatrix w formacie ISO/IEC 15434 z polami ANSI MH10.8.2 – (1P) kod produktu, (S) numer seryjny, (1T) partia.
 const SN_DI=['10D','9D','1P','1T','1V','4L','11Z','12Z','13Z','16D','P','S','T','V','D','Q'];
+// Formaty spotkane na stacjach (zdjęcia BT18295, Ochoża-2, Łask/Otwock):
+//  Nokia     DataMatrix  [)>␞06␝1P475765A.104␝SDH262024902␝18VLENOK…  (SDA10 skleja „1P…S…” bez ␝)
+//  Nokia AAOB moduły bez S/N: 1PSC7156216␝1TZOF012608508 (partia)
+//  Huawei    QR          [)>␞06␝1P03058627␝18VLEHWT␝S210305862710R3101970 ; DataMatrix sam numer 2103058542…
+//  Ericsson  QR          https://www.ericsson.com/…?1P=KRE1012486/1&S=DS4W01QSTU&21P=R1A
+//  CommScope/Andrew  Code 39 / 128: PN, Model, Serial 26CN921322205, Order
 function snParse(t){
-  let x=String(t||'').replace(/^\[\)>[\x1e]?\d{2}[\x1d]?/,'');
+  let x=String(t||'').replace(/[\u2400-\u241f]/g,'\x1d').trim();
+  if(/^https?:\/\//i.test(x)){ try{ const q=new URL(x).searchParams; const sn=q.get('S')||q.get('SN')||q.get('sn')||'', pn=q.get('1P')||q.get('P')||q.get('pn')||'';
+    if(sn||pn) return {pn,sn,lot:'',date:q.get('12D')||q.get('D')||'',rev:q.get('21P')||q.get('2P')||''}; }catch(e){} return null; }
+  if(/^21[0-9A-Z]{18}$/.test(x)) return {pn:'',sn:x,lot:'',date:''}; // Huawei: 20-znakowy numer seryjny „21…”
+  x=x.replace(/^\[\)>[\x1d\x1e]*\d{2}[\x1d]?/,'');
   let parts=x.split(/[\x00-\x1f]+/).filter(Boolean);
   if(parts.length<2 && / /.test(x)) parts=x.split(/ +/);
   const f={}; let hit=0;
@@ -1176,10 +1186,13 @@ function snParse(t){
 function snDevices(codes){
   const out=[]; const seen=new Set();
   for(const c of codes){ const d=snParse(c.t); if(!d) continue; const key=d.sn||d.lot||d.pn+c.t; if(seen.has(key)) continue; seen.add(key); out.push({...d,src:'2D'}); }
-  if(out.length) return out;
-  const lin=codes.filter(c=>!/qr|data/i.test(c.f)).map(c=>c.t.trim()).filter(t=>t.length>=6);
-  const sn=lin.find(t=>/^\d{2}[A-Z]{2}\d{6,}$/.test(t)) || lin.find(t=>!/[-.\s]/.test(t)&&/\d/.test(t)&&/[A-Z]/i.test(t)&&t.length>=8&&t.length<=20);
+  // kody kreskowe producenta (CommScope/Andrew: Code 39 – PN, Model, Serial, Order)
+  const lin=codes.filter(c=>!/qr|data|pdf/i.test(c.f)&&!snParse(c.t)).map(c=>c.t.trim()).filter(t=>t.length>=6);
+  const sn=lin.find(t=>/^\d{2}[A-Z]{2}\d{6,}$/.test(t)) || lin.find(t=>!/[-.\s#\/]/.test(t)&&/\d/.test(t)&&/[A-Z]/i.test(t)&&t.length>=8&&t.length<=20);
   const pn=lin.find(t=>t!==sn&&/-/.test(t));
+  if(out.length){ // np. antena Andrew z blokiem Nokii: S z DataMatrix + numer producenta z kodu kreskowego
+    if(sn && !out.some(d=>d.sn===sn)) out[0].sn2=sn;
+    return out; }
   return sn||pn ? [{pn:pn||'',sn:sn||'',lot:'',date:'',src:'kreskowy'}] : [];
 }
 let snZx=null, snDet;
@@ -1256,7 +1269,7 @@ function snCard(p,f,it){
     ${e.dev.map((d,i)=>`<div class="row" style="gap:6px;flex-wrap:nowrap">
       <input type="text" class="snin" data-k="${esc(k)}" data-i="${i}" data-fld="pn" value="${esc(d.pn)}" placeholder="Typ / kod (1P)" style="flex:1;min-width:0">
       <input type="text" class="snin" data-k="${esc(k)}" data-i="${i}" data-fld="sn" value="${esc(d.sn)}" placeholder="${d.lot?'partia '+esc(d.lot):'S/N'}" style="flex:1.2;min-width:0;font-weight:700">
-      <button class="btn-ghost" data-act="sn-del" data-k="${esc(k)}" data-i="${i}" aria-label="Usuń">✕</button></div>`).join('')}
+      <button class="btn-ghost" data-act="sn-del" data-k="${esc(k)}" data-i="${i}" aria-label="Usuń">✕</button></div>${d.sn2?`<div class="small muted" style="margin-top:-4px">S/N producenta: <b>${esc(d.sn2)}</b></div>`:''}`).join('')}
     ${rest.length?`<div class="small muted">Inne kody na zdjęciu – stuknij, żeby dodać jako S/N:</div><div class="chips">${rest.map((c,j)=>`<button class="chip" data-act="sn-pick" data-k="${esc(k)}" data-j="${e.codes.indexOf(c)}">${esc(c.t.length>28?c.t.slice(0,28)+'…':c.t)}</button>`).join('')}</div>`:''}
     <div class="row" style="gap:6px"><button data-act="sn-scan" data-k="${esc(k)}" ${sl.chosen&&e.state!=='scan'?'':'disabled'}>Odczytaj z wybranego zdjęcia</button>
       <button class="btn-ghost" data-act="sn-add" data-k="${esc(k)}">+ Wpisz ręcznie</button></div>
@@ -1277,8 +1290,8 @@ function vSN(){
 function snCSV(p){
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   const rows=snAll(p);
-  return '﻿'+[['Stacja','Folder','Nr zdjęcia','Pozycja','Typ / kod produktu (1P)','Numer seryjny (S)','Partia (1T)','Data prod.','Plik zdjęcia'].map(q).join(';')]
-    .concat(rows.map(r=>[p.nr+' '+(p.nazwa||''),r.f,r.n,r.title,r.pn,r.sn,r.lot,r.date,r.f+'/'+fileName(p,r.f,r.it,r.n)].map(q).join(';'))).join('\r\n');
+  return '﻿'+[['Stacja','Folder','Nr zdjęcia','Pozycja','Typ / kod produktu (1P)','Numer seryjny (S)','S/N producenta','Partia (1T)','Data prod.','Plik zdjęcia'].map(q).join(';')]
+    .concat(rows.map(r=>[p.nr+' '+(p.nazwa||''),r.f,r.n,r.title,r.pn,r.sn,r.sn2,r.lot,r.date,r.f+'/'+fileName(p,r.f,r.it,r.n)].map(q).join(';'))).join('\r\n');
 }
 
 /* ======================= Eksport ZIP ======================= */
