@@ -71,4 +71,6 @@ dependencies {
     implementation 'androidx.core:core:1.13.1'
     // odczyt kodów z tabliczek (DataMatrix / Code 128) – model wbudowany, działa bez internetu
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+    // ML Kit ciągnie stare kotlin-stdlib-jdk7/jdk8 – wyrównanie wersji (inaczej „Duplicate class kotlin…”)
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
 }
