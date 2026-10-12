@@ -382,13 +382,13 @@ function buildEclipse(){
 // Dodatkowe zakładki jak foldery stacji (12.10.2026): demontaż, odbiór materiału, poprawki, dokumenty – wszystko opcjonalne
 function extraCatalog(kind){
   const a=[]; const add=(title,desc,k=1,o={})=>{ for(let i=1;i<=k;i++) a.push({desc,extra:false,opt:true,phase:'',deinst:false,share:null,tags:{},...o,title:k>1?title+' '+i:title,n:a.length+1}); };
-  if(kind==='dem'){
-    add('Stary sprzęt przed demontażem','Sprzęt do zdjęcia, zanim zaczniesz prace – z kilku stron.',3);
-    add('Demontaż w trakcie','Odłączone kable, zdejmowane moduły / anteny.',2);
-    add('Zdemontowany sprzęt – całość','Cały zdjęty sprzęt w jednym miejscu (potrzebne do listu przewozowego).',2);
-    add('Tabliczki zdemontowanego sprzętu','Każda tabliczka z typem i numerem seryjnym, czytelna.',4,{sn:true});
-    add('Sprzęt spakowany do zwrotu','Paleta / kartony z opisem, zabezpieczone do transportu.',2);
-    add('Miejsce po demontażu','Stan konstrukcji / szafy po zdjęciu sprzętu.',2);
+  if(kind==='dem'){ // stary sprzęt odstawiony na paletach w magazynie klienta
+    add('Stary sprzęt na palecie – całość','Paleta w magazynie klienta, cały sprzęt widoczny – z kilku stron.',3);
+    add('Opis palety (stacja, klient, data)','Kartka / etykieta na palecie: numer i nazwa stacji, klient, data – czytelna.',2);
+    add('Tabliczki sprzętu na palecie','Każde urządzenie: typ i numer seryjny czytelne (do listu przewozowego zwrotu).',6,{sn:true});
+    add('Paleta zabezpieczona','Owinięta folią / spięta pasami, gotowa do odbioru.');
+    add('Magazyn klienta – miejsce odstawienia','Gdzie stoi paleta w magazynie (szerszy kadr, oznaczenie miejsca / regału).',2);
+    add('Stary sprzęt na stacji przed demontażem','Opcjonalnie: sprzęt jeszcze zamontowany, zanim go zdejmiesz.',2);
     add('Dodatkowe zdjęcie','Coś spoza listy.',3);
   } else if(kind==='odb'){
     add('Materiał po odbiorze – całość','Cały odebrany materiał w jednym kadrze (palety, kartony).',2);
@@ -978,7 +978,7 @@ function vShoot(){
     ${it&&it.ser?`<p class="notice info" style="font-weight:600">Ujęcie ${it.ser.k} z ${it.ser.m} tego samego elementu (nr ${n-it.ser.k+1}–${n-it.ser.k+it.ser.m}).</p>`:''}
     ${it&&it.desc?`<p style="font-size:17px">${esc(it.desc)}</p>`:''}
     ${shootG5(p,f,it)}${shootPN(p,f,it)}
-    <div class="row" style="gap:6px">${it&&it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it&&it.screen?'<span class="tag">zrzut ekranu z galerii</span>':'<span class="tag">pionowo 3:4</span>'}${it&&it.warn?'<span class="tag warn">częsty powód odrzucenia</span>':''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${sl.skip?`<span class="tag warn">${isE(p)?'N/A':'pominięte'}</span>`:''}${it&&it.share&&p.reports.length>1?`<span class="tag acc">zapisze się w każdym folderze jako ${n}.jpg</span>`:''}</div>
+    <div class="row" style="gap:6px">${it&&it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it&&it.screen?'<span class="tag">zrzut ekranu z galerii</span>':it&&it.doc?'<span class="tag">skan dokumentu</span>':'<span class="tag">pionowo 3:4</span>'}${it&&it.warn?'<span class="tag warn">częsty powód odrzucenia</span>':''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${sl.skip?`<span class="tag warn">${isE(p)?'N/A':'pominięte'}</span>`:''}${it&&it.share&&p.reports.length>1?`<span class="tag acc">zapisze się w każdym folderze jako ${n}.jpg</span>`:''}</div>
     <div class="preview">${pendLast?`<img alt="Zapisywane zdjęcie ${n}" src="${pendLast.url}"><span class="pendtag">Zapisuję w tle…</span>`:chosen?`<img alt="Wybrane ujęcie zdjęcia ${n}" src="${photoURL(sl.chosen,false)}">`:`<div class="ph">Brak zdjęcia.<br>Zrób je aparatem albo wybierz z galerii. Zapisze się jako <b>${esc(f)}/${esc(fileName(p,f,it,n))}</b>.</div>`}</div>
     ${S.lastError?`<p class="notice" role="alert">${esc(S.lastError)}</p>`:''}
     ${land?`<p class="notice">To zdjęcie jest poziome. Wytyczne wymagają zdjęć pionowych 3:4.</p>`:''}
