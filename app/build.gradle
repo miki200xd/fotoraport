@@ -12,7 +12,7 @@ android {
         targetSdk 34
         // numer wersji ustawia GitHub przy każdym budowaniu (patrz .github/workflows/build.yml)
         versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
-        versionName "2.0"
+        versionName "2.1"
     }
 
     // Dwie osobne aplikacje z jednego kodu, instalowane obok siebie:
@@ -29,7 +29,7 @@ android {
         plusdoc {
             dimension "app"
             applicationId "pl.plusdoc.zdjecia"
-            versionName "2.3"
+            versionName "2.4"
             resValue "string", "app_name", "Cellnex-Nokia"
             resValue "string", "media_dir", "CellnexNokia"
         }
@@ -71,6 +71,8 @@ dependencies {
     implementation 'androidx.core:core:1.13.1'
     // odczyt kodów z tabliczek (DataMatrix / Code 128) – model wbudowany, działa bez internetu
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+    // skaner dokumentów (listy przewozowe, WZ) – przez Google Play services, bez uprawnienia CAMERA
+    implementation 'com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1'
     // ML Kit ciągnie stare kotlin-stdlib-jdk7/jdk8 – wyrównanie wersji (inaczej „Duplicate class kotlin…”)
     implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
 }

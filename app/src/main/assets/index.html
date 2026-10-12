@@ -270,11 +270,11 @@ function extraCatalog(kind){
   } else if(kind==='pop'){
     for(let i=1;i<=6;i++){ add(`Poprawka ${i} – przed`,'Usterka / miejsce do poprawy przed pracą.'); add(`Poprawka ${i} – po`,'To samo miejsce po poprawce, ten sam kadr.'); }
     add('Dodatkowe zdjęcie','Coś spoza listy.',2);
-  } else if(kind==='dok'){
-    add('WZ / dokument wydania materiału','Cała strona, czytelne numery i podpisy.',2);
-    add('List przewozowy / zwrot sprzętu','Dokument zwrotu zdemontowanego sprzętu.',2);
-    add('Protokół odbioru / przekazania','Cała strona, czytelne podpisy.',2);
-    add('Inny dokument','Np. zlecenie, notatka z obiektu.',3);
+  } else if(kind==='dok'){ const D={doc:true};
+    add('WZ / dokument wydania materiału','Cała strona, czytelne numery i podpisy. „Skanuj dokument” sam przytnie i wyprostuje kartkę.',2,D);
+    add('List przewozowy / zwrot sprzętu','Dokument zwrotu zdemontowanego sprzętu – „Skanuj dokument”, kilka stron naraz.',2,D);
+    add('Protokół odbioru / przekazania','Cała strona, czytelne podpisy.',2,D);
+    add('Inny dokument','Np. zlecenie, notatka z obiektu.',3,D);
   }
   return a;
 }
@@ -714,6 +714,7 @@ function vShoot(){
     </div>`:''}
   </div>
   <div class="sticky-actions stack" style="gap:8px">
+    ${docButton(it)}
     <div class="row" style="flex-wrap:nowrap">
       <label for="cam" class="btn ${(sl.takes.length||pend.length)?'':'btn-primary'} btn-big" style="flex:2" role="button" tabindex="0">${(sl.takes.length||pend.length)?'Zrób jeszcze raz':'Zrób zdjęcie'}</label>
       <label for="gal" class="btn btn-big" style="flex:1;font-size:16px" role="button" tabindex="0">Galeria</label>
@@ -997,6 +998,25 @@ async function doExport(){
 
 /* ======================= Android (aplikacja natywna) ======================= */
 const NATIVE = !!window.AndroidBridge;
+/* ---- Skan dokumentu (list przewozowy, WZ, protokół): skaner Google – przycina kartkę, prostuje, kilka stron ---- */
+const DOC_SCAN = NATIVE && typeof AndroidBridge.scanDocument==='function';
+window.__docScan=async(id,n,err)=>{
+  const t=S.docTarget; S.docTarget=null;
+  if(!t||!S.p||!n){ if(err&&err!=='anulowano') toast('Skaner dokumentów: '+err+'. Zrób zwykłe zdjęcie.'); return; }
+  busy(true,'Wczytuję skan…'); const files=[];
+  try{ for(let i=0;i<n;i++){ const b64=AndroidBridge.docPage(i); if(!b64) continue; const bin=atob(b64); const u=new Uint8Array(bin.length); for(let j=0;j<bin.length;j++) u[j]=bin.charCodeAt(j); files.push(new File([u],`skan_${i+1}.jpg`,{type:'image/jpeg'})); } }
+  finally{ busy(false); }
+  if(!files.length){ toast('Nie udało się wczytać skanu'); return; }
+  // strona 1 → bieżąca pozycja, kolejne strony → następne puste pozycje tego folderu (gdy brak – jako kolejne ujęcia)
+  const items=itemsFor(S.p,t.f,{all:true}); let idx=items.findIndex(x=>x.n===t.n); const back=S.cur, auto=S.autoNext; S.autoNext=false;
+  files.forEach((file,i)=>{ let it=items[idx];
+    if(i>0){ let j=idx+1; while(j<items.length && (peek(S.p,slotKey(t.f,items[j].n)).takes.length||pendingOf(slotKey(t.f,items[j].n)).length)) j++; if(j<items.length){ idx=j; it=items[j]; } else it=items.find(x=>x.n===t.n); }
+    S.cur={f:t.f,n:it.n}; addFiles([file],'scan'); });
+  S.cur=back; S.autoNext=auto; keepScroll(render);
+  toast(files.length>1?`Zeskanowano ${files.length} strony – zapisuję`:'Zeskanowano dokument – zapisuję');
+};
+function docButton(it){ return it&&it.doc&&DOC_SCAN?`<button class="btn-primary btn-big" data-act="docscan" style="width:100%">📄 Skanuj dokument</button>`:''; }
+
 function u8b64(u8){ let s=''; for(let i=0;i<u8.length;i+=0x8000) s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(s); }
 function nativeSaveZip(zip,root){
   return new Promise((res,rej)=>{
@@ -1084,6 +1104,7 @@ document.addEventListener('click',async ev=>{
     }
     case 'skip': { const sl=slot(S.p,slotKey(S.cur.f,S.cur.n)); sl.skip=!sl.skip; await saveP(); if(sl.skip) step(1); else keepScroll(render); break; }
     case 'next': step(1); break;
+    case 'docscan': if(DOC_SCAN&&S.cur){ S.docTarget={...S.cur}; AndroidBridge.scanDocument('d'+Date.now()); } break;
     case 'prev': step(-1); break;
     case 'export': S.view='export'; render(); break;
     case 'share': if(NATIVE) AndroidBridge.shareLast(); break;

@@ -74,6 +74,10 @@ public class MainActivity extends Activity {
 
     // --- lokalizacja: dopisywana do zdjęć z aparatu, gdy aparat sam nie zapisał GPS ---
     private static final int REQ_LOCATION = 103;
+    private static final int REQ_DOC_SCAN = 106;
+    // skaner dokumentów (ML Kit / Google Play): strony trzymane tu, JS pobiera je po kolei przez docPage(i)
+    private final List<Uri> docPages = new ArrayList<>();
+    private String docCbId = null;
     private static final long FIX_MAX_AGE_MS = 10 * 60 * 1000;
     private LocationManager locationManager;
     private volatile Location lastFix;
@@ -491,6 +495,18 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_DOC_SCAN) {
+            docPages.clear();
+            String err = null;
+            if (resultCode == RESULT_OK) {
+                com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult r =
+                        com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult.fromActivityResultIntent(data);
+                if (r != null && r.getPages() != null)
+                    for (com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult.Page pg : r.getPages()) docPages.add(pg.getImageUri());
+            } else err = "anulowano";
+            docDone(err);
+            return;
+        }
         if (filePathCallback == null) return;
         Uri[] result = null;
 
@@ -527,6 +543,13 @@ public class MainActivity extends Activity {
         }
         filePathCallback.onReceiveValue(result);
         filePathCallback = null;
+    }
+
+    private void docDone(String err) {
+        if (docCbId == null) return;
+        final String js = "window.__docScan&&window.__docScan(" + JSONObject.quote(docCbId) + "," + docPages.size() + "," + (err == null ? "null" : JSONObject.quote(err)) + ")";
+        docCbId = null;
+        runOnUiThread(() -> web.evaluateJavascript(js, null));
     }
 
     /** Kopia zdjęcia z aparatu do galerii: Pictures/FotoRaport/<stacja>/<nazwa>.jpg (działa w tle). */
@@ -782,6 +805,41 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void toast(String msg) {
             MainActivity.this.toast(msg);
+        }
+
+        // Skan dokumentu (list przewozowy, WZ, protokół): wykrywa kartkę, prostuje i przycina; wynik: liczba stron
+        @JavascriptInterface
+        public void scanDocument(final String cbId) {
+            runOnUiThread(() -> {
+                docCbId = cbId;
+                try {
+                    com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions o =
+                            new com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.Builder()
+                                    .setGalleryImportAllowed(true)
+                                    .setPageLimit(10)
+                                    .setResultFormats(com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+                                    .setScannerMode(com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+                                    .build();
+                    com.google.mlkit.vision.documentscanner.GmsDocumentScanning.getClient(o)
+                            .getStartScanIntent(MainActivity.this)
+                            .addOnSuccessListener(is -> {
+                                try { startIntentSenderForResult(is, REQ_DOC_SCAN, null, 0, 0, 0); }
+                                catch (Exception e) { docDone(String.valueOf(e)); }
+                            })
+                            .addOnFailureListener(e -> docDone(String.valueOf(e)));
+                } catch (Throwable e) { docDone(String.valueOf(e)); }
+            });
+        }
+
+        @JavascriptInterface
+        public String docPage(int i) {
+            if (i < 0 || i >= docPages.size()) return "";
+            try (java.io.InputStream in = getContentResolver().openInputStream(docPages.get(i))) {
+                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[65536]; int n;
+                while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+                return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
+            } catch (Exception e) { return ""; }
         }
 
         // Odczyt kodów (DataMatrix, kreskowe, QR) ze zdjęcia tabliczki – ML Kit, model w aplikacji (offline).
