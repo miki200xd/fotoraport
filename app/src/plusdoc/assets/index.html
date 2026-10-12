@@ -186,11 +186,16 @@ const REPORTS = [
   {f:'05_GPS', name:'05 GPS', short:'GPS', tpl:'eclipse'},
   {f:'06_WIDOK_OGOLNY', name:'06 Widok ogólny', short:'Widok ogólny', tpl:'eclipse'},
   {f:'07_SILOWNIA', name:'07 Siłownia (POWER)', short:'Siłownia', tpl:'eclipse'},
-  {f:'08_TESTY_S25', name:'08 Testy S25 (zrzuty ekranu)', short:'Testy S25', tpl:'eclipse'}
+  {f:'08_TESTY_S25', name:'08 Testy S25 (zrzuty ekranu)', short:'Testy S25', tpl:'eclipse'},
+  {f:'09_DEMONTAZ', name:'09 Demontaż', short:'Demontaż', tpl:'eclipse', more:'dem'},
+  {f:'10_ODBIOR_MATERIALU', name:'10 Odbiór materiału', short:'Odbiór mat.', tpl:'eclipse', more:'odb'},
+  {f:'11_POPRAWKI', name:'11 Poprawki', short:'Poprawki', tpl:'eclipse', more:'pop'},
+  {f:'12_DOKUMENTY', name:'12 Dokumenty (WZ, list, protokół)', short:'Dokumenty', tpl:'eclipse', more:'dok'}
 ];
 const isE = p => tplOf(p)==='eclipse';
 function reportsFor(tpl){ return REPORTS.filter(r=>tpl==='eclipse'?r.tpl==='eclipse':!r.tpl); }
-const E_DEFAULT=['01_ANTENY','02_MODULY_RF','03_JUMPERY_FO_DC_UZIEMIENIA','04_SZAFA','05_GPS','06_WIDOK_OGOLNY','08_TESTY_S25'];
+const E_DEFAULT=['01_ANTENY','02_MODULY_RF','03_JUMPERY_FO_DC_UZIEMIENIA','04_SZAFA','05_GPS','06_WIDOK_OGOLNY','08_TESTY_S25','09_DEMONTAZ','10_ODBIOR_MATERIALU','11_POPRAWKI','12_DOKUMENTY'];
+const E_MORE=['09_DEMONTAZ','10_ODBIOR_MATERIALU','11_POPRAWKI','12_DOKUMENTY'];
 const E_OPTS=[['feeder','Feedery'],['mha','MHA / diplekser / spliter'],['dcbox','DC Power Box'],['mw','Radiolinia / rack MW'],['deinst','Demontaż starego sprzętu']];
 const RMAP = Object.fromEntries(REPORTS.map(r=>[r.f,r]));
 
@@ -374,7 +379,36 @@ function buildEclipse(){
       const mm=j-i+1; if(mm>1) for(let k=i;k<=j;k++) a[k].ser={k:k-i+1,m:mm}; i=j+1; } }
   return E;
 }
+// Dodatkowe zakładki jak foldery stacji (12.10.2026): demontaż, odbiór materiału, poprawki, dokumenty – wszystko opcjonalne
+function extraCatalog(kind){
+  const a=[]; const add=(title,desc,k=1,o={})=>{ for(let i=1;i<=k;i++) a.push({desc,extra:false,opt:true,phase:'',deinst:false,share:null,tags:{},...o,title:k>1?title+' '+i:title,n:a.length+1}); };
+  if(kind==='dem'){
+    add('Stary sprzęt przed demontażem','Sprzęt do zdjęcia, zanim zaczniesz prace – z kilku stron.',3);
+    add('Demontaż w trakcie','Odłączone kable, zdejmowane moduły / anteny.',2);
+    add('Zdemontowany sprzęt – całość','Cały zdjęty sprzęt w jednym miejscu (potrzebne do listu przewozowego).',2);
+    add('Tabliczki zdemontowanego sprzętu','Każda tabliczka z typem i numerem seryjnym, czytelna.',4,{sn:true});
+    add('Sprzęt spakowany do zwrotu','Paleta / kartony z opisem, zabezpieczone do transportu.',2);
+    add('Miejsce po demontażu','Stan konstrukcji / szafy po zdjęciu sprzętu.',2);
+    add('Dodatkowe zdjęcie','Coś spoza listy.',3);
+  } else if(kind==='odb'){
+    add('Materiał po odbiorze – całość','Cały odebrany materiał w jednym kadrze (palety, kartony).',2);
+    add('Etykiety na kartonach / paletach','Naklejki z kodami i numerami – czytelne.',3,{sn:true});
+    add('Tabliczki odebranego sprzętu','Typ i numer seryjny każdego urządzenia.',4,{sn:true});
+    add('Uszkodzenia opakowania lub sprzętu','Tylko gdy coś przyszło uszkodzone – zbliżenie i całość.',2);
+    add('Dodatkowe zdjęcie','Coś spoza listy.',3);
+  } else if(kind==='pop'){
+    for(let i=1;i<=6;i++){ add(`Poprawka ${i} – przed`,'Usterka / miejsce do poprawy przed pracą.'); add(`Poprawka ${i} – po`,'To samo miejsce po poprawce, ten sam kadr.'); }
+    add('Dodatkowe zdjęcie','Coś spoza listy.',2);
+  } else if(kind==='dok'){
+    add('WZ / dokument wydania materiału','Cała strona, czytelne numery i podpisy.',2);
+    add('List przewozowy / zwrot sprzętu','Dokument zwrotu zdemontowanego sprzętu.',2);
+    add('Protokół odbioru / przekazania','Cała strona, czytelne podpisy.',2);
+    add('Inny dokument','Np. zlecenie, notatka z obiektu.',3);
+  }
+  return a;
+}
 CATALOGS.eclipse=buildEclipse();
+for(const r of REPORTS) if(r.more&&r.tpl==='eclipse') CATALOGS.eclipse[r.f]=extraCatalog(r.more);
 
 const CATIDX={}; for(const v in CATALOGS){ CATIDX[v]={}; for(const f in CATALOGS[v]){ CATIDX[v][f]={}; for(const it of CATALOGS[v][f]) CATIDX[v][f][it.n]=it; } }
 function tplOf(p){ return (p&&p.tpl)||'eclipse'; }
@@ -866,7 +900,7 @@ function vStation(){
     <div class="spread"><div style="min-width:0"><h2>${esc(p.nr)} ${esc(p.nazwa||'')}</h2><div class="muted small">${esc(p.data)} · ${esc(p.firma||'')} ${p.zakres?'· '+esc(p.zakres):''} </div></div>
       <div class="num" style="font-size:24px;white-space:nowrap">${s.done}/${s.total}</div></div>
     <div class="progress"><i style="width:${pct}%"></i></div>
-    <div class="tabs" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.done}/${st.total}</span></button>`}).join('')}</div>
+    <div class="tabs" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.total?st.done+"/"+st.total:itemsFor(p,r,{all:true}).filter(it=>isDone(p,r,it.n)).length}</span></button>`}).join('')}</div>
   </div>
   <div class="stack">
     ${p.pn?`<details class="card"><summary style="cursor:pointer;font-weight:600">Dane z PRENOSS · ${esc(p.pn.site)} · ${esc(p.pn.date)}</summary>
@@ -1496,7 +1530,10 @@ window.onAndroidBack=function(){
 /* ======================= Akcje ======================= */
 async function openProject(id){
   const p=S.projects.find(x=>x.id===id); if(!p) return;
-  p.cfg=normCfg(p.cfg); S.p=p; S.photos=new Map(); for(const u of S.urls.values()) URL.revokeObjectURL(u); S.urls=new Map();
+  p.cfg=normCfg(p.cfg);
+  // stacje założone wcześniej też dostają zakładki Demontaż / Odbiór materiału / Poprawki / Dokumenty (wszystko opcjonalne)
+  if(isE(p)) for(const f of E_MORE) if(!p.reports.includes(f)) p.reports.push(f);
+  S.p=p; S.photos=new Map(); for(const u of S.urls.values()) URL.revokeObjectURL(u); S.urls=new Map();
   try{ for(const ph of await DB.photosOf(id)) S.photos.set(ph.id,fromStored(ph)); }catch(e){}
   S.tab=p.reports[0]; S.filter='all'; S.view='station'; render();
 }

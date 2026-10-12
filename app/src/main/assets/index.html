@@ -177,8 +177,13 @@ const REPORTS = [
   {f:'System zasilania-szafa sprzet', name:'Zasilanie / szafa sprzętowa', short:'Zasilanie'},
   {f:'Wezel TRM', name:'Węzeł TRM', short:'Węzeł TRM'},
   {f:'Inne', name:'Inne', short:'Inne'},
-  {f:'Azymuty', name:'Azymuty i ramki (poza raportem)', short:'Azymuty', aside:true}
+  {f:'Azymuty', name:'Azymuty i ramki (poza raportem)', short:'Azymuty', aside:true},
+  {f:'Zdjęcia Starego Sprzętu', name:'Demontaż – stary sprzęt (poza raportem)', short:'Demontaż', more:'dem'},
+  {f:'Odbiór materiału', name:'Odbiór materiału (poza raportem)', short:'Odbiór mat.', more:'odb'},
+  {f:'Poprawki', name:'Poprawki (poza raportem)', short:'Poprawki', more:'pop'},
+  {f:'Dokumenty', name:'Dokumenty: WZ, list, protokół (poza raportem)', short:'Dokumenty', more:'dok'}
 ];
+const MORE=REPORTS.filter(r=>r.more).map(r=>r.f);
 const RMAP = Object.fromEntries(REPORTS.map(r=>[r.f,r]));
 
 // ===== Katalogi zdjęć: V1 (stary szablon) i V3.1 (od 2026) =====
@@ -245,6 +250,35 @@ function azCatalog(){
   return a;
 }
 for(const v in CATALOGS) CATALOGS[v].Azymuty=azCatalog();
+// Dodatkowe zakładki jak foldery stacji (12.10.2026): demontaż, odbiór materiału, poprawki, dokumenty – wszystko opcjonalne
+function extraCatalog(kind){
+  const a=[]; const add=(title,desc,k=1,o={})=>{ for(let i=1;i<=k;i++) a.push({desc,extra:false,opt:true,phase:'',deinst:false,share:null,tags:{},...o,title:k>1?title+' '+i:title,n:a.length+1}); };
+  if(kind==='dem'){
+    add('Stary sprzęt przed demontażem','Sprzęt do zdjęcia, zanim zaczniesz prace – z kilku stron.',3);
+    add('Demontaż w trakcie','Odłączone kable, zdejmowane moduły / anteny.',2);
+    add('Zdemontowany sprzęt – całość','Cały zdjęty sprzęt w jednym miejscu (potrzebne do listu przewozowego).',2);
+    add('Tabliczki zdemontowanego sprzętu','Każda tabliczka z typem i numerem seryjnym, czytelna.',4,{sn:true});
+    add('Sprzęt spakowany do zwrotu','Paleta / kartony z opisem, zabezpieczone do transportu.',2);
+    add('Miejsce po demontażu','Stan konstrukcji / szafy po zdjęciu sprzętu.',2);
+    add('Dodatkowe zdjęcie','Coś spoza listy.',3);
+  } else if(kind==='odb'){
+    add('Materiał po odbiorze – całość','Cały odebrany materiał w jednym kadrze (palety, kartony).',2);
+    add('Etykiety na kartonach / paletach','Naklejki z kodami i numerami – czytelne.',3,{sn:true});
+    add('Tabliczki odebranego sprzętu','Typ i numer seryjny każdego urządzenia.',4,{sn:true});
+    add('Uszkodzenia opakowania lub sprzętu','Tylko gdy coś przyszło uszkodzone – zbliżenie i całość.',2);
+    add('Dodatkowe zdjęcie','Coś spoza listy.',3);
+  } else if(kind==='pop'){
+    for(let i=1;i<=6;i++){ add(`Poprawka ${i} – przed`,'Usterka / miejsce do poprawy przed pracą.'); add(`Poprawka ${i} – po`,'To samo miejsce po poprawce, ten sam kadr.'); }
+    add('Dodatkowe zdjęcie','Coś spoza listy.',2);
+  } else if(kind==='dok'){
+    add('WZ / dokument wydania materiału','Cała strona, czytelne numery i podpisy.',2);
+    add('List przewozowy / zwrot sprzętu','Dokument zwrotu zdemontowanego sprzętu.',2);
+    add('Protokół odbioru / przekazania','Cała strona, czytelne podpisy.',2);
+    add('Inny dokument','Np. zlecenie, notatka z obiektu.',3);
+  }
+  return a;
+}
+for(const v in CATALOGS) for(const r of REPORTS) if(r.more) CATALOGS[v][r.f]=extraCatalog(r.more);
 const CATIDX={}; for(const v in CATALOGS){ CATIDX[v]={}; for(const f in CATALOGS[v]){ CATIDX[v][f]={}; for(const it of CATALOGS[v][f]) CATIDX[v][f][it.n]=it; } }
 function tplOf(p){ const t=p&&p.tpl; return (t&&CATALOGS[t])?t:'v1'; }
 
@@ -600,7 +634,7 @@ function vStation(){
     <div class="spread"><div style="min-width:0"><h2>${esc(p.nr)} ${esc(p.nazwa||'')}</h2><div class="muted small">${esc(p.data)} · ${esc(p.firma||'')} ${p.zakres?'· '+esc(p.zakres):''} · szablon ${TPL[tplOf(p)].name}</div></div>
       <div class="num" style="font-size:24px;white-space:nowrap">${s.done}/${s.total}</div></div>
     <div class="progress"><i style="width:${pct}%"></i></div>
-    <div class="tabs" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.done}/${st.total}</span></button>`}).join('')}</div>
+    <div class="tabs" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.total?st.done+"/"+st.total:itemsFor(p,r,{all:true}).filter(it=>isDone(p,r,it.n)).length}</span></button>`}).join('')}</div>
   </div>
   <div class="stack">
     ${p.g5?`<details class="card"><summary style="cursor:pointer;font-weight:600">Dane z G5 · ${esc(p.g5.task||'')} · ${esc(p.g5.klass||'')} ${p.g5.height?esc(p.g5.height)+' m':''}</summary>
@@ -1000,6 +1034,8 @@ async function openProject(id){
   p.cfg=normCfg(p.cfg);
   // stacje założone przed wersją z azymutami też dostają zakładkę „Azymuty”
   if(!p.reports.includes('Azymuty') && (p.reports.includes('BTS')||p.reports.includes('System Antenowy'))) p.reports.push('Azymuty');
+  // …i zakładki Demontaż / Odbiór materiału / Poprawki / Dokumenty (opcjonalne, poza raportem – osobne foldery w ZIP)
+  for(const f of MORE) if(!p.reports.includes(f)) p.reports.push(f);
   S.p=p; S.photos=new Map(); for(const u of S.urls.values()) URL.revokeObjectURL(u); S.urls=new Map();
   try{ for(const ph of await DB.photosOf(id)) S.photos.set(ph.id,fromStored(ph)); }catch(e){}
   S.tab=p.reports[0]; S.filter='all'; S.view='station'; render();
@@ -1019,7 +1055,7 @@ document.addEventListener('click',async ev=>{
   switch(a){
     case 'home': S.view='home'; S.p=null; await loadProjects(); render(); showStorage(); break;
     case 'new':
-      S.p=null; S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('firma',''),zakres:'',zam:'',reports:['BTS','System Antenowy','Azymuty'],cfg:normCfg({...ls.get('cfg',{}),map:null}),g5:null,tpl:ls.get('tpl','v3')};
+      S.p=null; S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('firma',''),zakres:'',zam:'',reports:['BTS','System Antenowy','Azymuty',...MORE],cfg:normCfg({...ls.get('cfg',{}),map:null}),g5:null,tpl:ls.get('tpl','v3')};
       S.view='form'; render(); if(d.g5) document.getElementById('g5file').click(); break;
     case 'edit': S.draft=JSON.parse(JSON.stringify({nr:S.p.nr,nazwa:S.p.nazwa,nazwaOp:S.p.nazwaOp||'',data:S.p.data,firma:S.p.firma,zakres:S.p.zakres,zam:S.p.zam,reports:S.p.reports,cfg:normCfg(S.p.cfg),g5:S.p.g5||null,tpl:S.p.tpl||'v1'})); S.view='form'; render(); break;
     case 'rep': { syncDraft(); const r=S.draft.reports; const i=r.indexOf(d.f); if(i>=0) r.splice(i,1); else r.push(d.f); S.draft.reports=REPORTS.map(x=>x.f).filter(x=>r.includes(x)); keepScroll(render); break; }
