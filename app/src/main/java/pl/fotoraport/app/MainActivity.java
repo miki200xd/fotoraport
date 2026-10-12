@@ -783,5 +783,64 @@ public class MainActivity extends Activity {
         public void toast(String msg) {
             MainActivity.this.toast(msg);
         }
+
+        // Odczyt kodów (DataMatrix, kreskowe, QR) ze zdjęcia tabliczki – ML Kit, model w aplikacji (offline).
+        // Wynik wraca do JS: window.__snNative(id, json) z listą [{f,t}].
+        @JavascriptInterface
+        public void scanCodes(final String cbId, final String base64) {
+            new Thread(() -> {
+                String json;
+                try {
+                    byte[] b = Base64.decode(base64, Base64.DEFAULT);
+                    BitmapFactory.Options bo = new BitmapFactory.Options();
+                    bo.inJustDecodeBounds = true;
+                    BitmapFactory.decodeByteArray(b, 0, b.length, bo);
+                    int side = Math.max(bo.outWidth, bo.outHeight), sample = 1;
+                    while (side / sample > 4200) sample *= 2;
+                    bo = new BitmapFactory.Options();
+                    bo.inSampleSize = sample;
+                    Bitmap bm = BitmapFactory.decodeByteArray(b, 0, b.length, bo);
+                    com.google.mlkit.vision.barcode.BarcodeScanner sc = com.google.mlkit.vision.barcode.BarcodeScanning.getClient(
+                            new com.google.mlkit.vision.barcode.BarcodeScannerOptions.Builder()
+                                    .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS).build());
+                    java.util.LinkedHashMap<String, String> found = new java.util.LinkedHashMap<>();
+                    scanInto(sc, bm, found);
+                    if (found.isEmpty()) { // małe kody: jeszcze ćwiartki zdjęcia z zakładką
+                        int w = bm.getWidth(), h = bm.getHeight(), tw = (int) (w * 0.6), th = (int) (h * 0.6);
+                        for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++)
+                            scanInto(sc, Bitmap.createBitmap(bm, i == 0 ? 0 : w - tw, j == 0 ? 0 : h - th, tw, th), found);
+                    }
+                    sc.close();
+                    JSONArray arr = new JSONArray();
+                    for (java.util.Map.Entry<String, String> e : found.entrySet())
+                        arr.put(new JSONObject().put("t", e.getKey()).put("f", e.getValue()));
+                    json = arr.toString();
+                } catch (Throwable e) {
+                    json = "{\"error\":" + JSONObject.quote(String.valueOf(e)) + "}";
+                }
+                final String js = "window.__snNative&&window.__snNative(" + JSONObject.quote(cbId) + "," + JSONObject.quote(json) + ")";
+                runOnUiThread(() -> web.evaluateJavascript(js, null));
+            }).start();
+        }
+
+        private void scanInto(com.google.mlkit.vision.barcode.BarcodeScanner sc, Bitmap bm, java.util.Map<String, String> found) throws Exception {
+            java.util.List<com.google.mlkit.vision.barcode.common.Barcode> list = com.google.android.gms.tasks.Tasks.await(
+                    sc.process(com.google.mlkit.vision.common.InputImage.fromBitmap(bm, 0)));
+            for (com.google.mlkit.vision.barcode.common.Barcode c : list) {
+                String t = c.getRawValue();
+                if (t != null && !found.containsKey(t)) found.put(t, fmtName(c.getFormat()));
+            }
+        }
+
+        private String fmtName(int f) {
+            switch (f) {
+                case com.google.mlkit.vision.barcode.common.Barcode.FORMAT_DATA_MATRIX: return "data_matrix";
+                case com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE: return "qr_code";
+                case com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_128: return "code_128";
+                case com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_39: return "code_39";
+                case com.google.mlkit.vision.barcode.common.Barcode.FORMAT_PDF417: return "pdf417";
+                default: return "kod_" + f;
+            }
+        }
     }
 }

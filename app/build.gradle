@@ -29,7 +29,7 @@ android {
         plusdoc {
             dimension "app"
             applicationId "pl.plusdoc.zdjecia"
-            versionName "1.6"
+            versionName "1.7"
             resValue "string", "app_name", "Cellnex-Nokia"
             resValue "string", "media_dir", "CellnexNokia"
         }
@@ -69,4 +69,6 @@ android {
 dependencies {
     implementation 'androidx.webkit:webkit:1.11.0'
     implementation 'androidx.core:core:1.13.1'
+    // odczyt kodów z tabliczek (DataMatrix / Code 128) – model wbudowany, działa bez internetu
+    implementation 'com.google.mlkit:barcode-scanning:17.3.0'
 }

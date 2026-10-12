@@ -256,7 +256,7 @@ function buildEclipse(){
     add({title:`S${s} – widok ogólny anten sektora`,desc:'Wszystkie anteny sektora z mocowaniami, z dołu albo z boku.',tags:{sec:s}});
     for(let a=1;a<=E_MAXA;a++){
       add({title:`S${s} ANT${a} – widok anteny z mocowaniem`,desc:'Cała antena, mocowanie i podłączone jumpery.',tags:{sec:s,ant:a}});
-      add({title:`S${s} ANT${a} – tabliczka znamionowa`,desc:'Tył anteny. Typ i numer seryjny muszą być czytelne bez powiększania, więc podejdź blisko.',tags:{sec:s,ant:a}});
+      add({title:`S${s} ANT${a} – tabliczka znamionowa`,desc:'Tył anteny. Typ i numer seryjny muszą być czytelne bez powiększania, więc podejdź blisko.',sn:true,tags:{sec:s,ant:a}});
       add({title:`S${s} ANT${a} – złącza antena–jumper od dołu`,desc:'Zbliżenie: złącza RF i RET, opis na każdym jumperze, opis portu na antenie, opis na kablu RET.',warn:true,tags:{sec:s,ant:a}});
     }
   }
@@ -265,7 +265,7 @@ function buildEclipse(){
   for(let s=1;s<=E_MAXS;s++){
     for(let m=1;m<=E_MAXR;m++){
       add({title:`S${s} RF${m} – moduł i mocowanie`,desc:'Cały moduł RF z mocowaniem do konstrukcji.',tags:{sec:s,rru:m}});
-      add({title:`S${s} RF${m} – tabliczka modułu`,desc:'Typ i numer seryjny czytelne.',tags:{sec:s,rru:m}});
+      add({title:`S${s} RF${m} – tabliczka modułu`,desc:'Typ i numer seryjny czytelne.',sn:true,tags:{sec:s,rru:m}});
       add({title:`S${s} RF${m} – złącza RF moduł–jumper`,desc:'Złącza RF i RET, opisy na jumperach i opisy portów modułu.',warn:true,tags:{sec:s,rru:m}});
       add({title:`S${s} RF${m} – DC, FO i uziemienie modułu`,desc:'Wtyczka DC, wkładka SFP i kabel FO z opisami, przewód uziemiający modułu.',tags:{sec:s,rru:m}});
     }
@@ -277,7 +277,7 @@ function buildEclipse(){
     const after=E[F].filter(x=>x.tags.sec===s&&x.tags.rru===E_MAXR).pop().o;
     const m=E_MAXR4;
     add({title:`S${s} RF${m} – moduł i mocowanie`,desc:'Cały moduł RF z mocowaniem do konstrukcji.',tags:{sec:s,rru:m},o:after+0.1});
-    add({title:`S${s} RF${m} – tabliczka modułu`,desc:'Typ i numer seryjny czytelne.',tags:{sec:s,rru:m},o:after+0.2});
+    add({title:`S${s} RF${m} – tabliczka modułu`,desc:'Typ i numer seryjny czytelne.',sn:true,tags:{sec:s,rru:m},o:after+0.2});
     add({title:`S${s} RF${m} – złącza RF moduł–jumper`,desc:'Złącza RF i RET, opisy na jumperach i opisy portów modułu.',warn:true,tags:{sec:s,rru:m},o:after+0.3});
     add({title:`S${s} RF${m} – DC, FO i uziemienie modułu`,desc:'Wtyczka DC, wkładka SFP i kabel FO z opisami, przewód uziemiający modułu.',tags:{sec:s,rru:m},o:after+0.4});
   }
@@ -314,7 +314,7 @@ function buildEclipse(){
   add({title:'Nadmiar kabla FO',desc:'Gdzie i jak podczepiony zapas FO.'});
   add({title:'Przepust kablowy / Roxtec – od zewnątrz',desc:'Wskaż zajęte otwory. Jeśli nie ma przepustu, stuknij „Pomiń” (N/A).'});
   add({title:'Przepust kablowy / Roxtec – od wewnątrz',desc:'Bez lampy błyskowej, wskaż zajęte otwory. Brak przepustu = „Pomiń” (N/A).'});
-  add({title:'Tabliczki sprzętu w szafie',desc:'Numery seryjne czytelne.'},2);
+  add({title:'Tabliczki sprzętu w szafie',desc:'Numery seryjne czytelne. AirScale, PDU, moduły – kod 2D (DataMatrix) w kadrze.',sn:true},2);
   add({title:'Rack MW / szafa transmisyjna',desc:'Rack, w którym stoi sprzęt transmisyjny.',cond:'mw'});
   add({title:'Szafy zamknięte po pracach',desc:'Każda szafa outdoor z zamkniętymi pokrywami.'});
   extras(3);
@@ -337,17 +337,17 @@ function buildEclipse(){
   extras(3);
   folder('07_SILOWNIA');
   add({title:'Widok ogólny szaf siłowni',desc:'Ogólny widok szafy / szaf siłowni.'});
-  add({title:'Tabliczka z numerem seryjnym siłowni',desc:'Tabliczka znamionowa siłowni, numer seryjny czytelny.'});
+  add({title:'Tabliczka z numerem seryjnym siłowni',desc:'Tabliczka znamionowa siłowni, numer seryjny czytelny.',sn:true});
   add({title:'Kable w zaciskach siłowni i w RT',desc:'Kable zasilające wpięte w zaciski siłowni oraz do zabezpieczeń w RT, z widoczną drogą prowadzenia i mocowaniem okablowania.'},2);
   add({title:'Uziemienie siłowni',desc:'Od strony szafy oraz od strony szyny uziemiającej.'});
   add({title:'Panel zabezpieczeń z oznaczeniami',desc:'Oznaczenia na okablowaniu i na tabliczce.'});
-  add({title:'Baterie z numerami seryjnymi',desc:'Każda bateria, numer seryjny czytelny.'},2);
+  add({title:'Baterie z numerami seryjnymi',desc:'Każda bateria, numer seryjny czytelny.',sn:true},2);
   add({title:'Przepusty kabli zewnętrznych',desc:'Miejsca wprowadzenia kabli zewnętrznych do szafy.'});
   add({title:'Wyświetlacz: prąd i napięcie',desc:'Wyświetlacz z widoczną wartością prądu i napięcia, po uruchomieniu sprzętu.'});
   extras(3);
   // dopisane na końcu (numery bez zmian), na liście zaraz po bateriach
   const bat=E[F].filter(x=>x.title==='Baterie z numerami seryjnymi').pop().o;
-  add({title:'Prostowniki z numerami seryjnymi',desc:'Każdy prostownik w siłowni, numer seryjny czytelny bez powiększania.',o:bat+0.5},2);
+  add({title:'Prostowniki z numerami seryjnymi',desc:'Każdy prostownik w siłowni, numer seryjny czytelny bez powiększania.',sn:true,o:bat+0.5},2);
   folder('08_TESTY_S25');
   for(let s=1;s<=E_MAXS;s++){
     add({title:`S${s} – test DL, UL, ping`,desc:'Zrzut ekranu z Samsunga S25 po teście przepływności w tym sektorze. Wynik czytelny.',screen:true,tags:{sec:s}});
@@ -575,7 +575,7 @@ function releaseFullURLs(){ for(const [k,u] of S.urls) if(k.endsWith('f')){ URL.
 function render(){
   if(S.view!=='shoot') releaseFullURLs();
   const v = S.view;
-  $app.innerHTML = v==='home'?vHome(): v==='form'?vForm(): v==='station'?vStation(): v==='shoot'?vShoot(): v==='export'?vExport():'';
+  $app.innerHTML = v==='home'?vHome(): v==='form'?vForm(): v==='station'?vStation(): v==='shoot'?vShoot(): v==='export'?vExport(): v==='sn'?vSN():'';
   window.scrollTo && S._scrollTop!==false && window.scrollTo(0,0);
   if(v==='shoot') setCaptureTarget();
 }
@@ -875,6 +875,7 @@ function vStation(){
       <button class="btn-primary" style="flex:1" data-act="go-next" ${next?'':'disabled'}>${next?`Rób po kolei · od nr ${next.n}${next.f!==f?' ('+esc(RMAP[next.f].short)+')':''}`:'Wszystkie wymagane zdjęcia są zrobione'}</button>
       <button data-act="export">Pobierz ZIP</button>
     </div>
+    ${isE(p)?`<div class="row" style="justify-content:space-between"><span class="muted small">Numery seryjne odczytane z tabliczek: <b>${snAll(p).filter(r=>r.sn).length}</b></span><button class="btn-ghost" data-act="sn-list">Numery S/N</button></div>`:''}
     <div class="row" style="justify-content:space-between"><span class="muted small">Masz zdjęcia z innego telefonu albo kopię?</span><button class="btn-ghost" data-act="import">Wczytaj ZIP</button></div>
     <div class="spread">
       <div class="chips">${[['all','Wszystkie'],['todo','Brakujące']].concat(isE(p)?[]:[['przed','Przed pracami']]).concat([['done','Zrobione']]).map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
@@ -933,6 +934,7 @@ function vShoot(){
     ${S.lastError?`<p class="notice" role="alert">${esc(S.lastError)}</p>`:''}
     ${land?`<p class="notice">To zdjęcie jest poziome. Wytyczne wymagają zdjęć pionowych 3:4.</p>`:''}
     ${small?`<p class="notice">Rozdzielczość poniżej 1200×1600 wymaganych w wytycznych.</p>`:''}
+    ${snCard(p,f,it)}
     ${sl.takes.length?`<div class="stack" style="gap:6px">
       <div class="spread"><span class="eyebrow">Ujęcia (${sl.takes.length}) · stuknij, żeby wybrać</span>
         ${sl.chosen?`<button class="${conf==='deltake'?'btn-danger':'btn-ghost'}" data-act="deltake">${conf==='deltake'?'Na pewno usunąć?':'Usuń wybrane'}</button>`:''}</div>
@@ -1126,7 +1128,8 @@ async function runQueue(){
     // przypisanie do stacji (także gdy użytkownik zmienił w międzyczasie stację)
     let p = S.p&&S.p.id===j.pid ? S.p : null;
     if(!p){ try{ p=await DB.get('projects',j.pid); }catch(e){} }
-    if(p && ph){ const sl=slot(p,j.k); sl.takes.push(ph.id); sl.chosen=ph.id; sl.skip=false; p.updated=Date.now(); try{ await DB.put('projects',p); }catch(e){} }
+    if(p && ph){ const sl=slot(p,j.k); sl.takes.push(ph.id); sl.chosen=ph.id; sl.skip=false; p.updated=Date.now(); try{ await DB.put('projects',p); }catch(e){}
+      const it=findItem(p,j.f,j.n); if(it&&it.sn) snQueue(p.id,j.k,j.file,false); }
     S.pending[j.k]=pendingOf(j.k).filter(x=>x.id!==j.id); if(!S.pending[j.k].length) delete S.pending[j.k];
     URL.revokeObjectURL(j.url);
     if(err){
@@ -1151,6 +1154,131 @@ function updateQueueBadge(){
 for(const id of ['cam','gal']){
   const el=document.getElementById(id);
   el.addEventListener('change',()=>{ const fs=[...el.files]; el.value=''; addFiles(fs,id); });
+}
+
+/* ======================= Numery seryjne z tabliczek ======================= */
+// Kody czytane z ZDJĘCIA (bez uprawnienia CAMERA): BarcodeDetector (Android) albo ZXing jako zapas.
+// Nokia: DataMatrix w formacie ISO/IEC 15434 z polami ANSI MH10.8.2 – (1P) kod produktu, (S) numer seryjny, (1T) partia.
+const SN_DI=['10D','9D','1P','1T','1V','4L','11Z','12Z','13Z','16D','P','S','T','V','D','Q'];
+function snParse(t){
+  let x=String(t||'').replace(/^\[\)>[\x1e]?\d{2}[\x1d]?/,'');
+  let parts=x.split(/[\x00-\x1f]+/).filter(Boolean);
+  if(parts.length<2 && / /.test(x)) parts=x.split(/ +/);
+  const f={}; let hit=0;
+  for(const raw of parts){ const tok=raw.trim(); const di=SN_DI.find(d=>tok.startsWith(d)&&tok.length>d.length+2);
+    if(di && !(di in f)){ f[di]=tok.slice(di.length).trim(); hit++; } }
+  if(!hit || !(f['1P']||f.P||f.S||f['1T'])) return null;
+  // Nokia potrafi skleić pola bez separatora: „1PCS7000158.03S4820026040300140” → 1P + S
+  for(const di of ['1P','P']){ const m=f[di]&&!f.S&&f[di].match(/^([A-Z0-9]+\.\d{2,3})S([A-Z0-9]{6,})$/); if(m){ f[di]=m[1]; f.S=m[2]; } }
+  return {pn:f['1P']||f.P||'', sn:f.S||'', lot:f['1T']||f.T||'', date:f['10D']||f['9D']||f.D||''};
+}
+// z listy kodów robi urządzenia: każdy DataMatrix z polami = jedno urządzenie; same kody kreskowe → zgadujemy S/N i typ
+function snDevices(codes){
+  const out=[]; const seen=new Set();
+  for(const c of codes){ const d=snParse(c.t); if(!d) continue; const key=d.sn||d.lot||d.pn+c.t; if(seen.has(key)) continue; seen.add(key); out.push({...d,src:'2D'}); }
+  if(out.length) return out;
+  const lin=codes.filter(c=>!/qr|data/i.test(c.f)).map(c=>c.t.trim()).filter(t=>t.length>=6);
+  const sn=lin.find(t=>/^\d{2}[A-Z]{2}\d{6,}$/.test(t)) || lin.find(t=>!/[-.\s]/.test(t)&&/\d/.test(t)&&/[A-Z]/i.test(t)&&t.length>=8&&t.length<=20);
+  const pn=lin.find(t=>t!==sn&&/-/.test(t));
+  return sn||pn ? [{pn:pn||'',sn:sn||'',lot:'',date:'',src:'kreskowy'}] : [];
+}
+let snZx=null, snDet;
+async function snEngines(){
+  if(snDet===undefined){ snDet=null;
+    if('BarcodeDetector' in window){ try{ const f=await BarcodeDetector.getSupportedFormats(); const want=['data_matrix','code_128','qr_code','code_39','pdf417'].filter(x=>f.includes(x)); if(want.length) snDet=new BarcodeDetector({formats:want}); }catch(e){} } }
+  if(!snZx){ try{ if(typeof ZXing==='undefined') await loadScript('zxing.min.js');
+    const h=new Map(); h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.DATA_MATRIX,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.QR_CODE,ZXing.BarcodeFormat.CODE_39,ZXing.BarcodeFormat.PDF_417]);
+    h.set(ZXing.DecodeHintType.TRY_HARDER,true); snZx=new ZXing.MultiFormatReader(); snZx.setHints(h); }catch(e){ snZx=null; } }
+}
+// telefon: natywny ML Kit (lepszy na małe i krzywe DataMatrix), w przeglądarce ZXing
+const snCbs={};
+window.__snNative=(id,json)=>{ const cb=snCbs[id]; if(cb){ delete snCbs[id]; cb(json); } };
+function snNativeScan(blob){
+  return new Promise((res,rej)=>{ const fr=new FileReader();
+    fr.onload=()=>{ const id='s'+Date.now()+Math.random().toString(36).slice(2,6);
+      const tm=setTimeout(()=>{ delete snCbs[id]; rej(new Error('timeout')); },45000);
+      snCbs[id]=json=>{ clearTimeout(tm); try{ const r=JSON.parse(json); if(Array.isArray(r)) res(r); else rej(new Error(r.error||'scan')); }catch(e){ rej(e); } };
+      try{ AndroidBridge.scanCodes(id,String(fr.result).split(',')[1]); }catch(e){ clearTimeout(tm); delete snCbs[id]; rej(e); } };
+    fr.onerror=()=>rej(new Error('read')); fr.readAsDataURL(blob); });
+}
+async function snScanBlob(blob){
+  if(NATIVE && typeof AndroidBridge.scanCodes==='function'){ try{ return await snNativeScan(blob); }catch(e){} }
+  await snEngines();
+  const bmp=await createImageBitmap(blob); const W=bmp.width, H=bmp.height; const found=new Map();
+  const add=(f,t)=>{ t=String(t||''); if(t && !found.has(t)) found.set(t,{f:String(f).toLowerCase(),t}); };
+  try{
+    if(snDet){ try{ for(const r of await snDet.detect(bmp)) add(r.format,r.rawValue); }catch(e){} }
+    if(snZx){
+      const cv=document.createElement('canvas'); const cx=cv.getContext('2d',{willReadFrequently:true});
+      const tryReg=(x,y,w,h,max)=>{ const k=Math.min(1,max/Math.max(w,h)); cv.width=Math.round(w*k); cv.height=Math.round(h*k);
+        cx.drawImage(bmp,x,y,w,h,0,0,cv.width,cv.height);
+        try{ const r=snZx.decodeWithState(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(cv)))); add(ZXing.BarcodeFormat[r.getBarcodeFormat()],r.getText()); }catch(e){} };
+      const t0=Date.now();
+      tryReg(0,0,W,H,2000);
+      // kafelki z zakładką: małe kody na dużym zdjęciu i kilka naklejek obok siebie
+      for(const n of [2,3,4]){ const tw=W/n*1.35, th=H/n*1.35;
+        for(let i=0;i<n;i++) for(let j=0;j<n;j++){ if(Date.now()-t0>15000) break;
+          tryReg(Math.max(0,Math.min(W-tw,(i+0.5)*W/n-tw/2)),Math.max(0,Math.min(H-th,(j+0.5)*H/n-th/2)),Math.min(tw,W),Math.min(th,H),1600); } }
+    }
+  } finally { bmp.close&&bmp.close(); }
+  return [...found.values()];
+}
+function snOf(p,k){ return (p.sn=p.sn||{})[k] || (p.sn[k]={dev:[],codes:[],state:''}); }
+let snChain=Promise.resolve();
+function snQueue(pid,k,blob,force){ snChain=snChain.then(()=>snRun(pid,k,blob,force)).catch(()=>{}); return snChain; }
+async function snRun(pid,k,blob,force){
+  let p=S.p&&S.p.id===pid?S.p:null; if(!p){ try{ p=await DB.get('projects',pid); }catch(e){} } if(!p) return;
+  const e=snOf(p,k); if(!force && (e.dev.length || e.state==='scan')) return;
+  e.state='scan'; if(S.view==='shoot') keepScroll(render);
+  let codes=[]; try{ codes=await snScanBlob(blob); }catch(err){}
+  e.codes=codes; const devs=snDevices(codes);
+  if(force || !e.dev.length) e.dev=devs.length?devs:e.dev;
+  e.state=codes.length?'ok':'none'; e.t=Date.now();
+  p.updated=Date.now(); try{ await DB.put('projects',p); }catch(err){}
+  if(S.p&&S.p.id===pid&&(S.view==='shoot'||S.view==='sn')) keepScroll(render);
+  if(devs.length) toast(`Odczytano numer seryjny: ${devs.map(d=>d.sn||d.lot||d.pn).join(', ')}`);
+}
+function snPlace(p,k){ // „01_ANTENY nr 12 · S1 ANT1 – tabliczka znamionowa”
+  const [f,n]=k.split('/'); const it=findItem(p,f,+n); return {f,n:+n,title:it?it.title:k,it}; }
+function snAll(p){ const rows=[];
+  for(const k of Object.keys(p.sn||{})){ const pl=snPlace(p,k); if(!pl.it) continue;
+    snOf(p,k).dev.forEach((d,i)=>rows.push({k,i,...pl,...d})); }
+  rows.sort((a,b)=>a.f.localeCompare(b.f)||(a.it.o-b.it.o)||a.i-b.i); return rows; }
+function snDup(rows){ const c={}; for(const r of rows) if(r.sn) c[r.sn]=(c[r.sn]||0)+1; return c; }
+function snCard(p,f,it){
+  if(!it||!it.sn) return '';
+  const k=slotKey(f,it.n,p); const e=(p.sn&&p.sn[k])||{dev:[],codes:[],state:''}; const sl=peek(p,k);
+  const used=new Set(e.dev.flatMap(d=>[d.sn,d.pn,d.lot]));
+  const rest=e.codes.filter(c=>!used.has(c.t)&&!snParse(c.t));
+  const st=e.state==='scan'?'<span class="tag acc">czytam kody…</span>':e.state==='none'?'<span class="tag warn">nie znalazłem kodu – podejdź bliżej, kod ostry i bez odblasku</span>':e.state==='ok'?`<span class="tag ok">kody: ${e.codes.length}</span>`:'';
+  return `<div class="card stack" style="gap:8px">
+    <div class="spread"><b>Numer seryjny z tabliczki</b>${st}</div>
+    ${e.dev.map((d,i)=>`<div class="row" style="gap:6px;flex-wrap:nowrap">
+      <input type="text" class="snin" data-k="${esc(k)}" data-i="${i}" data-fld="pn" value="${esc(d.pn)}" placeholder="Typ / kod (1P)" style="flex:1;min-width:0">
+      <input type="text" class="snin" data-k="${esc(k)}" data-i="${i}" data-fld="sn" value="${esc(d.sn)}" placeholder="${d.lot?'partia '+esc(d.lot):'S/N'}" style="flex:1.2;min-width:0;font-weight:700">
+      <button class="btn-ghost" data-act="sn-del" data-k="${esc(k)}" data-i="${i}" aria-label="Usuń">✕</button></div>`).join('')}
+    ${rest.length?`<div class="small muted">Inne kody na zdjęciu – stuknij, żeby dodać jako S/N:</div><div class="chips">${rest.map((c,j)=>`<button class="chip" data-act="sn-pick" data-k="${esc(k)}" data-j="${e.codes.indexOf(c)}">${esc(c.t.length>28?c.t.slice(0,28)+'…':c.t)}</button>`).join('')}</div>`:''}
+    <div class="row" style="gap:6px"><button data-act="sn-scan" data-k="${esc(k)}" ${sl.chosen&&e.state!=='scan'?'':'disabled'}>Odczytaj z wybranego zdjęcia</button>
+      <button class="btn-ghost" data-act="sn-add" data-k="${esc(k)}">+ Wpisz ręcznie</button></div>
+  </div>`;
+}
+function vSN(){
+  const p=S.p; const rows=snAll(p); const dup=snDup(rows);
+  return `<div class="topbar spread"><button class="btn-ghost" data-act="back-station">← Lista</button><span class="eyebrow">Numery seryjne · ${rows.length}</span><span style="width:60px"></span></div>
+  <div class="stack">
+    <p class="muted small">Odczytane z kodów na zdjęciach tabliczek (DataMatrix / kreskowe). Stuknij wiersz, żeby przejść do zdjęcia i poprawić. W ZIP-ie jest plik <b>numery_seryjne.csv</b>.</p>
+    ${Object.values(dup).some(v=>v>1)?'<p class="notice">Ten sam numer seryjny jest przypisany do kilku pozycji (zaznaczone na czerwono).</p>':''}
+    <div class="row" style="gap:6px"><button data-act="sn-copy" ${rows.length?'':'disabled'}>Kopiuj tabelę</button></div>
+    <div class="items">${rows.length?rows.map(r=>`<button class="item ${r.sn?'done':''}" data-act="shoot" data-f="${esc(r.f)}" data-n="${r.n}">
+      <span class="plate">${r.n}</span><span style="min-width:0"><span class="t">${esc(r.title)}</span>
+      <span class="d"><b style="${dup[r.sn]>1?'color:var(--danger,#c62828)':''}">${esc(r.sn||(r.lot?'partia '+r.lot:'brak S/N'))}</b>${r.pn?' · '+esc(r.pn):''}</span></span><span></span></button>`).join(''):'<div class="empty-state muted">Jeszcze nic. Zrób zdjęcie tabliczki – numer odczyta się sam.</div>'}</div>
+  </div>`;
+}
+function snCSV(p){
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const rows=snAll(p);
+  return '﻿'+[['Stacja','Folder','Nr zdjęcia','Pozycja','Typ / kod produktu (1P)','Numer seryjny (S)','Partia (1T)','Data prod.','Plik zdjęcia'].map(q).join(';')]
+    .concat(rows.map(r=>[p.nr+' '+(p.nazwa||''),r.f,r.n,r.title,r.pn,r.sn,r.lot,r.date,r.f+'/'+fileName(p,r.f,r.it,r.n)].map(q).join(';'))).join('\r\n');
 }
 
 /* ======================= Eksport ZIP ======================= */
@@ -1201,8 +1329,9 @@ async function doExport(){
       'Data wykonania: '+(p.data||''),
       p.zam?'Numer zamówienia: '+p.zam:''
     ].filter(Boolean).join('\r\n'));
-    dir.file('_fotoraport_dane.json',JSON.stringify({app:'fotoraport',v:1,project:{nr:p.nr,nazwa:p.nazwa,nazwaOp:p.nazwaOp,data:p.data,firma:p.firma,zakres:p.zakres,zam:p.zam,reports:p.reports,cfg:p.cfg,g5:p.g5||null,pn:p.pn||null,tpl:tplOf(p),inne:p.inne||[]},skip:Object.keys(p.slots).filter(k=>p.slots[k].skip)}));
+    dir.file('_fotoraport_dane.json',JSON.stringify({app:'fotoraport',v:1,project:{nr:p.nr,nazwa:p.nazwa,nazwaOp:p.nazwaOp,data:p.data,firma:p.firma,zakres:p.zakres,zam:p.zam,reports:p.reports,cfg:p.cfg,g5:p.g5||null,pn:p.pn||null,tpl:tplOf(p),inne:p.inne||[],sn:p.sn||{}},skip:Object.keys(p.slots).filter(k=>p.slots[k].skip)}));
     if(p.reports.includes('Inne') && (p.inne||[]).length) dir.folder('Inne').file('opisy.txt',p.inne.map(x=>`Zdjęcie ${x.n}: ${x.opis}`).join('\r\n'));
+    if(snAll(p).length) dir.file('numery_seryjne.csv',snCSV(p));
     if(NATIVE){
       const path=await nativeSaveZip(zip,root);
       busy(false); toast('ZIP zapisany');
@@ -1252,7 +1381,7 @@ function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='f
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
   if(document.getElementById('busy') && !document.getElementById('busy').hidden) return true;
-  if(S.view==='shoot'||S.view==='export'){ S.mode=null; S.view='station'; render(); return true; }
+  if(S.view==='shoot'||S.view==='export'||S.view==='sn'){ S.mode=null; S.view='station'; render(); return true; }
   if(S.view==='form'){ S.view=S.p?'station':'home'; render(); return true; }
   if(S.view==='home' && queueBusy()){ toast('Poczekaj chwilę – zapisuję zdjęcia'); return true; }
   if(S.view==='station'){ S.view='home'; S.p=null; loadProjects().then(()=>{ render(); showStorage(); }); return true; }
@@ -1316,6 +1445,14 @@ document.addEventListener('click',async ev=>{
     case 'next': step(1); break;
     case 'prev': step(-1); break;
     case 'export': S.view='export'; render(); break;
+    case 'sn-list': S.view='sn'; render(); break;
+    case 'sn-scan': { const sl=peek(S.p,d.k); const ph=sl.chosen&&S.photos.get(sl.chosen); if(!ph){ toast('Najpierw zrób zdjęcie tabliczki'); break; }
+      toast('Czytam kody ze zdjęcia…'); snQueue(S.p.id,d.k,ph.blob,true); break; }
+    case 'sn-add': { snOf(S.p,d.k).dev.push({pn:'',sn:'',lot:'',date:'',src:'ręcznie'}); await saveP(); keepScroll(render); break; }
+    case 'sn-del': { snOf(S.p,d.k).dev.splice(+d.i,1); await saveP(); keepScroll(render); break; }
+    case 'sn-pick': { const e=snOf(S.p,d.k); const c=e.codes[+d.j]; if(c){ e.dev.push({pn:'',sn:c.t.trim(),lot:'',date:'',src:c.f}); await saveP(); keepScroll(render); } break; }
+    case 'sn-copy': { const rows=snAll(S.p); const t=['Pozycja\tTyp (1P)\tS/N\tPartia'].concat(rows.map(r=>[r.title,r.pn,r.sn,r.lot].join('\t'))).join('\n');
+      try{ await navigator.clipboard.writeText(t); toast('Skopiowano tabelę'); }catch(e){ toast('Nie udało się skopiować'); } break; }
     case 'share': if(NATIVE) AndroidBridge.shareLast(); break;
     case 'import': S.importNew=false; document.getElementById('zipfile').click(); break;
     case 'import-new': S.importNew=true; document.getElementById('zipfile').click(); break;
@@ -1334,6 +1471,7 @@ document.addEventListener('click',async ev=>{
 document.addEventListener('keydown',ev=>{ const l=ev.target.closest&&ev.target.closest('label[for]'); if(l&&(ev.key==='Enter'||ev.key===' ')){ev.preventDefault(); document.getElementById(l.htmlFor).click();} });
 document.addEventListener('change',ev=>{
   if(ev.target.id==='extra'){ S.showExtra=ev.target.checked; keepScroll(render); }
+  if(ev.target.classList&&ev.target.classList.contains('snin')){ const t=ev.target, e=snOf(S.p,t.dataset.k), dv=e.dev[+t.dataset.i]; if(dv){ dv[t.dataset.fld]=t.value.trim(); dv.src=dv.src||'ręcznie'; saveP(); } }
   if(ev.target.id==='alt'){ S.includeAlt=ev.target.checked; keepScroll(render); }
   if(ev.target.classList&&ev.target.classList.contains('secsel')){ syncDraft(); const i=+ev.target.id.split('_')[1]; const no=ev.target.value===''?null:+ev.target.value;
     S.draft.cfg.map[i]=no; const s=no!=null&&S.draft.g5.sectors.find(x=>x.no===no); if(s){const x=secDefaults(s,S.draft.g5); S.draft.cfg.secAnt[i]=x.ant; S.draft.cfg.secRru[i]=x.rru;} keepScroll(render); }
@@ -1435,6 +1573,7 @@ document.getElementById('zipfile').addEventListener('change',async ev=>{
     await DB.put('projects',p); S.projects.push(p); await openProject(p.id);
   }
   const p=S.p; const tpl=tplOf(p);
+  if(meta&&meta.project&&meta.project.sn){ p.sn=p.sn||{}; for(const k in meta.project.sn) if(!(p.sn[k]&&p.sn[k].dev.length)) p.sn[k]=meta.project.sn[k]; }
   const files=[];
   for(const n of names){
     const m=n.match(/(?:^|\/)(_inne_ujecia\/)?([^\/]+)\/(\d+)(?:_v(\d+))?(?:_[^\/]*)?\.jpe?g$/i); if(!m) continue;
