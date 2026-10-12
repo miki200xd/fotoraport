@@ -334,6 +334,8 @@ function buildEclipse(){
   const batDesc='Każda bateria w szafie osobno, naklejka z numerem seryjnym czytelna (kod kreskowy / 2D w kadrze).';
   add({title:'Baterie w szafie z numerami seryjnymi',desc:batDesc,sn:true,o:tab+0.5});
   add({title:'Baterie w szafie z numerami seryjnymi',desc:batDesc+' Tylko gdy jest 2. / 3. bateria.',sn:true,opt:true,o:tab+0.5},2);
+  // 3. i 4. ujęcie tabliczek sprzętu w szafie (opcjonalne) – na końcu, na liście zaraz po dwóch pierwszych
+  add({title:'Tabliczki sprzętu w szafie',desc:'Numery seryjne czytelne. AirScale, PDU, moduły – kod 2D (DataMatrix) w kadrze. Tylko gdy jest więcej tabliczek.',sn:true,opt:true,o:tab+0.1},2);
   folder('05_GPS');
   add({title:'Antena GPS – widok i mocowanie',desc:'Antena z mocowaniem, widać otoczenie (brak zasłonięcia nieba).'});
   add({title:'Kabel GPS – złącze, opis, uziemienie',desc:'Złącze przy antenie, opis kabla, uziemienie jeśli jest.'});
@@ -364,6 +366,8 @@ function buildEclipse(){
   const disp=E[F].filter(x=>x.title==='Wyświetlacz: prąd i napięcie').pop().o;
   add({title:'Zasilanie AC pod klapą',desc:'Otwarta klapa przyłącza AC: kable zasilające w zaciskach, zabezpieczenia AC i opisy, widoczne mocowanie kabli. Potem klapa zamknięta.',o:cab7+0.5});
   add({title:'Pobór mocy',desc:'Ekran sterownika / wyświetlacz z poborem mocy (W) całej stacji po uruchomieniu sprzętu – wartość czytelna.',o:disp+0.5});
+  // 3. i 4. prostownik (opcjonalne) – dopisane po poborze mocy, żeby numery 16 i 17 się nie zmieniły
+  add({title:'Prostowniki z numerami seryjnymi',desc:'Każdy prostownik w siłowni, numer seryjny czytelny bez powiększania. Tylko gdy jest 3. / 4. prostownik.',sn:true,opt:true,o:bat+0.5},2);
   folder('08_TESTY_S25');
   for(let s=1;s<=E_MAXS;s++){
     add({title:`S${s} – test DL, UL, ping`,desc:'Zrzut ekranu z Samsunga S25 po teście przepływności w tym sektorze. Wynik czytelny.',screen:true,tags:{sec:s}});
