@@ -830,6 +830,10 @@ function vFormE(p,segs,segi){
       <div class="secbox stack"><b>Na stacji jest</b>
         <div class="chips">${E_OPTS.map(([k,l])=>`<button type="button" class="chip" data-act="eopt" data-k="${k}" aria-pressed="${!!p.cfg.opts[k]}">${esc(l)}</button>`).join('')}</div>
       </div>
+      <div class="secbox stack"><b>Opcje</b>
+        <div class="chips"><button type="button" class="chip" data-act="eopt" data-k="sn" aria-pressed="${!!p.cfg.opts.sn}">Numery seryjne z tabliczek (S/N, IMS2)</button></div>
+        <p class="muted small">Gdy włączone, aplikacja czyta S/N z kodów na zdjęciach tabliczek i porównuje je z plikiem IMS2. Zdjęcia robisz tak samo.</p>
+      </div>
     </div>
     <p class="notice" id="formErr" hidden></p>
     <button class="btn-primary btn-big btn-block" type="submit">${S.p?'Zapisz zmiany':'Zacznij zdjęcia'}</button>
@@ -876,7 +880,7 @@ function vStation(){
       <button class="btn-primary" style="flex:1" data-act="go-next" ${next?'':'disabled'}>${next?`Rób po kolei · od nr ${next.n}${next.f!==f?' ('+esc(RMAP[next.f].short)+')':''}`:'Wszystkie wymagane zdjęcia są zrobione'}</button>
       <button data-act="export">Pobierz ZIP</button>
     </div>
-    ${isE(p)?`<div class="row" style="justify-content:space-between"><span class="muted small">Numery seryjne odczytane z tabliczek: <b>${snAll(p).filter(r=>r.sn).length}</b></span><button class="btn-ghost" data-act="sn-list">Numery S/N</button></div>`:''}
+    ${isE(p)&&snOn(p)?`<div class="row" style="justify-content:space-between"><span class="muted small">Numery seryjne odczytane z tabliczek: <b>${snAll(p).filter(r=>r.sn).length}</b></span><button class="btn-ghost" data-act="sn-list">Numery S/N</button></div>`:''}
     <div class="row" style="justify-content:space-between"><span class="muted small">Masz zdjęcia z innego telefonu albo kopię?</span><button class="btn-ghost" data-act="import">Wczytaj ZIP</button></div>
     <div class="spread">
       <div class="chips">${[['all','Wszystkie'],['todo','Brakujące']].concat(isE(p)?[]:[['przed','Przed pracami']]).concat([['done','Zrobione']]).map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
@@ -1130,7 +1134,7 @@ async function runQueue(){
     let p = S.p&&S.p.id===j.pid ? S.p : null;
     if(!p){ try{ p=await DB.get('projects',j.pid); }catch(e){} }
     if(p && ph){ const sl=slot(p,j.k); sl.takes.push(ph.id); sl.chosen=ph.id; sl.skip=false; p.updated=Date.now(); try{ await DB.put('projects',p); }catch(e){}
-      const it=findItem(p,j.f,j.n); if(it&&it.sn) snQueue(p.id,j.k,j.file,false); }
+      const it=findItem(p,j.f,j.n); if(it&&it.sn&&snOn(p)) snQueue(p.id,j.k,j.file,false); }
     S.pending[j.k]=pendingOf(j.k).filter(x=>x.id!==j.id); if(!S.pending[j.k].length) delete S.pending[j.k];
     URL.revokeObjectURL(j.url);
     if(err){
@@ -1307,6 +1311,7 @@ function ims2Match(p){ // które numery z IMS2 mają zdjęcie z odczytanym S/N
   const has=sn=>{ const s=sn.toUpperCase(); if(mine.has(s)) return true; for(const x of mine) if(x.length>=8&&(s.includes(x)||x.includes(s))) return true; return false; };
   return ((p.ims2&&p.ims2.items)||[]).map(it=>({...it,ok:has(it.sn)}));
 }
+function snOn(p){ return !!(p&&p.cfg&&p.cfg.opts&&p.cfg.opts.sn); }
 function snOf(p,k){ return (p.sn=p.sn||{})[k] || (p.sn[k]={dev:[],codes:[],state:''}); }
 let snChain=Promise.resolve();
 function snQueue(pid,k,blob,force){ snChain=snChain.then(()=>snRun(pid,k,blob,force)).catch(()=>{}); return snChain; }
@@ -1330,7 +1335,7 @@ function snAll(p){ const rows=[];
   rows.sort((a,b)=>a.f.localeCompare(b.f)||(a.it.o-b.it.o)||a.i-b.i); return rows; }
 function snDup(rows){ const c={}; for(const r of rows) if(r.sn) c[r.sn]=(c[r.sn]||0)+1; return c; }
 function snCard(p,f,it){
-  if(!it||!it.sn) return '';
+  if(!it||!it.sn||!snOn(p)) return '';
   const k=slotKey(f,it.n,p); const e=(p.sn&&p.sn[k])||{dev:[],codes:[],state:''}; const sl=peek(p,k);
   const used=new Set(e.dev.flatMap(d=>[d.sn,d.pn,d.lot]));
   const rest=e.codes.filter(c=>!used.has(c.t)&&!snParse(c.t));
