@@ -60,8 +60,36 @@ tr.sel td{background:rgba(21,101,192,.08)}
 #dlg.on{display:flex}
 #dlg .card{max-width:420px;width:100%}
 </style>
+<style>
+/* Ekran startowy z logo WAC (wac_logo.png / wac_logo_dark.png); znika po ~1,6 s albo po dotknięciu – jak w Networks! i Cellnex-Nokia */
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:var(--bg);color:var(--tx);transition:opacity .45s ease;padding:24px;text-align:center;--wac:#0066B4}
+#splash.hide{opacity:0;pointer-events:none}
+#splash img{width:min(68vw,340px);height:auto}
+#splash .line{width:56px;height:3px;border-radius:2px;background:var(--wac);margin-block:6px}
+#splash .app{font-weight:700;font-size:28px;letter-spacing:.02em}
+#splash .sub{font-size:15px;color:var(--mut);margin-top:-8px}
+#splash .by{font-size:13px;color:var(--wac);letter-spacing:.16em;text-transform:uppercase;font-weight:600}
+@media (prefers-color-scheme: dark){ #splash{--wac:#6EAAF0} }
+</style>
 </head>
 <body>
+<div id="splash" role="img" aria-label="PDU Skaner – aplikacja firmy WAC">
+  <picture>
+    <source srcset="wac_logo_dark.png" media="(prefers-color-scheme: dark)">
+    <img src="wac_logo.png" alt="WAC – Wireless Advance Connect">
+  </picture>
+  <div class="line"></div>
+  <div class="app">PDU Skaner</div>
+  <div class="sub">Inwentaryzacja listew PDU</div>
+  <div class="by">powered by WAC</div>
+</div>
+<script>
+(function(){var sp=document.getElementById('splash'),done=false;
+ function hide(){if(done)return;done=true;sp.classList.add('hide');setTimeout(function(){sp.remove()},500)}
+ setTimeout(hide,1600);sp.addEventListener('click',hide);})();
+</script>
+
 <header>
   <h1>PDU Skaner</h1>
   <button id="bList">Lista (<span id="cnt">0</span>)</button>
