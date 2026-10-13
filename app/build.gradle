@@ -30,14 +30,14 @@ android {
         plusdoc {
             dimension "app"
             applicationId "pl.plusdoc.zdjecia"
-            versionName "1.6"
+            versionName "1.7"
             resValue "string", "app_name", "Cellnex-Nokia"
             resValue "string", "media_dir", "CellnexNokia"
         }
         pdu {
             dimension "app"
             applicationId "pl.wac.pduskaner"
-            versionName "1.6"
+            versionName "1.7"
             resValue "string", "app_name", "PDU Skaner"
             resValue "string", "media_dir", "PduSkaner"
         }

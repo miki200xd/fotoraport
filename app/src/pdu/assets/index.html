@@ -716,38 +716,59 @@ async function readXlsx(buf){
     if(f.m===0) return td.decode(d); return await new Response(new Blob([d]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text(); };
   const P=new DOMParser(), ss=[], sst=await get('xl/sharedStrings.xml');
   if(sst) for(const si of P.parseFromString(sst,'application/xml').getElementsByTagName('si')) ss.push([...si.getElementsByTagName('t')].map(t=>t.textContent).join(''));
-  const sh=await get('xl/worksheets/sheet1.xml'); if(!sh) throw new Error('brak arkusza');
-  const rows=[];
-  for(const r of P.parseFromString(sh,'application/xml').getElementsByTagName('row')){ const row=[];
-    for(const c of r.getElementsByTagName('c')){ const col=c.getAttribute('r').replace(/\d+/g,'').split('').reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1, t=c.getAttribute('t');
-      let v; if(t==='inlineStr') v=[...c.getElementsByTagName('t')].map(x=>x.textContent).join(''); else { const ve=c.getElementsByTagName('v')[0]; v=ve?ve.textContent:''; if(t==='s') v=ss[+v]; }
-      row[col]=v; }
-    rows.push(row); }
-  return rows;
+  const names=Object.keys(F).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort((x,y)=>parseInt(x.match(/\d+/))-parseInt(y.match(/\d+/)));
+  if(!names.length) throw new Error('brak arkusza');
+  const sheets=[];
+  for(const n of names){ const rows=[];
+    for(const r of P.parseFromString(await get(n),'application/xml').getElementsByTagName('row')){ const row=[];
+      for(const c of r.getElementsByTagName('c')){ const col=c.getAttribute('r').replace(/\d+/g,'').split('').reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1, t=c.getAttribute('t');
+        let v; if(t==='inlineStr') v=[...c.getElementsByTagName('t')].map(x=>x.textContent).join(''); else { const ve=c.getElementsByTagName('v')[0]; v=ve?ve.textContent:''; if(t==='s') v=ss[+v]; }
+        row[col]=v; }
+      rows[(+r.getAttribute('r')||rows.length+1)-1]=row; }
+    sheets.push(rows); }
+  return sheets;
 }
 function rowsToProj(rows){
-  const hi=rows.findIndex(r=>r&&r.some(x=>/^von$/i.test(String(x||'').trim()))&&r.some(x=>/^nach$/i.test(String(x||'').trim())));
-  if(hi<0) throw new Error('nie znalazłem nagłówków „von” i „nach”');
-  const h=rows[hi].map(x=>String(x||'').trim()), iv=h.findIndex(x=>/^von$/i.test(x)), inn=h.findIndex(x=>/^nach$/i.test(x));
-  const it=h.findIndex(x=>/typ|trunkart/i.test(x)), il=h.findIndex(x=>/l(ä|a)nge|długo/i.test(x)), ir=h.findIndex(x=>/^(raum|sala)$/i.test(x));
+  const H=x=>String(x??'').replace(/\s+/g,' ').trim();
+  const hi=rows.findIndex(r=>r&&r.some(x=>/^von$/i.test(H(x)))&&r.some(x=>/^nach$/i.test(H(x))));
+  if(hi<0) return [];
+  const h=[...rows[hi]].map(H), iv=h.findIndex(x=>/^von$/i.test(x)), inn=h.findIndex(x=>/^nach$/i.test(x));
+  const nextPanel=i=>h.findIndex((x,j)=>j>i&&/^panel$/i.test(x));
+  const ivp=nextPanel(iv), inp=nextPanel(inn);
+  const it=h.findIndex(x=>/kabeltyp|trunkart|^typ/i.test(x));
+  let il=h.findIndex(x=>/gesamt/i.test(x)); if(il<0) il=h.findIndex(x=>/l(ä|a)nge|długo/i.test(x));
+  const ir=h.findIndex(x=>/^(raum|sala)$/i.test(x));
+  let room0=''; for(const r of rows){ if(r&&H(r[0])==='Raum:'){ room0=H(r[3]).toUpperCase(); break; } }
+  const sp=x=>{ const t=H(x).toUpperCase(), last=t.split('/').pop().trim();
+    const m=last.match(/^(RZ\d[A-Z])?\s*([A-H])\s*0?(\d{1,2})$/); return m?{room:m[1]||'',rack:m[2]+m[3].padStart(2,'0')}:null; };
+  const pp=x=>{ const m=[...String(x||'').matchAll(/P\s*0?(\d{1,2})/gi)].pop(); return m?'P'+m[1].padStart(2,'0'):''; };
   const out=[];
-  for(const r of rows.slice(hi+1)){ if(!r||!r[iv]||!r[inn]) continue;
-    const sp=x=>{ const m=String(x).trim().toUpperCase().match(/^(RZ\d[A-Z])?\s*([A-H])\s*0?(\d{1,2})$/); return m?{room:m[1]||'',rack:m[2]+m[3].padStart(2,'0')}:{room:'',rack:String(x).trim().toUpperCase()}; };
-    const a=sp(r[iv]), b=sp(r[inn]); const pp=x=>{ const m=String(x||'').match(/P\s*0?(\d{1,2})/i); return m?'P'+m[1].padStart(2,'0'):String(x||'').toUpperCase(); };
-    const room=a.room||(ir>=0?String(r[ir]||'').toUpperCase():'')||'LISTA';
-    const t=String(it>=0?r[it]||'':'');
-    out.push({r:room,v:a.rack,vp:pp(r[iv+1]),vo:String(r[iv+2]||'').trim(),n:b.rack,np:pp(r[inn+1]),no:String(r[inn+2]||'').trim(),t:/cu|rj|copper/i.test(t)?'CU':(t?'LWL':''),l:il>=0?+String(r[il]||'0').replace(',','.'):0});
+  for(const r of rows.slice(hi+1)){ if(!r) continue;
+    const a=sp(r[iv]), b=sp(r[inn]), vp=pp(r[ivp]), np=pp(r[inp]);
+    if(!a||!b||!vp||!np) continue;              // nagłówki grup, „Querverkabelung”, wiersze bez paneli
+    const tt=H(it>=0?r[it]:''), cu=/^cu|rj|copper/i.test(tt), t=cu?'CU':(tt?'LWL':'');
+    const L=il>=0?+String(r[il]??'0').replace(',','.'):0;
+    const room=a.room||(ir>=0?H(r[ir]).toUpperCase():'')||room0||'LISTA';
+    const kv=H(r[ivp+1]), kn=H(r[inp+1]);
+    const push=(vo,no)=>out.push({r:room,v:a.rack,vp,vo,n:b.rack,np,no,t,l:L});
+    if(/^ports$/i.test(h[ivp+1]||'')) { push(kv,kn); continue; }   // nasz format – porty wprost
+    if(cu){
+      if((kv.match(/\+/g)||[]).length===3) for(let k=0;k<4;k++) push(`${6*k+1}-${6*k+6}`,`${6*k+1}-${6*k+6}`);
+      else { const k=parseInt(kv)||1; push(`${6*k-5}-${6*k}`,'1-6'); }
+    } else {
+      const two=x=>/\//.test(x)||(x.match(/\+/g)||[]).length===3;
+      if(two(kv)) { push('1+2','1+2'); push('3+4','3+4'); } else push(kv,kn);
+    }
   }
-  if(!out.length) throw new Error('brak wierszy z trasami');
   return out;
 }
 $('kImp').onclick=()=>$('kFile').click();
 $('kFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
   try{
-    let rows;
-    if(/\.xlsx$/i.test(f.name)) rows=await readXlsx(await f.arrayBuffer());
-    else rows=(await f.text()).split(/\r?\n/).map(l=>l.split(l.includes('\t')?'\t':';'));
-    const P=rowsToProj(rows); S.proj=P; PROJ=P; S.kRoom=P[0].r; save(); render(); log(`Wczytano ${P.length} kabli z „${f.name}”`);
+    let sheets;
+    if(/\.xlsx$/i.test(f.name)) sheets=await readXlsx(await f.arrayBuffer());
+    else sheets=[(await f.text()).split(/\r?\n/).map(l=>l.split(l.includes('\t')?'\t':';'))];
+    const P=sheets.flatMap(rowsToProj); if(!P.length) throw new Error('brak wierszy z trasami (szukam kolumn „von” i „nach”)'); S.proj=P; PROJ=P; S.kRoom=P[0].r; save(); render(); log(`Wczytano ${P.length} kabli z „${f.name}”`);
   }catch(err){ warn('Nie udało się wczytać listy: '+(err.message||err)); }
   e.target.value=''; };
 
