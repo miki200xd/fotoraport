@@ -137,10 +137,12 @@ tr.sel td{background:rgba(21,101,192,.08)}
 <div class="wrap hide" id="vList">
   <div class="card">
     <div class="row" style="flex-wrap:wrap">
-      <button class="b" id="bCsv" style="flex:1">Zapisz CSV (Excel)</button>
+      <button class="b" id="bXlsx" style="flex:1 1 100%">Zapisz Excel (jak „PDUs DC110”)</button>
       <button class="b g" id="bShare" style="flex:1">Wyślij plik</button>
       <button class="b g" id="bCopy" style="flex:1">Kopiuj tabelę</button>
+      <button class="b g" id="bCsv" style="flex:1">CSV szczegółowy</button>
     </div>
+    <div class="foot" style="margin-top:6px">Excel: 1 wiersz na szafę – Rack, SN Master, SN Slave, MAC ETH1 (Master). CSV: każda listwa osobno (zasilanie, ETH2, kontrola).</div>
     <div id="expMsg" class="chk"></div>
   </div>
   <div class="card" style="overflow-x:auto"><table id="tbl"></table></div>
@@ -355,7 +357,7 @@ $('tbl').onclick=e=>{ const tr=e.target.closest('tr[data-ri]'); if(!tr) return; 
 function back(){ $('vList').classList.add('hide'); $('vScan').classList.remove('hide'); render(); startCam(); }
 $('bList').onclick=()=> $('vList').classList.contains('hide')?showList():back();
 $('bBack').onclick=back;
-$('bWipe').onclick=()=>ask('Usunąć <b>wszystkie</b> zapisane szafy? Najpierw zapisz CSV.',()=>{ S.records=[]; save(); showList(); render(); });
+$('bWipe').onclick=()=>ask('Usunąć <b>wszystkie</b> zapisane szafy? Najpierw zapisz Excel.',()=>{ S.records=[]; save(); showList(); render(); });
 const csvCell=v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
 function fname(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return `PDU_${(S.records[0]&&S.records[0].room)||'DC'}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.csv`; }
 $('bCsv').onclick=()=>{
@@ -374,9 +376,70 @@ $('bCsv').onclick=()=>{
     $('expMsg').textContent='Pobrano '+name;
   }
 };
+/* ---------- Excel jak „PDUs DC110.xlsx”: 1 wiersz na szafę ---------- */
+const XHEAD=['Rack','SN Master','SN Slave','MAC-Adresse ETH1 \n(Master)'];
+function rackKey(s){ const m=norm(s).match(/^(.*?)(\d+)$/); return m?[m[1],+m[2]]:[norm(s),0]; }
+function xrows(){
+  return S.records.map(x=>{
+    let m=null,sl=null;
+    for(const r of x.rails){ const role=railInfo(r).role; if(role==='Master'&&!m) m=r; else if(role==='Slave'&&!sl) sl=r; }
+    // rola nierozpoznana – listwy po kolei
+    const rest=x.rails.filter(r=>r!==m&&r!==sl&&(r.sn||r.eth1));
+    if(!m&&rest.length) m=rest.shift();
+    if(!sl&&rest.length) sl=rest.shift();
+    return [norm(x.room)+norm(x.rack), m?m.sn:'', sl?sl.sn:'', m?m.eth1:''];
+  }).sort((a,b)=>{ const x=rackKey(a[0]),y=rackKey(b[0]); return x[0]<y[0]?-1:x[0]>y[0]?1:x[1]-y[1]; });
+}
+const CRC=(()=>{ const t=[]; for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(b){ let c=-1; for(let i=0;i<b.length;i++) c=CRC[(c^b[i])&255]^(c>>>8); return (c^-1)>>>0; }
+function zip(files){ // [[nazwa, tekst]] → Uint8Array, bez kompresji
+  const enc=new TextEncoder(), parts=[], cen=[]; let off=0;
+  const u16=v=>[v&255,v>>8&255], u32=v=>[v&255,v>>8&255,v>>16&255,v>>>24&255];
+  for(const [n,txt] of files){
+    const nb=enc.encode(n), d=enc.encode(txt), c=crc32(d);
+    const h=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(d.length),...u32(d.length),...u16(nb.length),...u16(0)]);
+    parts.push(h,nb,d);
+    cen.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(d.length),...u32(d.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nb);
+    off+=h.length+nb.length+d.length;
+  }
+  const cs=cen.reduce((a,b)=>a+b.length,0);
+  parts.push(...cen,new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]));
+  const out=new Uint8Array(parts.reduce((a,b)=>a+b.length,0)); let p=0; for(const x of parts){ out.set(x,p); p+=x.length; } return out;
+}
+function xlsx(head,data){
+  const NS='http://schemas.openxmlformats.org', X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const cell=(v,r,i,st)=>`<c r="${String.fromCharCode(65+i)}${r}" t="inlineStr"${st?' s="1"':''}><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+  const sd=`<row r="1">${head.map((v,i)=>cell(v,1,i,1)).join('')}</row>`+data.map((r,j)=>`<row r="${j+2}">${r.map((v,i)=>v?cell(v,j+2,i,0):'').join('')}</row>`).join('');
+  const W=[18.22,28.89,30.66,29.78];
+  return zip([
+    ['[Content_Types].xml',X+`<Types xmlns="${NS}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+    ['_rels/.rels',X+`<Relationships xmlns="${NS}/package/2006/relationships"><Relationship Id="rId1" Type="${NS}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml',X+`<workbook xmlns="${NS}/spreadsheetml/2006/main" xmlns:r="${NS}/officeDocument/2006/relationships"><sheets><sheet name="Tabellenblatt1" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ['xl/_rels/workbook.xml.rels',X+`<Relationships xmlns="${NS}/package/2006/relationships"><Relationship Id="rId1" Type="${NS}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${NS}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml',X+`<styleSheet xmlns="${NS}/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+    ['xl/worksheets/sheet1.xml',X+`<worksheet xmlns="${NS}/spreadsheetml/2006/main"><cols>${W.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${sd}</sheetData></worksheet>`]
+  ]);
+}
+function saveFile(name,mime,bytes){
+  if(window.AndroidBridge){
+    const id=AndroidBridge.fileBegin('download','',name,mime);
+    if(!id){ $('expMsg').textContent='Nie udało się zapisać.'; return; }
+    let bin=''; for(const b of bytes) bin+=String.fromCharCode(b);
+    AndroidBridge.fileAppend(id,btoa(bin));
+    const p=AndroidBridge.fileEnd(id);
+    $('expMsg').innerHTML=p?`Zapisano: <b>${esc(p)}</b> – „Wyślij plik”, żeby przesłać.`:'Błąd zapisu.';
+  } else {
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([bytes],{type:mime})); a.download=name; a.click();
+    $('expMsg').textContent='Pobrano '+name;
+  }
+}
+$('bXlsx').onclick=()=>{
+  if(!S.records.length){ $('expMsg').textContent='Lista jest pusta.'; return; }
+  saveFile(fname().replace(/^PDU_/,'PDUs_').replace(/\.csv$/,'.xlsx'),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xlsx(XHEAD,xrows()));
+};
 $('bShare').onclick=()=>{ if(window.AndroidBridge) AndroidBridge.shareLast(); };
 $('bCopy').onclick=async()=>{
-  const txt=[HEAD,...rows()].map(r=>r.join('\t')).join('\n');
+  const txt=[XHEAD.map(h=>h.replace('\n','')),...xrows()].map(r=>r.join('\t')).join('\n');
   try{ await navigator.clipboard.writeText(txt); }catch(e){ const t=document.createElement('textarea'); t.value=txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
   $('expMsg').textContent='Skopiowano – wklej w Excelu.';
 };
