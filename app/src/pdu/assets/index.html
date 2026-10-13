@@ -62,6 +62,19 @@ td.mono{font-family:ui-monospace,Consolas,monospace}
 tr.sel td{background:rgba(21,101,192,.08)}
 .hide{display:none!important}
 .foot{font-size:11px;color:var(--mut);text-align:center;margin:14px 0 30px}
+.kgrid{display:grid;grid-template-columns:44px 1fr 1fr 1fr;gap:5px;align-items:center;margin-bottom:6px}
+.kgrid b{font-size:13px;color:var(--mut)}
+.kgrid input,.kf input,.kf select{padding:6px 7px;font-size:14px;font-family:ui-monospace,Consolas,monospace}
+.kf{display:grid;grid-template-columns:76px 1fr;gap:5px;align-items:center}
+.kf span{font-size:12px;color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chips button{border:1px solid var(--ln);background:var(--bg);color:var(--tx);border-radius:14px;padding:4px 9px;font:inherit;font-size:13px}
+.chips button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.chips button.done{opacity:.45}
+.cand{display:flex;gap:6px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--ln);font-size:13px}
+.cand.done{opacity:.45}.cand b{font-family:ui-monospace,Consolas,monospace}
+details.ocr{font-size:11px;color:var(--mut);margin-top:6px}
+details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
 #dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
 #dlg.on{display:flex}
 #dlg .card{max-width:420px;width:100%}
@@ -97,14 +110,15 @@ tr.sel td{background:rgba(21,101,192,.08)}
 </script>
 
 <header>
-  <h1>PDU Skaner</h1>
+  <h1 id="title">PDU Skaner</h1>
+  <button id="bMode">Kable ›</button>
   <button id="bList">Lista (<span id="cnt">0</span>)</button>
 </header>
 
 <div class="wrap" id="vScan">
   <div id="banner"></div>
 
-  <div class="card">
+  <div class="card" id="pduTop">
     <div class="row">
       <div style="flex:1"><label class="f">Sala</label><input id="room" placeholder="RZ2B" autocapitalize="characters"></div>
       <div style="flex:1.2"><label class="f">Szafa</label><input id="rack" class="big" placeholder="F7" autocapitalize="characters"></div>
@@ -122,6 +136,23 @@ tr.sel td{background:rgba(21,101,192,.08)}
   </div>
   <div id="log"></div>
 
+  <div id="kabPane" class="hide">
+    <div class="row" style="margin-top:8px">
+      <button class="b" id="kOcr" style="flex:2">📷 Odczytaj napisy</button>
+      <button class="b g" id="kAuto" style="flex:1">Auto ✓</button>
+      <button class="b g" id="kClr" style="flex:1">Wyczyść</button>
+    </div>
+    <div class="card" style="margin-top:8px">
+      <div class="row"><select id="kRoom" style="flex:1"></select><button class="b g" id="kImp" style="flex:1">📂 Wczytaj listę</button><input type="file" id="kFile" accept=".xlsx,.csv,.txt" class="hide"></div>
+      <div id="kLens" class="chips"></div>
+      <div id="kCand"></div>
+    </div>
+    <div class="card" style="margin-top:8px" id="kForm"></div>
+    <div class="row"><button class="b ok" id="kSave" style="flex:1">Zapisz kabel i dalej ›</button></div>
+    <div class="foot">Kabel bez oznacznika: odczytaj naklejkę S/N (z niej długość) → wybierz trasę z listy kabli tej długości → zapisz.<br>Kabel z oznacznikiem: celuj w oznacznik i naklejkę S/N – trasa i S/N wpiszą się same; przy kablu już zapisanym aplikacja sprawdzi, czy oznacznik się zgadza.<br>Kod z pudełka (FA26-…) trafia do pola Partia. Wszystko można poprawić ręcznie.<br>powered by WAC</div>
+  </div>
+
+  <div id="pduPane">
   <div class="rails" style="margin-top:8px">
     <div class="rail" id="r0"></div>
     <div class="rail" id="r1"></div>
@@ -132,6 +163,7 @@ tr.sel td{background:rgba(21,101,192,.08)}
     <button class="b ok" id="bSave" style="flex:2">Zapisz szafę i dalej ›</button>
   </div>
   <div class="foot">Skanuj po kolei: QR zasilania (góra), kod kreskowy S/N, QR ETH1 i ETH2.<br>Kolejność nie ma znaczenia – aplikacja sama rozpoznaje kody. Pola można poprawić ręcznie.<br>powered by WAC</div>
+  </div>
 </div>
 
 <div class="wrap hide" id="vList">
@@ -415,15 +447,15 @@ function zip(files){ // [[nazwa, tekst]] → Uint8Array, bez kompresji
   parts.push(...cen,new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]));
   const out=new Uint8Array(parts.reduce((a,b)=>a+b.length,0)); let p=0; for(const x of parts){ out.set(x,p); p+=x.length; } return out;
 }
-function xlsx(head,data){
+function xlsx(head,data,W,sheet){
   const NS='http://schemas.openxmlformats.org', X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
   const cell=(v,r,i,st)=>`<c r="${String.fromCharCode(65+i)}${r}" t="inlineStr"${st?' s="1"':''}><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
   const sd=`<row r="1">${head.map((v,i)=>cell(v,1,i,1)).join('')}</row>`+data.map((r,j)=>`<row r="${j+2}">${r.map((v,i)=>v?cell(v,j+2,i,0):'').join('')}</row>`).join('');
-  const W=[18.22,28.89,30.66,29.78];
+  W=W||[18.22,28.89,30.66,29.78];
   return zip([
     ['[Content_Types].xml',X+`<Types xmlns="${NS}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
     ['_rels/.rels',X+`<Relationships xmlns="${NS}/package/2006/relationships"><Relationship Id="rId1" Type="${NS}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
-    ['xl/workbook.xml',X+`<workbook xmlns="${NS}/spreadsheetml/2006/main" xmlns:r="${NS}/officeDocument/2006/relationships"><sheets><sheet name="Tabellenblatt1" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ['xl/workbook.xml',X+`<workbook xmlns="${NS}/spreadsheetml/2006/main" xmlns:r="${NS}/officeDocument/2006/relationships"><sheets><sheet name="${sheet||'Tabellenblatt1'}" sheetId="1" r:id="rId1"/></sheets></workbook>`],
     ['xl/_rels/workbook.xml.rels',X+`<Relationships xmlns="${NS}/package/2006/relationships"><Relationship Id="rId1" Type="${NS}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${NS}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
     ['xl/styles.xml',X+`<styleSheet xmlns="${NS}/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
     ['xl/worksheets/sheet1.xml',X+`<worksheet xmlns="${NS}/spreadsheetml/2006/main"><cols>${W.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${sd}</sheetData></worksheet>`]
@@ -453,6 +485,314 @@ $('bCopy').onclick=async()=>{
   $('expMsg').textContent='Skopiowano – wklej w Excelu.';
 };
 
+/* ---------- tryb Kable: oznacznik DYMO + S/N kabla → lista skąd–dokąd ---------- */
+const KF=['vRoom','vRack','vPanel','vPorts','nRoom','nRack','nPanel','nPorts','type','len','side','sn','fa'];
+const emptyCable=()=>({vRoom:'',vRack:'',vPanel:'',vPorts:'',nRoom:'',nRack:'',nPanel:'',nPorts:'',type:'',len:'',side:'',sn:'',fa:'',ocr:''});
+S.mode=S.mode||'pdu';
+S.kab=S.kab||{records:[],cur:emptyCable()};
+const dig=s=>String(s).replace(/[OoQD]/g,'0').replace(/[Il|!]/g,'1').replace(/Z/g,'2').replace(/S/g,'5').replace(/B/g,'8').replace(/G/g,'6');
+// „v. RZ2B D07 - P07-3+4” / „n. RZ3B C08 - P01 1-6”
+const LRE=/(?:^|[^A-Za-z])([vVyYnN])\s*[.,:]?\s*(R\s*Z\s*[0-9OIlZ]\s*[AB8])\s*([A-HP])\s*([0-9OIl]{1,2})\s*[-–—~]?\s*P\s*([0-9OIl]{1,2})\s*[-–—~]?\s*([0-9OIl]{1,2}(?:\s*[+\-–—]\s*[0-9OIl]{1,2})*)/;
+function parseLabelLines(texts){
+  const out=[];
+  for(const t of texts) for(const line of String(t).split('\n')){
+    const m=line.match(LRE); if(!m) continue;
+    const room='RZ'+dig(m[2].replace(/\s/g,'').charAt(2))+m[2].replace(/\s/g,'').charAt(3).replace('8','B');
+    const rack=m[3]+String(+dig(m[4])).padStart(2,'0');
+    const panel='P'+String(+dig(m[5])).padStart(2,'0');
+    const ports=dig(m[6].replace(/\s/g,'').replace(/[–—]/g,'-'));
+    const vn=/[nN]/.test(m[1])?'n':'v';
+    out.push({vn,room,rack,panel,ports});
+  }
+  return out;
+}
+function snFix(raw){
+  let x=raw.replace(/\s/g,'').toUpperCase();
+  const m=x.match(/^(.{3})(.{3})(.{12})$/); // 020 OSI 011009390003
+  if(m && /^[O0][S5][I1L]$/.test(m[2])) return dig(m[1])+'OSI'+dig(m[3]);
+  return x;
+}
+function parseOcr(texts){
+  const r={}; const all=texts.join('\n');
+  const L=parseLabelLines(texts);
+  const v=L.find(x=>x.vn==='v'), n=L.find(x=>x.vn==='n'&&(!v||x.rack!==v.rack||x.panel!==v.panel));
+  const a=v||L[0], b=n||L.find(x=>x!==a&&(x.rack!==a.rack||x.panel!==a.panel));
+  if(a){ r.vRoom=a.room; r.vRack=a.rack; r.vPanel=a.panel; r.vPorts=a.ports; }
+  if(b){ r.nRoom=b.room; r.nRack=b.rack; r.nPanel=b.panel; r.nPorts=b.ports; }
+  let m=all.match(/S\s*N\s*[:;.]?\s*([0-9OQDIlS]{3}\s*[O0][S5][I1l]\s*[0-9OQDIlSBZ ]{12,15})/i)
+      || all.match(/\b([0O]2[0O]\s*[O0][S5][I1l]\s*[0-9OQDIlSBZ]{12})\b/);
+  if(m) r.sn=snFix(m[1]).slice(0,18);
+  else { m=all.match(/S\s*N\s*[:;.]\s*([A-Z0-9][A-Z0-9\-]{6,24})/i); if(m) r.sn=m[1].toUpperCase(); }
+  m=all.match(/FA\s*[0-9OIl]{2}\s*-\s*[0-9OIl]{5}/); if(m) r.fa=dig(m[0].replace(/\s/g,'')).replace(/^FA|^F4/,'FA').replace(/^.{2}/,'FA');
+  m=all.match(/\bL\s*[:;.]\s*([0-9OIl]{1,3}(?:[.,][0-9]{1,2})?)\s*m\b/i); if(m) r.len=dig(m[1]).replace(',','.').replace(/\.0+$/,'');
+  m=all.match(/Trunk[^\n]{0,30}?MPE\s*\/\s*MPE/i) || all.match(/COPPER\s*TOR-?\s*G2/i);
+  if(m) r.type=m[0].replace(/\s+/g,' ').trim();
+  m=all.match(/MPE\s*\/\s*MPE\s+([AB])\b/); if(m) r.side=m[1];
+  return r;
+}
+function kMerge(r,force){ const c=S.kab.cur; let n=0; for(const k of KF){ if(r[k]&&(force||!c[k])){ if(c[k]!==r[k]) n++; c[k]=r[k]; } } return n; }
+const route=c=>[c.vRoom,c.vRack,c.vPanel,c.vPorts,c.nRoom,c.nRack,c.nPanel,c.nPorts].join('|');
+const routeTxt=c=>`${c.vRoom} ${c.vRack} ${c.vPanel} ${c.vPorts} → ${c.nRoom} ${c.nRack} ${c.nPanel} ${c.nPorts}`.replace(/\s+/g,' ');
+const revRoute=c=>[c.nRoom,c.nRack,c.nPanel,c.nPorts,c.vRoom,c.vRack,c.vPanel,c.vPorts].join('|');
+function kCheck(c){
+  const out=[];
+  if(!c.vRack||!c.nRack) out.push(['w','Brak „v.” albo „n.” z oznacznika – zrób zdjęcie oznacznika']);
+  if(!c.sn&&!c.fa) out.push(['w','Brak S/N – zrób zdjęcie naklejki S/N albo zeskanuj kod z pudełka']);
+  if(c.sn){
+    const d=S.kab.records.find(x=>x.sn===c.sn);
+    if(d&&!c.vRack) out.push(['o',`Ten kabel jest już przypisany: ${routeTxt(d)} – zeskanuj oznacznik, żeby sprawdzić`]);
+    else if(d&&route(d)!==route(c)&&revRoute(d)!==route(c)) out.push(['x',`Oznacznik NIEZGODNY – ten S/N przypisano do ${routeTxt(d)}`]);
+    else if(d) out.push(['o','Oznacznik zgodny z przypisaniem ✓']);
+  }
+  if(c.vRack){
+    const d=S.kab.records.find(x=>(route(x)===route(c)||revRoute(x)===route(c))&&x.sn&&c.sn&&x.sn!==c.sn);
+    if(d) out.push(['w',`Ta trasa jest już zapisana z S/N ${d.sn}`]);
+  }
+  return out;
+}
+function kRender(){
+  const c=S.kab.cur, f=(k,ph)=>`<input data-kk="${k}" value="${esc(c[k])}" placeholder="${ph||''}" autocapitalize="characters">`;
+  const chk=kCheck(c);
+  $('kForm').innerHTML=`<div class="kgrid"><b></b><b>Szafa</b><b>Panel</b><b>Porty</b>
+    <b>v.</b>${f('vRack','D07')}${f('vPanel','P07')}${f('vPorts','3+4')}
+    <b>n.</b>${f('nRack','E07')}${f('nPanel','P07')}${f('nPorts','3+4')}</div>
+    <div class="kf"><span>Sala v. / n.</span><div class="row">${f('vRoom','RZ2B')}${f('nRoom','RZ2B')}</div>
+    <span>S/N</span>${f('sn','020OSI…')}
+    <span>Partia (FA)</span>${f('fa','FA26-…')}
+    <span>Typ</span>${f('type','Trunk, 24KSM, MPE/MPE')}
+    <span>Długość [m]</span><div class="row">${f('len','20')}<select data-kk="side" style="width:90px"><option value="">strona</option>${['A','B'].map(x=>`<option${c.side===x?' selected':''}>${x}</option>`).join('')}</select></div></div>
+    <div class="chk">${chk.map(([k,t])=>`<div class="${k}">${k==='o'?'✓':k==='w'?'⚠':'✗'} ${esc(t)}</div>`).join('')}</div>
+    ${c.ocr?`<details class="ocr"><summary>odczytany tekst</summary><pre>${esc(c.ocr)}</pre></details>`:''}`;
+  const b=$('banner');
+  if(S.mode==='kab'){
+    const x=chk.find(o=>o[0]==='x');
+    if(x){ b.className='x'; b.textContent=x[1]; }
+    else if(c.vRack&&c.nRack&&(c.sn||c.fa)){ b.className='o'; b.textContent='Komplet: '+routeTxt(c)+' · '+(c.sn||c.fa); }
+    else b.className='';
+  }
+}
+document.addEventListener('change',e=>{ const k=e.target.dataset&&e.target.dataset.kk; if(!k) return;
+  let v=e.target.value.trim(); if(k!=='type') v=v.toUpperCase(); S.kab.cur[k]=v; save(); kRender(); });
+function kabScan(text,format){
+  const t=String(text).trim(), now=Date.now();
+  if(t===kLast && now-kLastAt<3000) return; kLast=t; kLastAt=now;
+  const c=S.kab.cur;
+  if(/^FA\d{2}-\d{5}$/i.test(t)){ if(c.fa===t.toUpperCase()) return; c.fa=t.toUpperCase(); log('✓ Partia (pudełko): '+c.fa); }
+  else if(/^CU\d{5,7}$/i.test(t)||/^https?:/i.test(t)) return; // numer pozycji z pudełka / linki – pomijamy
+  else if(t.length>=8 && !c.sn){ c.sn=t.toUpperCase(); log('✓ S/N z kodu: '+c.sn); }
+  else return;
+  flash(); beep(1200,.08); vib(40); save(); kRender();
+}
+let kLast='', kLastAt=0, ocrBusy=false;
+window.__ocrNative=(id,json)=>{
+  ocrBusy=false; $('kOcr').disabled=false; $('kOcr').textContent='📷 Odczytaj napisy';
+  let arr; try{ arr=JSON.parse(json); }catch(e){ arr={error:String(e)}; }
+  if(!Array.isArray(arr)){ warn('Błąd odczytu: '+(arr.error||'?')); return; }
+  const r=parseOcr(arr); const n=kMerge(r,false);
+  const best=arr.reduce((a,b)=>(b.length>a.length?b:a),'');
+  S.kab.cur.ocr=(S.kab.cur.ocr?S.kab.cur.ocr+'\n---\n':'')+best.trim();
+  save(); kRender();
+  const got=Object.keys(r).filter(k=>r[k]);
+  if(got.length){ beep(1500,.1); vib(60); log(`Odczytano: ${got.map(k=>({vRack:'v.',nRack:'n.',sn:'S/N',len:'długość',type:'typ',side:'strona',fa:'partia'})[k]).filter(Boolean).join(', ')}${n?'':' (bez zmian)'}`); }
+  else { beep(300,.2); log('Nie znalazłem napisów – podejdź bliżej, dotknij obraz (ostrość) i spróbuj jeszcze raz.'); }
+};
+$('kOcr').onclick=()=>{
+  if(ocrBusy) return;
+  const v=$('vid'); if(!stream||v.readyState<2){ warn('Aparat nie działa – włącz ▶'); return; }
+  if(!(window.AndroidBridge&&AndroidBridge.recognizeText)){ warn('Odczyt napisów działa tylko w aplikacji na telefonie.'); return; }
+  const cv=document.createElement('canvas'); cv.width=v.videoWidth; cv.height=v.videoHeight; cv.getContext('2d').drawImage(v,0,0);
+  const b64=cv.toDataURL('image/jpeg',0.92).split(',')[1];
+  ocrBusy=true; $('kOcr').disabled=true; $('kOcr').textContent='⏳ Czytam…'; flash();
+  AndroidBridge.recognizeText('k'+Date.now(),b64);
+};
+$('kClr').onclick=()=>ask('Wyczyścić pola tego kabla?',()=>{ S.kab.cur=emptyCable(S.kab.cur); save(); kRender(); render(); });
+$('kSave').onclick=()=>{
+  const c=S.kab.cur;
+  if(!c.vRack&&!c.sn&&!c.fa){ warn('Nic nie odczytano.'); return; }
+  const chk=kCheck(c), bad=chk.filter(o=>o[0]!=='o');
+  const doSave=()=>{
+    const rec=JSON.parse(JSON.stringify(c)); rec.at=new Date().toISOString(); delete rec.ocr;
+    const i=S.kab.records.findIndex(x=>(c.sn&&x.sn===c.sn)||(!c.sn&&route(x)===route(c)));
+    if(i>=0) S.kab.records[i]=rec; else S.kab.records.push(rec);
+    S.kab.cur=emptyCable(c); save(); render(); beep(1500,.15); log('Zapisano: '+routeTxt(rec));
+  };
+  if(bad.length) ask(bad.map(o=>esc(o[1])).join('<br>')+'<br><br>Zapisać mimo to?',doSave); else doSave();
+};
+const KHEAD=['von','Panel','Ports','nach','Panel','Ports','Kabeltyp','Länge [m]','Seite','SN','Charge (FA)','Datum'];
+function locTime(iso){ if(!iso) return ''; const d=new Date(iso),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+function krows(){
+  const k=x=>[x.vRoom,x.vRack,x.vPanel,x.vPorts].join(' ');
+  return S.kab.records.slice().sort((a,b)=>k(a).localeCompare(k(b),'pl',{numeric:true})).map(x=>[
+    `${x.vRoom} ${x.vRack}`.trim(),x.vPanel,x.vPorts,`${x.nRoom} ${x.nRack}`.trim(),x.nPanel,x.nPorts,x.type,x.len,x.side,x.sn,x.fa,locTime(x.at)]);
+}
+function applyMode(){
+  const k=S.mode==='kab';
+  $('kabPane').classList.toggle('hide',!k); $('pduPane').classList.toggle('hide',k); $('pduTop').classList.toggle('hide',k);
+  $('bMode').textContent=k?'Listwy ›':'Kable ›'; $('title').textContent=k?'Kable S/N':'PDU Skaner';
+  $('bXlsx').textContent=k?'Zapisz Excel (lista kabli)':'Zapisz Excel (jak „PDUs DC110”)';
+  $('bCsv').classList.toggle('hide',k);
+  $('cnt').textContent=k?S.kab.records.length:S.records.length;
+}
+const _render=render; render=function(){ _render(); kRender(); applyMode(); };
+const _onScan=onScan; onScan=function(t,f){ return S.mode==='kab'?kabScan(t,f):_onScan(t,f); };
+$('bMode').onclick=()=>{ S.mode=S.mode==='kab'?'pdu':'kab'; save(); if(!$('vList').classList.contains('hide')) showList(); else { $('banner').className=''; render(); } };
+const _showList=showList; showList=function(){
+  if(S.mode!=='kab') return _showList();
+  $('vScan').classList.add('hide'); $('vList').classList.remove('hide'); stopCam(); applyMode();
+  $('tbl').innerHTML=`<tr><th>v.</th><th>n.</th><th>S/N</th><th>m</th></tr>`+S.kab.records.map((x,i)=>{ const bad=kCheck(x).some(o=>o[0]==='x');
+    return `<tr data-ki="${i}"><td><b>${esc(x.vRack)}</b> ${esc(x.vPanel)} ${esc(x.vPorts)}</td><td><b>${esc(x.nRack)}</b> ${esc(x.nPanel)} ${esc(x.nPorts)}</td><td class="mono">${esc(x.sn||x.fa)}${bad?' ⚠':''}</td><td>${esc(x.len)}${x.side?' '+esc(x.side):''}</td></tr>`; }).join('');
+};
+$('tbl').addEventListener('click',e=>{ const tr=e.target.closest('tr[data-ki]'); if(!tr) return; const x=S.kab.records[+tr.dataset.ki];
+  ask(`Otworzyć <b>${esc(routeTxt(x))}</b> do poprawy?`,()=>{ S.kab.cur=Object.assign(emptyCable(),JSON.parse(JSON.stringify(x))); delete S.kab.cur.at; save(); back(); }); });
+{ const oX=$('bXlsx').onclick, oC=$('bCopy').onclick, oW=$('bWipe').onclick;
+  $('bXlsx').onclick=()=>{ if(S.mode!=='kab') return oX();
+    if(!S.kab.records.length){ $('expMsg').textContent='Lista jest pusta.'; return; }
+    const d=new Date(),p=n=>String(n).padStart(2,'0');
+    saveFile(`Kable_SN_${(S.kab.records[0].vRoom)||'DC'}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.xlsx`,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xlsx(KHEAD,krows(),[14,8,8,14,8,8,24,10,7,24,14,17],'Kabel'));
+  };
+  $('bCopy').onclick=async()=>{ if(S.mode!=='kab') return oC();
+    const txt=[KHEAD,...krows()].map(r=>r.join('\t')).join('\n');
+    try{ await navigator.clipboard.writeText(txt); }catch(e){ const t=document.createElement('textarea'); t.value=txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    $('expMsg').textContent='Skopiowano – wklej w Excelu.'; };
+  $('bWipe').onclick=()=>{ if(S.mode!=='kab') return oW();
+    ask('Usunąć <b>wszystkie</b> zapisane kable? Najpierw zapisz Excel.',()=>{ S.kab.records=[]; save(); showList(); render(); }); };
+}
+// do testów: window.__ocrTest(['v. RZ2B D07 - P07-3+4\nn. RZ2B E07 - P07-3+4','SN: 020OSI011009390003'])
+window.__ocrTest=a=>window.__ocrNative('t',JSON.stringify(a));
+
+/* ---------- projekt kabli (Excel V09_3, RZ2B + RZ3B – nowe nazwy) i podpowiedź po długości ---------- */
+const PROJ_DC110=[{"r":"RZ2B","v":"D07","vp":"P09","vo":"1-6","n":"D08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ2B","v":"D07","vp":"P09","vo":"7-12","n":"D08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ2B","v":"D07","vp":"P09","vo":"13-18","n":"D08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ2B","v":"D07","vp":"P09","vo":"19-24","n":"D08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ2B","v":"D07","vp":"P10","vo":"1-6","n":"D09","np":"P01","no":"1-6","t":"CU","l":10},{"r":"RZ2B","v":"D07","vp":"P10","vo":"7-12","n":"D11","np":"P01","no":"1-6","t":"CU","l":12},{"r":"RZ2B","v":"D07","vp":"P10","vo":"13-18","n":"D12","np":"P01","no":"1-6","t":"CU","l":13},{"r":"RZ2B","v":"D07","vp":"P10","vo":"19-24","n":"D13","np":"P01","no":"1-6","t":"CU","l":14},{"r":"RZ2B","v":"D07","vp":"P11","vo":"1-6","n":"D14","np":"P01","no":"1-6","t":"CU","l":15},{"r":"RZ2B","v":"D07","vp":"P11","vo":"7-12","n":"D15","np":"P01","no":"1-6","t":"CU","l":16},{"r":"RZ2B","v":"D07","vp":"P11","vo":"13-18","n":"D16","np":"P01","no":"1-6","t":"CU","l":17},{"r":"RZ2B","v":"D07","vp":"P11","vo":"19-24","n":"D18","np":"P01","no":"1-6","t":"CU","l":19},{"r":"RZ2B","v":"D07","vp":"P12","vo":"1-6","n":"D19","np":"P01","no":"1-6","t":"CU","l":20},{"r":"RZ2B","v":"C07","vp":"P09","vo":"1-6","n":"C08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ2B","v":"C07","vp":"P09","vo":"7-12","n":"C08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ2B","v":"C07","vp":"P09","vo":"13-18","n":"C08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ2B","v":"C07","vp":"P09","vo":"19-24","n":"C08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ2B","v":"E07","vp":"P09","vo":"1-6","n":"E08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ2B","v":"E07","vp":"P09","vo":"7-12","n":"E08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ2B","v":"E07","vp":"P09","vo":"13-18","n":"E08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ2B","v":"E07","vp":"P09","vo":"19-24","n":"E08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ2B","v":"F07","vp":"P09","vo":"1-6","n":"F08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ2B","v":"F07","vp":"P09","vo":"7-12","n":"F08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ2B","v":"F07","vp":"P09","vo":"13-18","n":"F08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ2B","v":"F07","vp":"P09","vo":"19-24","n":"F08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P09","vo":"1-6","n":"C08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P09","vo":"7-12","n":"C08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P09","vo":"13-18","n":"C08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P09","vo":"19-24","n":"C08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P10","vo":"1-6","n":"C09","np":"P01","no":"1-6","t":"CU","l":10},{"r":"RZ3B","v":"C07","vp":"P10","vo":"7-12","n":"C11","np":"P01","no":"1-6","t":"CU","l":12},{"r":"RZ3B","v":"C07","vp":"P10","vo":"13-18","n":"C12","np":"P01","no":"1-6","t":"CU","l":13},{"r":"RZ3B","v":"C07","vp":"P10","vo":"19-24","n":"C13","np":"P01","no":"1-6","t":"CU","l":14},{"r":"RZ3B","v":"C07","vp":"P11","vo":"1-6","n":"C14","np":"P01","no":"1-6","t":"CU","l":15},{"r":"RZ3B","v":"C07","vp":"P11","vo":"7-12","n":"C15","np":"P01","no":"1-6","t":"CU","l":16},{"r":"RZ3B","v":"C07","vp":"P11","vo":"13-18","n":"C16","np":"P01","no":"1-6","t":"CU","l":17},{"r":"RZ3B","v":"C07","vp":"P11","vo":"19-24","n":"C18","np":"P01","no":"1-6","t":"CU","l":19},{"r":"RZ3B","v":"C07","vp":"P12","vo":"1-6","n":"C19","np":"P01","no":"1-6","t":"CU","l":20},{"r":"RZ3B","v":"D07","vp":"P09","vo":"1-6","n":"D08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ3B","v":"D07","vp":"P09","vo":"7-12","n":"D08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ3B","v":"D07","vp":"P09","vo":"13-18","n":"D08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ3B","v":"D07","vp":"P09","vo":"19-24","n":"D08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ3B","v":"E07","vp":"P09","vo":"1-6","n":"E08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ3B","v":"E07","vp":"P09","vo":"7-12","n":"E08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ3B","v":"E07","vp":"P09","vo":"13-18","n":"E08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ3B","v":"E07","vp":"P09","vo":"19-24","n":"E08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ3B","v":"F07","vp":"P09","vo":"1-6","n":"F08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ3B","v":"F07","vp":"P09","vo":"7-12","n":"F08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ3B","v":"F07","vp":"P09","vo":"13-18","n":"F08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ3B","v":"F07","vp":"P09","vo":"19-24","n":"F08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ2B","v":"D08","vp":"P05","vo":"1+2","n":"D09","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"D08","vp":"P05","vo":"3+4","n":"D09","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ2B","v":"D08","vp":"P06","vo":"1+2","n":"D11","np":"P02","no":"1+2","t":"LWL","l":11},{"r":"RZ2B","v":"D08","vp":"P06","vo":"3+4","n":"D11","np":"P02","no":"3+4","t":"LWL","l":11},{"r":"RZ2B","v":"D08","vp":"P07","vo":"1+2","n":"D12","np":"P02","no":"1+2","t":"LWL","l":12},{"r":"RZ2B","v":"D08","vp":"P07","vo":"3+4","n":"D12","np":"P02","no":"3+4","t":"LWL","l":12},{"r":"RZ2B","v":"D08","vp":"P08","vo":"1+2","n":"D13","np":"P02","no":"1+2","t":"LWL","l":13},{"r":"RZ2B","v":"D08","vp":"P08","vo":"3+4","n":"D13","np":"P02","no":"3+4","t":"LWL","l":13},{"r":"RZ2B","v":"D08","vp":"P09","vo":"1+2","n":"D14","np":"P02","no":"1+2","t":"LWL","l":14},{"r":"RZ2B","v":"D08","vp":"P09","vo":"3+4","n":"D14","np":"P02","no":"3+4","t":"LWL","l":14},{"r":"RZ2B","v":"D08","vp":"P10","vo":"1+2","n":"D15","np":"P02","no":"1+2","t":"LWL","l":15},{"r":"RZ2B","v":"D08","vp":"P10","vo":"3+4","n":"D15","np":"P02","no":"3+4","t":"LWL","l":15},{"r":"RZ2B","v":"D08","vp":"P11","vo":"1+2","n":"D16","np":"P02","no":"1+2","t":"LWL","l":16},{"r":"RZ2B","v":"D08","vp":"P11","vo":"3+4","n":"D16","np":"P02","no":"3+4","t":"LWL","l":16},{"r":"RZ2B","v":"D08","vp":"P12","vo":"1+2","n":"D18","np":"P02","no":"1+2","t":"LWL","l":18},{"r":"RZ2B","v":"D08","vp":"P12","vo":"3+4","n":"D18","np":"P02","no":"3+4","t":"LWL","l":18},{"r":"RZ2B","v":"D08","vp":"P13","vo":"1+2","n":"D19","np":"P02","no":"1+2","t":"LWL","l":19},{"r":"RZ2B","v":"D08","vp":"P13","vo":"3+4","n":"D19","np":"P02","no":"3+4","t":"LWL","l":19},{"r":"RZ2B","v":"D08","vp":"P05","vo":"1+2","n":"D07","np":"P05","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"D08","vp":"P05","vo":"3+4","n":"D07","np":"P05","no":"3+4","t":"LWL","l":9},{"r":"RZ2B","v":"D08","vp":"P03","vo":"1+2","n":"C08","np":"P03","no":"1+2","t":"LWL","l":33},{"r":"RZ2B","v":"D08","vp":"P03","vo":"3+4","n":"C07","np":"P06","no":"1+2","t":"LWL","l":34},{"r":"RZ2B","v":"D07","vp":"P03","vo":"3+4","n":"C07","np":"P06","no":"3+4","t":"LWL","l":17},{"r":"RZ2B","v":"D07","vp":"P06","vo":"1+2","n":"C08","np":"P03","no":"3+4","t":"LWL","l":18},{"r":"RZ2B","v":"C07","vp":"P05","vo":"1+2","n":"C08","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"C07","vp":"P05","vo":"3+4","n":"C08","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ2B","v":"C07","vp":"P04","vo":"1+2","n":"F07","np":"P04","no":"1+2","t":"LWL","l":40},{"r":"RZ2B","v":"C07","vp":"P04","vo":"3+4","n":"F07","np":"P04","no":"3+4","t":"LWL","l":40},{"r":"RZ2B","v":"D07","vp":"P07","vo":"1+2","n":"E07","np":"P07","no":"1+2","t":"LWL","l":20},{"r":"RZ2B","v":"D07","vp":"P07","vo":"3+4","n":"E07","np":"P07","no":"3+4","t":"LWL","l":20},{"r":"RZ2B","v":"E08","vp":"P05","vo":"1+2","n":"E07","np":"P05","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"E08","vp":"P05","vo":"3+4","n":"E07","np":"P05","no":"3+4","t":"LWL","l":9},{"r":"RZ2B","v":"E08","vp":"P03","vo":"1+2","n":"F08","np":"P03","no":"1+2","t":"LWL","l":33},{"r":"RZ2B","v":"E08","vp":"P03","vo":"3+4","n":"F07","np":"P06","no":"1+2","t":"LWL","l":18},{"r":"RZ2B","v":"E07","vp":"P06","vo":"3+4","n":"F07","np":"P06","no":"3+4","t":"LWL","l":17},{"r":"RZ2B","v":"E07","vp":"P06","vo":"1+2","n":"F08","np":"P03","no":"3+4","t":"LWL","l":34},{"r":"RZ2B","v":"F07","vp":"P05","vo":"1+2","n":"F08","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"F07","vp":"P05","vo":"3+4","n":"F08","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P05","vo":"1+2","n":"C09","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P05","vo":"3+4","n":"C09","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P06","vo":"1+2","n":"C11","np":"P02","no":"1+2","t":"LWL","l":11},{"r":"RZ3B","v":"C08","vp":"P06","vo":"3+4","n":"C11","np":"P02","no":"3+4","t":"LWL","l":11},{"r":"RZ3B","v":"C08","vp":"P07","vo":"1+2","n":"C12","np":"P02","no":"1+2","t":"LWL","l":12},{"r":"RZ3B","v":"C08","vp":"P07","vo":"3+4","n":"C12","np":"P02","no":"3+4","t":"LWL","l":12},{"r":"RZ3B","v":"C08","vp":"P08","vo":"1+2","n":"C13","np":"P02","no":"1+2","t":"LWL","l":13},{"r":"RZ3B","v":"C08","vp":"P08","vo":"3+4","n":"C13","np":"P02","no":"3+4","t":"LWL","l":13},{"r":"RZ3B","v":"C08","vp":"P09","vo":"1+2","n":"C14","np":"P02","no":"1+2","t":"LWL","l":14},{"r":"RZ3B","v":"C08","vp":"P09","vo":"3+4","n":"C14","np":"P02","no":"3+4","t":"LWL","l":14},{"r":"RZ3B","v":"C08","vp":"P10","vo":"1+2","n":"C15","np":"P02","no":"1+2","t":"LWL","l":15},{"r":"RZ3B","v":"C08","vp":"P10","vo":"3+4","n":"C15","np":"P02","no":"3+4","t":"LWL","l":15},{"r":"RZ3B","v":"C08","vp":"P11","vo":"1+2","n":"C16","np":"P02","no":"1+2","t":"LWL","l":16},{"r":"RZ3B","v":"C08","vp":"P11","vo":"3+4","n":"C16","np":"P02","no":"3+4","t":"LWL","l":16},{"r":"RZ3B","v":"C08","vp":"P12","vo":"1+2","n":"C18","np":"P02","no":"1+2","t":"LWL","l":18},{"r":"RZ3B","v":"C08","vp":"P12","vo":"3+4","n":"C18","np":"P02","no":"3+4","t":"LWL","l":18},{"r":"RZ3B","v":"C08","vp":"P13","vo":"1+2","n":"C19","np":"P02","no":"1+2","t":"LWL","l":19},{"r":"RZ3B","v":"C08","vp":"P13","vo":"3+4","n":"C19","np":"P02","no":"3+4","t":"LWL","l":19},{"r":"RZ3B","v":"C08","vp":"P05","vo":"1+2","n":"C07","np":"P05","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P05","vo":"3+4","n":"C07","np":"P05","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P03","vo":"1+2","n":"D08","np":"P03","no":"1+2","t":"LWL","l":33},{"r":"RZ3B","v":"C08","vp":"P03","vo":"3+4","n":"D07","np":"P06","no":"1+2","t":"LWL","l":18},{"r":"RZ3B","v":"C07","vp":"P06","vo":"3+4","n":"D07","np":"P06","no":"3+4","t":"LWL","l":17},{"r":"RZ3B","v":"C07","vp":"P06","vo":"1+2","n":"D08","np":"P03","no":"3+4","t":"LWL","l":34},{"r":"RZ3B","v":"D07","vp":"P05","vo":"1+2","n":"D08","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"D07","vp":"P05","vo":"3+4","n":"D08","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"C07","vp":"P04","vo":"1+2","n":"F07","np":"P04","no":"1+2","t":"LWL","l":40},{"r":"RZ3B","v":"C07","vp":"P04","vo":"3+4","n":"F07","np":"P04","no":"3+4","t":"LWL","l":40},{"r":"RZ3B","v":"D07","vp":"P07","vo":"1+2","n":"E07","np":"P07","no":"1+2","t":"LWL","l":20},{"r":"RZ3B","v":"D07","vp":"P07","vo":"3+4","n":"E07","np":"P07","no":"3+4","t":"LWL","l":20},{"r":"RZ3B","v":"E08","vp":"P05","vo":"1+2","n":"E07","np":"P05","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"E08","vp":"P05","vo":"3+4","n":"E07","np":"P05","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"E08","vp":"P03","vo":"1+2","n":"F08","np":"P03","no":"1+2","t":"LWL","l":33},{"r":"RZ3B","v":"E08","vp":"P03","vo":"3+4","n":"F07","np":"P06","no":"1+2","t":"LWL","l":18},{"r":"RZ3B","v":"E07","vp":"P06","vo":"3+4","n":"F07","np":"P06","no":"3+4","t":"LWL","l":17},{"r":"RZ3B","v":"E07","vp":"P06","vo":"1+2","n":"F08","np":"P03","no":"3+4","t":"LWL","l":34},{"r":"RZ3B","v":"F07","vp":"P05","vo":"1+2","n":"F08","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"F07","vp":"P05","vo":"3+4","n":"F08","np":"P02","no":"3+4","t":"LWL","l":9}];
+let PROJ=S.proj||PROJ_DC110;
+S.kRoom=S.kRoom||'RZ3B';
+const np=s=>String(s||'').toUpperCase().replace(/\s+/g,'').replace(/[–—]/g,'-');
+const pRoute=(x,rev)=>rev?[x.r,x.n,x.np,np(x.no),x.r,x.v,x.vp,np(x.vo)].join('|'):[x.r,x.v,x.vp,np(x.vo),x.r,x.n,x.np,np(x.no)].join('|');
+const cRoute=c=>[c.vRoom,c.vRack,c.vPanel,np(c.vPorts),c.nRoom||c.vRoom,c.nRack,c.nPanel,np(c.nPorts)].join('|');
+function pFind(c){ if(!c.vRack||!c.nRack) return null; const k=cRoute(c); return PROJ.find(x=>pRoute(x)===k||pRoute(x,1)===k)||null; }
+function pDone(x){ return S.kab.records.some(r=>{ const k=cRoute(r); return k===pRoute(x)||k===pRoute(x,1); }); }
+const pTxt=x=>`${x.v} ${x.vp} ${x.vo} → ${x.n} ${x.np} ${x.no}`;
+let selLen=null;
+function kProj(){
+  const rooms=[...new Set(PROJ.map(x=>x.r))];
+  if(!rooms.includes(S.kRoom)) S.kRoom=rooms[0]||'';
+  $('kRoom').innerHTML=rooms.map(r=>`<option${r===S.kRoom?' selected':''}>${esc(r)}</option>`).join('')+(S.proj?'<option value="__def">↺ projekt DC110</option>':'');
+  const P=PROJ.filter(x=>x.r===S.kRoom), c=S.kab.cur;
+  const lens=[...new Set(P.map(x=>+x.l))].sort((a,b)=>a-b);
+  const L=selLen!=null?selLen:(c.len&&!c.vRack?+c.len:null);
+  const done=P.filter(pDone).length;
+  $('kLens').innerHTML=`<span style="font-size:12px;color:var(--mut);align-self:center">${done}/${P.length} kabli · długość:</span>`+lens.map(l=>{ const all=P.filter(x=>+x.l===l), left=all.filter(x=>!pDone(x)).length;
+    return `<button data-len="${l}" class="${l===L?'on':''} ${left?'':'done'}">${l} m <small>${left}/${all.length}</small></button>`; }).join('');
+  if(L==null){ $('kCand').innerHTML=''; return; }
+  const C=P.filter(x=>+x.l===L).sort((a,b)=>pDone(a)-pDone(b));
+  $('kCand').innerHTML=`<div style="font-size:12px;color:var(--mut);margin:8px 0 2px">Kable ${L} m – dotknij, żeby wpisać trasę:</div>`+
+    C.map((x,i)=>`<div class="cand ${pDone(x)?'done':''}" data-pi="${PROJ.indexOf(x)}"><span>${pDone(x)?'✓':'○'}</span><b>${esc(pTxt(x))}</b><span style="margin-left:auto">${x.t}</span></div>`).join('');
+}
+$('kLens').onclick=e=>{ const b=e.target.closest('button[data-len]'); if(!b) return; const l=+b.dataset.len; selLen=selLen===l?null:l; kProj(); };
+$('kCand').onclick=e=>{ const d=e.target.closest('[data-pi]'); if(!d) return; const x=PROJ[+d.dataset.pi]; const c=S.kab.cur;
+  Object.assign(c,{vRoom:x.r,vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRoom:x.r,nRack:x.n,nPanel:x.np,nPorts:x.no});
+  if(!c.len) c.len=String(x.l); if(!c.type) c.type=x.t==='CU'?'CU RJ45':'LWL';
+  selLen=null; save(); render(); log('Wpisano trasę z projektu: '+pTxt(x)); };
+$('kRoom').onchange=e=>{ if(e.target.value==='__def'){ ask('Wrócić do projektu DC110 (RZ2B + RZ3B) zamiast wczytanej listy?',()=>{ S.proj=null; PROJ=PROJ_DC110; save(); render(); }); kProj(); return; }
+  S.kRoom=e.target.value; selLen=null; save(); kProj(); };
+// po odczycie trasy: długość i typ z projektu, kontrola długości z naklejki
+function pApply(){ const c=S.kab.cur, x=pFind(c); if(!x) return;
+  if(!c.len) c.len=String(x.l); if(!c.type) c.type=x.t==='CU'?'CU RJ45':'LWL'; if(x.r&&S.kRoom!==x.r) S.kRoom=x.r; }
+const _kCheck=kCheck; kCheck=function(c){ const out=_kCheck(c); if(!c.vRack||!c.nRack) return out;
+  const x=pFind(c);
+  if(!x) out.push(['w','Tej trasy nie ma w projekcie – sprawdź oznacznik']);
+  else { out.push(['o',`w projekcie: ${x.l} m ${x.t}`]); if(c.len&&Math.abs(+c.len-+x.l)>0.5) out.push(['w',`Na naklejce ${c.len} m, w projekcie ${x.l} m`]); }
+  return out; };
+const _kRender=kRender; kRender=function(){ _kRender(); kProj(); };
+
+/* ---------- wczytanie listy/projektu z Excela (.xlsx) albo CSV: kolumny von | Panel | Ports | nach | Panel | Ports | Typ | Länge ---------- */
+async function readXlsx(buf){
+  const u=new Uint8Array(buf), dv=new DataView(buf), td=new TextDecoder();
+  let e=u.length-22; while(e>=0&&dv.getUint32(e,true)!==0x06054b50) e--;
+  if(e<0) throw new Error('to nie jest plik .xlsx');
+  const cnt=dv.getUint16(e+10,true); let p=dv.getUint32(e+16,true); const F={};
+  for(let i=0;i<cnt;i++){ const nl=dv.getUint16(p+28,true), xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true);
+    F[td.decode(u.subarray(p+46,p+46+nl))]={m:dv.getUint16(p+10,true),cs:dv.getUint32(p+20,true),off:dv.getUint32(p+42,true)}; p+=46+nl+xl+cl; }
+  const get=async n=>{ const f=F[n]; if(!f) return null; const st=f.off+30+dv.getUint16(f.off+26,true)+dv.getUint16(f.off+28,true), d=u.slice(st,st+f.cs);
+    if(f.m===0) return td.decode(d); return await new Response(new Blob([d]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text(); };
+  const P=new DOMParser(), ss=[], sst=await get('xl/sharedStrings.xml');
+  if(sst) for(const si of P.parseFromString(sst,'application/xml').getElementsByTagName('si')) ss.push([...si.getElementsByTagName('t')].map(t=>t.textContent).join(''));
+  const sh=await get('xl/worksheets/sheet1.xml'); if(!sh) throw new Error('brak arkusza');
+  const rows=[];
+  for(const r of P.parseFromString(sh,'application/xml').getElementsByTagName('row')){ const row=[];
+    for(const c of r.getElementsByTagName('c')){ const col=c.getAttribute('r').replace(/\d+/g,'').split('').reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1, t=c.getAttribute('t');
+      let v; if(t==='inlineStr') v=[...c.getElementsByTagName('t')].map(x=>x.textContent).join(''); else { const ve=c.getElementsByTagName('v')[0]; v=ve?ve.textContent:''; if(t==='s') v=ss[+v]; }
+      row[col]=v; }
+    rows.push(row); }
+  return rows;
+}
+function rowsToProj(rows){
+  const hi=rows.findIndex(r=>r&&r.some(x=>/^von$/i.test(String(x||'').trim()))&&r.some(x=>/^nach$/i.test(String(x||'').trim())));
+  if(hi<0) throw new Error('nie znalazłem nagłówków „von” i „nach”');
+  const h=rows[hi].map(x=>String(x||'').trim()), iv=h.findIndex(x=>/^von$/i.test(x)), inn=h.findIndex(x=>/^nach$/i.test(x));
+  const it=h.findIndex(x=>/typ|trunkart/i.test(x)), il=h.findIndex(x=>/l(ä|a)nge|długo/i.test(x)), ir=h.findIndex(x=>/^(raum|sala)$/i.test(x));
+  const out=[];
+  for(const r of rows.slice(hi+1)){ if(!r||!r[iv]||!r[inn]) continue;
+    const sp=x=>{ const m=String(x).trim().toUpperCase().match(/^(RZ\d[A-Z])?\s*([A-H])\s*0?(\d{1,2})$/); return m?{room:m[1]||'',rack:m[2]+m[3].padStart(2,'0')}:{room:'',rack:String(x).trim().toUpperCase()}; };
+    const a=sp(r[iv]), b=sp(r[inn]); const pp=x=>{ const m=String(x||'').match(/P\s*0?(\d{1,2})/i); return m?'P'+m[1].padStart(2,'0'):String(x||'').toUpperCase(); };
+    const room=a.room||(ir>=0?String(r[ir]||'').toUpperCase():'')||'LISTA';
+    const t=String(it>=0?r[it]||'':'');
+    out.push({r:room,v:a.rack,vp:pp(r[iv+1]),vo:String(r[iv+2]||'').trim(),n:b.rack,np:pp(r[inn+1]),no:String(r[inn+2]||'').trim(),t:/cu|rj|copper/i.test(t)?'CU':(t?'LWL':''),l:il>=0?+String(r[il]||'0').replace(',','.'):0});
+  }
+  if(!out.length) throw new Error('brak wierszy z trasami');
+  return out;
+}
+$('kImp').onclick=()=>$('kFile').click();
+$('kFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
+  try{
+    let rows;
+    if(/\.xlsx$/i.test(f.name)) rows=await readXlsx(await f.arrayBuffer());
+    else rows=(await f.text()).split(/\r?\n/).map(l=>l.split(l.includes('\t')?'\t':';'));
+    const P=rowsToProj(rows); S.proj=P; PROJ=P; S.kRoom=P[0].r; save(); render(); log(`Wczytano ${P.length} kabli z „${f.name}”`);
+  }catch(err){ warn('Nie udało się wczytać listy: '+(err.message||err)); }
+  e.target.value=''; };
+
+/* ---------- ciągły odczyt napisów (bez klikania) ---------- */
+S.kAuto=S.kAuto!==false;
+let autoT=null, autoFlip=0, kPauseUntil=0, lastSaved=null;
+function autoOcr(){
+  clearTimeout(autoT); autoT=null;
+  if(S.mode!=='kab'||!S.kAuto||!running||!(window.AndroidBridge&&AndroidBridge.recognizeTextR)) return;
+  autoT=setTimeout(()=>{ autoT=null; const c=S.kab.cur;
+    const need=!(c.vRack&&c.nRack&&(c.sn||c.fa));
+    if(need&&!ocrBusy&&Date.now()>kPauseUntil&&$('vList').classList.contains('hide')) grabOcr(autoFlip++%2?'90,270':'0,180',1600,true);
+    else autoOcr(); },650);
+}
+function grabOcr(rots,maxSide,auto){
+  const v=$('vid'); if(!stream||v.readyState<2) return false;
+  const k=Math.min(1,maxSide/Math.max(v.videoWidth,v.videoHeight));
+  const cv=document.createElement('canvas'); cv.width=Math.round(v.videoWidth*k); cv.height=Math.round(v.videoHeight*k); cv.getContext('2d').drawImage(v,0,0,cv.width,cv.height);
+  ocrBusy=true; ocrAuto=auto;
+  if(!auto){ $('kOcr').disabled=true; $('kOcr').textContent='⏳ Czytam…'; flash(); }
+  AndroidBridge.recognizeTextR('k'+Date.now(),cv.toDataURL('image/jpeg',auto?0.85:0.92).split(',')[1],rots);
+  return true;
+}
+let ocrAuto=false;
+$('kOcr').onclick=()=>{
+  if(ocrBusy) return;
+  if(!(window.AndroidBridge&&AndroidBridge.recognizeTextR)){ warn('Odczyt napisów działa tylko w aplikacji na telefonie.'); return; }
+  if(!grabOcr('0,90,180,270',2600,false)) warn('Aparat nie działa – włącz ▶');
+};
+$('kAuto').onclick=()=>{ S.kAuto=!S.kAuto; save(); $('kAuto').textContent=S.kAuto?'Auto ✓':'Auto ✗'; autoOcr(); };
+{ const _n=window.__ocrNative; window.__ocrNative=(id,json)=>{
+    const auto=ocrAuto;
+    if(auto){ // ciągły odczyt: tylko gdy coś nowego, bez komunikatów o porażce
+      ocrBusy=false; let arr; try{ arr=JSON.parse(json); }catch(e){ arr=null; }
+      if(Array.isArray(arr)){ const r=parseOcr(arr);
+        const same=lastSaved&&Date.now()-lastSaved.at<8000&&((r.sn&&r.sn===lastSaved.sn)||(r.vRack&&r.vRack===lastSaved.vRack&&r.vPanel===lastSaved.vPanel&&r.vPorts===lastSaved.vPorts));
+        if(!same&&kMerge(r,false)){ pApply(); const best=arr.reduce((a,b)=>(b.length>a.length?b:a),''); S.kab.cur.ocr=best.trim(); flash(); beep(1500,.08); vib(40); save(); render();
+          const c=S.kab.cur; log(c.vRack&&c.nRack&&(c.sn||c.fa)?'✓ Komplet – zapisz kabel':'✓ Odczytano: '+[c.vRack&&'v./n.',c.sn&&'S/N',c.len&&c.len+' m'].filter(Boolean).join(', ')); }
+      }
+      autoOcr(); return;
+    }
+    _n(id,json); pApply(); save(); render(); autoOcr(); };
+}
+{ const _s=$('kSave').onclick; $('kSave').onclick=()=>{ const c=S.kab.cur; lastSaved={sn:c.sn,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,at:Date.now()}; kPauseUntil=Date.now()+1500; _s(); }; }
+{ const _a=applyMode; applyMode=function(){ _a(); $('kAuto').textContent=S.kAuto?'Auto ✓':'Auto ✗'; if(S.mode==='kab'&&!autoT&&!ocrBusy) autoOcr(); }; }
 /* ---------- aparat i dekodowanie ---------- */
 let stream=null, running=false, timer=null, detector=null, zx=null, torchOn=false, wantCam=true;
 const canvas=document.createElement('canvas'), cctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -479,7 +819,7 @@ async function startCam(){
       camCap=cap; const fd=cap.focusDistance; $('bFocus').classList.toggle('hide',!(fd&&cap.focusMode&&cap.focusMode.includes('manual')));
       if(fd){ const r=$('fDist'); r.min=fd.min; r.max=fd.max; r.step=fd.step||((fd.max-fd.min)/100); } }catch(e){}
     running=true; $('bCam').textContent='⏸'; $('camMsg').textContent='Celuj kodem w ramkę · dotknij obraz, żeby ustawić ostrość';
-    loop();
+    loop(); if(typeof autoOcr==='function') autoOcr();
   }catch(e){ $('camMsg').textContent='Brak dostępu do aparatu ('+(e.name||e)+'). Zezwól w ustawieniach aplikacji.'; }
 }
 function stopCam(){

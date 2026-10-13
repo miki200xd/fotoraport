@@ -37,7 +37,7 @@ android {
         pdu {
             dimension "app"
             applicationId "pl.wac.pduskaner"
-            versionName "1.4"
+            versionName "1.5"
             resValue "string", "app_name", "PDU Skaner"
             resValue "string", "media_dir", "PduSkaner"
         }
@@ -77,4 +77,8 @@ android {
 dependencies {
     implementation 'androidx.webkit:webkit:1.11.0'
     implementation 'androidx.core:core:1.13.1'
+    // odczyt napisów z oznaczników i naklejek S/N kabli (PDU Skaner – tryb Kable), model w APK, offline
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+    // ML Kit ciągnie stdlib Kotlina w kilku wersjach – wyrównanie, żeby nie było „Duplicate class kotlin…”
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
 }

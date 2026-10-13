@@ -813,5 +813,45 @@ public class MainActivity extends Activity {
         public void toast(String msg) {
             MainActivity.this.toast(msg);
         }
+
+        // Odczyt napisów ze zdjęcia (ML Kit, offline). Zwraca tekst dla obrotów 0/90/180/270 –
+        // oznacznik i naklejka S/N na kablu bywają odwrócone względem siebie.
+        @JavascriptInterface
+        public void recognizeText(final String cbId, final String base64) {
+            recognizeTextR(cbId, base64, "0,90,180,270");
+        }
+
+        private com.google.mlkit.vision.text.TextRecognizer ocrClient;
+
+        private synchronized com.google.mlkit.vision.text.TextRecognizer ocr() {
+            if (ocrClient == null) ocrClient = com.google.mlkit.vision.text.TextRecognition.getClient(
+                    com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS);
+            return ocrClient;
+        }
+
+        // jak wyżej, ale tylko wybrane obroty (np. "0,180") – szybciej przy ciągłym odczycie
+        @JavascriptInterface
+        public void recognizeTextR(final String cbId, final String base64, final String rots) {
+            new Thread(() -> {
+                String json;
+                try {
+                    byte[] b = Base64.decode(base64, Base64.DEFAULT);
+                    Bitmap bm = BitmapFactory.decodeByteArray(b, 0, b.length);
+                    com.google.mlkit.vision.text.TextRecognizer tr = ocr();
+                    JSONArray arr = new JSONArray();
+                    for (String rs : rots.split(",")) {
+                        int rot = Integer.parseInt(rs.trim());
+                        com.google.mlkit.vision.text.Text t = com.google.android.gms.tasks.Tasks.await(
+                                tr.process(com.google.mlkit.vision.common.InputImage.fromBitmap(bm, rot)));
+                        arr.put(t.getText());
+                    }
+                    json = arr.toString();
+                } catch (Throwable e) {
+                    json = "{\"error\":" + JSONObject.quote(String.valueOf(e)) + "}";
+                }
+                final String js = "window.__ocrNative&&window.__ocrNative(" + JSONObject.quote(cbId) + "," + JSONObject.quote(json) + ")";
+                runOnUiThread(() -> web.evaluateJavascript(js, null));
+            }).start();
+        }
     }
 }
