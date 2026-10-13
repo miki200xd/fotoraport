@@ -42,7 +42,7 @@ button.bad{background:var(--bad)}
 .rail h3{margin:0 0 6px;font-size:15px;display:flex;align-items:center;gap:6px}
 .rail h3 select{width:auto;padding:3px 6px;font-size:13px}
 .badge{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--ln);color:var(--tx);font-weight:600}
-.badge.m{background:#1565c0;color:#fff}.badge.s{background:#f9a825;color:#000}
+.badge.m,.rail h3 select.m{background:#1565c0;color:#fff}.badge.s,.rail h3 select.s{background:#f9a825;color:#000}
 .badge.a{background:#e53935;color:#fff}.badge.bb{background:#1e88e5;color:#fff}
 .fld{display:flex;align-items:center;gap:6px;margin:4px 0}
 .fld span.k{width:62px;font-size:12px;color:var(--mut);flex:none}
@@ -243,9 +243,14 @@ function railInfo(r){
   if(r.sn){
     const l=BY_SN[r.sn];
     if(l){ role=l.role; out.push(['o',`na liście: ${l.rack} · ${l.role}`]); }
-    else if(PDU_LIST.length) out.push(['w','S/N nie ma na liście']);
+    else if(PDU_LIST.length) out.push(['o','nowa listwa – spoza listy DC110']);
     if(!role){ if(/^R1A4/.test(r.sn)) role='Master'; else if(/^R1A5/.test(r.sn)) role='Slave'; }
   }
+  // Master/Slave: ręczny wybór ma pierwszeństwo, potem lista, potem początek numeru
+  const l0=r.sn&&BY_SN[r.sn];
+  if(r.role){ if(l0&&l0.role!==r.role) out.push(['w',`Na liście to ${l0.role}, ustawiono ręcznie ${r.role}`]); role=r.role; }
+  else if(r.sn&&role&&!l0) out.push(['o',`${role} wg numeru (${r.sn.slice(0,4)}…) – sprawdź na tabliczce`]);
+  else if(r.sn&&!role) out.push(['w','Nie wiem, czy Master czy Slave – wybierz u góry']);
   if(r.eth1 && PDU_LIST.length){
     const l=BY_MAC[r.eth1];
     if(l){
@@ -282,7 +287,7 @@ function render(){
     const el=$('r'+i); el.className='rail'+(S.act===i?' act':'');
     el.innerHTML=`<h3>Listwa ${i+1}
       <select data-side="${i}"><option value="lewa"${r.side==='lewa'?' selected':''}>lewa</option><option value="prawa"${r.side==='prawa'?' selected':''}>prawa</option></select>
-      ${inf.role?`<span class="badge ${inf.role==='Master'?'m':'s'}">${inf.role}</span>`:''}${feedBadge(r.feed)}</h3>
+      <select data-role="${i}" class="${inf.role==='Master'?'m':inf.role==='Slave'?'s':''}"><option value="">typ?</option>${['Master','Slave'].map(v=>`<option${inf.role===v?' selected':''}>${v}</option>`).join('')}</select>${feedBadge(r.feed)}</h3>
       ${FIELDS.map(([k,l])=>`<div class="fld"><span class="k">${l}</span><input data-r="${i}" data-k="${k}" value="${esc(r[k])}" autocapitalize="characters"><i>${r[k]?'✓':'·'}</i></div>`).join('')}
       <div class="chk">${inf.out.map(([c,t])=>`<div class="${c}">${c==='o'?'✓':c==='w'?'⚠':'✗'} ${esc(t)}</div>`).join('')}</div>`;
   });
@@ -298,6 +303,10 @@ document.addEventListener('click',e=>{ const r=e.target.closest('.rail'); if(r&&
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.side!=null){ S.cur.rails[+t.dataset.side].side=t.value; save(); render(); return; }
+  if(t.dataset.role!=null){ // druga listwa w szafie dostaje przeciwny typ, jeśli nie była ustawiona ręcznie
+    const i=+t.dataset.role, o=S.cur.rails[1-i]; S.cur.rails[i].role=t.value;
+    if(t.value&&!o.role) o.role=t.value==='Master'?'Slave':'Master';
+    save(); render(); return; }
   if(t.dataset.k){
     let v=t.value.trim(); const k=t.dataset.k;
     if((k==='eth1'||k==='eth2')&&v){ const m=v.toUpperCase().match(MAC_RE); if(m) v=m.slice(1,7).join(':'); }
