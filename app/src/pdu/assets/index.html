@@ -28,6 +28,12 @@ button.bad{background:var(--bad)}
 #aim.hit{border-color:#3ddc84}
 #camMsg{position:absolute;left:0;right:0;bottom:6px;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 3px #000}
 #camBtns{position:absolute;top:6px;right:6px;display:flex;gap:6px}
+/* ostrość: dotknięcie = punkt ostrości, suwak = ręcznie (gdy telefon pozwala) */
+#focusRing{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;border:2px solid #ffd54f;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .2s,transform .3s;transform:scale(1.4)}
+#focusRing.on{opacity:1;transform:scale(1)}
+#focusBar{position:absolute;left:8px;right:8px;bottom:26px;display:flex;gap:8px;align-items:center;color:#fff;font-size:12px;text-shadow:0 1px 3px #000}
+#focusBar input{flex:1}
+#focusBar button{background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:8px;padding:5px 8px;font-size:12px}
 #camBtns button{background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:8px;padding:7px 9px;font-size:14px}
 .rails{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 @media (max-width:520px){.rails{grid-template-columns:1fr}}
@@ -109,7 +115,9 @@ tr.sel td{background:rgba(21,101,192,.08)}
   <div id="cam">
     <video id="vid" playsinline muted></video>
     <div id="aim"></div>
-    <div id="camBtns"><button id="bTorch" class="hide">🔦</button><button id="bCam">⏸</button></div>
+    <div id="focusRing"></div>
+    <div id="focusBar" class="hide"><span>Ostrość</span><input type="range" id="fDist"><button id="bAF">AUTO</button></div>
+    <div id="camBtns"><button id="bFocus" class="hide" title="Ręczna ostrość">🎯</button><button id="bTorch" class="hide">🔦</button><button id="bCam">⏸</button></div>
     <div id="camMsg">Uruchamiam aparat…</div>
   </div>
   <div id="log"></div>
@@ -395,8 +403,10 @@ async function startCam(){
     const v=$('vid'); v.srcObject=stream; await v.play();
     const tr=stream.getVideoTracks()[0];
     try{ const cap=tr.getCapabilities?tr.getCapabilities():{}; $('bTorch').classList.toggle('hide',!cap.torch);
-      if(cap.focusMode&&cap.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{}); }catch(e){}
-    running=true; $('bCam').textContent='⏸'; $('camMsg').textContent='Celuj kodem w ramkę';
+      if(cap.focusMode&&cap.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});
+      camCap=cap; const fd=cap.focusDistance; $('bFocus').classList.toggle('hide',!(fd&&cap.focusMode&&cap.focusMode.includes('manual')));
+      if(fd){ const r=$('fDist'); r.min=fd.min; r.max=fd.max; r.step=fd.step||((fd.max-fd.min)/100); } }catch(e){}
+    running=true; $('bCam').textContent='⏸'; $('camMsg').textContent='Celuj kodem w ramkę · dotknij obraz, żeby ustawić ostrość';
     loop();
   }catch(e){ $('camMsg').textContent='Brak dostępu do aparatu ('+(e.name||e)+'). Zezwól w ustawieniach aplikacji.'; }
 }
@@ -437,6 +447,26 @@ async function loop(){
   timer=setTimeout(loop,90);
 }
 $('bCam').onclick=()=>{ if(running){ wantCam=false; stopCam(); } else startCam(); };
+// --- ostrość: dotknij obraz = ustaw ostrość w tym punkcie (jak w aparacie); 🎯 = suwak ręcznej ostrości
+let camCap={}, afTimer=null;
+async function focusAt(cx,cy){
+  if(!stream) return; const tr=stream.getVideoTracks()[0]; const v=$('vid'), el=v.getBoundingClientRect();
+  const ring=$('focusRing'); ring.style.left=(cx-el.left)+'px'; ring.style.top=(cy-el.top)+'px'; ring.classList.add('on'); setTimeout(()=>ring.classList.remove('on'),900);
+  // punkt w układzie klatki (obraz przycięty object-fit:cover)
+  const vw=v.videoWidth||1, vh=v.videoHeight||1, sc=Math.max(el.width/vw, el.height/vh), ox=(vw*sc-el.width)/2, oy=(vh*sc-el.height)/2;
+  const x=Math.min(1,Math.max(0,((cx-el.left)+ox)/sc/vw)), y=Math.min(1,Math.max(0,((cy-el.top)+oy)/sc/vh));
+  const modes=camCap.focusMode||[]; const c={};
+  c.pointsOfInterest=[{x,y}]; // Chrome/WebView na Androidzie: punkt ostrości i pomiaru
+  c.focusMode = modes.includes('single-shot') ? 'single-shot' : (modes.includes('continuous') ? 'continuous' : undefined);
+  if(!c.focusMode) delete c.focusMode;
+  try{ await tr.applyConstraints({advanced:[c]}); }catch(e){ try{ await tr.applyConstraints({advanced:[{pointsOfInterest:[{x,y}]}]}); }catch(e2){} }
+  $('focusBar').classList.add('hide');
+  clearTimeout(afTimer); afTimer=setTimeout(()=>{ if(stream&&modes.includes('continuous')) stream.getVideoTracks()[0].applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{}); },4000);
+}
+$('cam').addEventListener('click',e=>{ if(e.target.closest('#camBtns')||e.target.closest('#focusBar')) return; focusAt(e.clientX,e.clientY); });
+$('bFocus').onclick=()=>{ const b=$('focusBar'); b.classList.toggle('hide'); if(!b.classList.contains('hide')&&stream){ const st=stream.getVideoTracks()[0].getSettings(); if(st.focusDistance!=null) $('fDist').value=st.focusDistance; clearTimeout(afTimer); } };
+$('fDist').oninput=e=>{ if(!stream) return; stream.getVideoTracks()[0].applyConstraints({advanced:[{focusMode:'manual',focusDistance:+e.target.value}]}).catch(()=>{}); };
+$('bAF').onclick=()=>{ $('focusBar').classList.add('hide'); if(stream) stream.getVideoTracks()[0].applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{}); };
 $('bTorch').onclick=async()=>{ if(!stream) return; torchOn=!torchOn; try{ await stream.getVideoTracks()[0].applyConstraints({advanced:[{torch:torchOn}]}); }catch(e){} };
 document.addEventListener('visibilitychange',()=>{ if(document.hidden){ const w=wantCam; stopCam(); wantCam=w; } else if(wantCam && $('vList').classList.contains('hide')) startCam(); });
 
