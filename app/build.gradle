@@ -37,7 +37,7 @@ android {
         pdu {
             dimension "app"
             applicationId "pl.wac.pduskaner"
-            versionName "1.5"
+            versionName "1.6"
             resValue "string", "app_name", "PDU Skaner"
             resValue "string", "media_dir", "PduSkaner"
         }
