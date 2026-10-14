@@ -876,6 +876,10 @@ function aEntry(x){ const e=S.audit[aKey(x)]||{};
   if(e.a===undefined&&e.b===undefined&&e.c===undefined&&e.st){ const q=e.st==='ok'?'ok':(e.st==='bad'?'bad':''); return Object.assign({},e,{a:q,b:q,c:q}); }
   return Object.assign({},e); }
 function aStatusOf(x){ return aEntry(x).st||''; }
+// widok z bieżącej szafy: zielone, gdy koniec w TEJ szafie jest OK (drugi koniec i etykieta mogą czekać)
+function aLocal(x){ const e=aEntry(x), sd=aSideIn(x,S.aRack); if(e.st==='bad'||e.st==='ok') return e.st; return (sd&&e[sd]==='ok')?'ok':(e.st||''); }
+function aWait(x){ const e=aEntry(x), sd=aSideIn(x,S.aRack), o=sd==='a'?'b':'a', w=[];
+  if(e[o]!=='ok') w.push(o==='a'?x.v:x.n); if(e.c!=='ok') w.push('etykieta'); return w; }
 function aMark(x,st,info,sides){ sides=sides&&sides.length?sides:['a','b','c'];
   const e=aEntry(x); sides.forEach(k=>{ if(k) e[k]=st==='clr'?'':st; });
   Object.assign(e,{at:new Date().toISOString()},info||{}); aCalc(e);
@@ -897,22 +901,22 @@ function aRender(){
   if(!audit) return;
   if(document.activeElement!==$('aRack')) $('aRack').value=S.aRack;
   const E=aEnds(S.aRack), panels=[...new Set(E.map(e=>e.p))].sort();
-  $('aPanels').innerHTML=E.length?panels.map(p=>{ const es=E.filter(e=>e.p===p), st=es.map(e=>aStatusOf(e.x));
+  $('aPanels').innerHTML=E.length?panels.map(p=>{ const es=E.filter(e=>e.p===p), st=es.map(e=>aLocal(e.x));
       const cls=st.includes('bad')?'bad':(st.every(v=>v==='ok')?'ok':(st.some(v=>v==='ok'||v==='part')?'part':'')); const pa=(es.find(e=>e.pa)||{}).pa; return `<button data-ap="${p}" class="${cls} ${p===S.aPanel?'on':''}">${p}${pa?` <small>(${pa})</small>`:''} <small>${st.filter(v=>v==='ok').length}/${es.length}</small></button>`; }).join('')
     :`<span style="font-size:12px;color:var(--mut)">${S.aRack?'Brak szafy '+esc(S.aRack)+' w projekcie '+esc(S.kRoom):'Wpisz szafę, np. D07'}</span>`;
   // panel z tyłu: od prawej 1, 2, 3, 4 (z przodu odwrotnie)
   const PE=E.filter(e=>e.p===S.aPanel);
   if(S.aPanel){ const lwl=PE.length&&PE.every(e=>e.x.t==='LWL'), n=4, seq=[...Array(n)].map((_,i)=>i+1), order=S.aSide==='back'?seq.slice().reverse():seq;
     $('aSlots').innerHTML=`<div style="font-size:12px;color:var(--mut);margin-top:8px">${S.aPanel} – widok z ${S.aSide==='back'?'tyłu (1 = skrajnie po prawej)':'przodu (1 = skrajnie po lewej)'} · dotknij gniazda, w które wpięty jest skanowany kabel</div><div class="slots">`+
-      order.map(k=>{ const e=PE.find(e=>slotsOf(e).includes(k)); const st=e?aStatusOf(e.x):'';
+      order.map(k=>{ const e=PE.find(e=>slotsOf(e).includes(k)); const st=e?aLocal(e.x):''; const wt=(e&&st==='ok'&&aStatusOf(e.x)!=='ok')?aWait(e.x):[];
         if(lwl&&k>2&&S.aSide==='back') return `<div class="empty"><b>–</b>światłowód<br>tu nie idzie</div>`;   // trunk LWL: oba gniazda po prawej (1 = 1+2, 2 = 3+4)
-        return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${lwl&&S.aSide==='back'?`<small>${k===1?'1+2':'3+4'}</small><br>`:''}${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}`:'pusty'}</div>`; }).join('')+'</div>';
+        return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${lwl&&S.aSide==='back'?`<small>${k===1?'1+2':'3+4'}</small><br>`:''}${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}${wt.length?`<br><small style="color:#7a4d00">czeka: ${esc(wt.join(', '))}</small>`:''}`:'pusty'}</div>`; }).join('')+'</div>';
     const se=S.aSlot&&PE.find(e=>slotsOf(e).includes(S.aSlot));
     if(se) $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Gniazdo ${S.aSlot}: <b>${esc(S.aPanel+' '+se.o)} → ${esc(se.fr+' '+se.fp+' '+se.fo)}</b> · ${se.x.l} m – zeskanuj oznacznik albo zaznacz ręcznie.<br><small>Testy: ${esc(se.x.v)} ${ic(aEntry(se.x).a)} · ${esc(se.x.n)} ${ic(aEntry(se.x).b)} · etykieta kabla ${ic(aEntry(se.x).c)} (zielony = wszystkie 3)</small></span><button class="b ok" data-am="ok">✅ Panel w ${esc(S.aRack)} zgodny</button><button class="b g" data-am="lbl">🏷 Etykieta kabla OK</button><button class="b bad" data-am="bad">❌ Niezgodny</button><button class="b g" data-am="clr">↺</button></div>`;
     $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Cały panel ${esc(S.aPanel)} (${PE.length} kabli):</span><button class="b ok" data-pall="ok">✅ Cały panel zgodny</button><button class="b g" data-pall="clr">↺ Wyczyść panel</button></div>`;
   } else $('aSlots').innerHTML='';
   const L=S.aPanel?PE:E;
-  $('aList').innerHTML=L.map(e=>{ const a=aEntry(e.x); return `<div class="arow"><span>${a.st==='ok'?'✅':a.st==='bad'?'❌':a.st==='part'?'◐':'○'}</span><b>${esc(e.p)} ${esc(e.o)}</b><span>→ ${esc(e.fr)} ${esc(e.fp)} ${esc(e.fo)}</span><span style="margin-left:auto;font-size:11px">${e.x.l} m ${e.x.t}<br>${esc(e.x.v)}${ic(a.a)} ${esc(e.x.n)}${ic(a.b)} etykieta${ic(a.c)}${a.sn?'<br>'+esc(a.sn):''}</span></div>`; }).join('');
+  $('aList').innerHTML=L.map(e=>{ const a=aEntry(e.x); return `<div class="arow"><span>${a.st==='ok'?'✅':a.st==='bad'?'❌':aLocal(e.x)==='ok'?'☑️':a.st==='part'?'◐':'○'}</span><b>${esc(e.p)} ${esc(e.o)}</b><span>→ ${esc(e.fr)} ${esc(e.fp)} ${esc(e.fo)}</span><span style="margin-left:auto;font-size:11px">${e.x.l} m ${e.x.t}<br>${esc(e.x.v)}${ic(a.a)} ${esc(e.x.n)}${ic(a.b)} etykieta${ic(a.c)}${a.sn?'<br>'+esc(a.sn):''}</span></div>`; }).join('');
 }
 $('kmAssign').onclick=()=>{ S.kMode='assign'; save(); render(); };
 $('kmAudit').onclick=()=>{ S.kMode='audit'; save(); render(); };
@@ -922,7 +926,7 @@ $('aRack').addEventListener('change',e=>{ const v=e.target.value.toUpperCase().r
 $('aPanels').onclick=e=>{ const b=e.target.closest('[data-ap]'); if(!b) return; S.aPanel=S.aPanel===b.dataset.ap?'':b.dataset.ap; S.aSlot=0; $('aRes').innerHTML=''; save(); aRender(); };
 // następne gniazdo w panelu, które nie jest jeszcze ✅
 function aNextSlot(){ const PE=aEnds(S.aRack).filter(e=>e.p===S.aPanel);
-  const ks=[1,2,3,4].filter(k=>PE.some(e=>slotsOf(e).includes(k)&&aStatusOf(e.x)!=='ok'));
+  const ks=[1,2,3,4].filter(k=>PE.some(e=>slotsOf(e).includes(k)&&aLocal(e.x)!=='ok'));
   S.aSlot=ks.find(k=>k>S.aSlot)||ks[0]||0; }
 $('aSlots').onclick=e=>{ const pb=e.target.closest('[data-pall]');
   if(pb){ const L=aEnds(S.aRack).filter(x=>x.p===S.aPanel); if(!L.length) return;
