@@ -89,6 +89,12 @@ details.ocr{font-size:11px;color:var(--mut);margin-top:6px}
 details.lst>summary{font-weight:700;padding:8px 0;cursor:pointer}
 .stk{position:sticky;bottom:0;z-index:5;background:var(--bg);padding:8px 0;margin-top:8px;border-top:1px solid var(--ln)}
 details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
+/* dolny pasek sprawdzania pod kciukiem: bieżący cel + Cofnij / Niezgodny / Pomiń / Powtórz */
+#aBar .tg{font-size:19px;font-weight:700;line-height:1.2}
+#aBar .tg small{display:block;font-size:13px;font-weight:500;color:var(--mut)}
+#aBar .bt{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 2px}
+#aBar .bt button{padding:12px 4px;font-size:14px}
+#aBar .bt button:disabled{opacity:.4}
 #dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
 #dlg.on{display:flex}
 #dlg .card{max-width:420px;width:100%}
@@ -175,7 +181,8 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
       <div class="row" style="margin-top:6px"><select id="kRoom" style="flex:1"></select><button class="b g" id="kImp" style="flex:1">📂 Wczytaj listę</button><input type="file" id="kFile" accept=".xlsx,.csv,.txt" class="hide"></div>
     </details>
     <div class="foot">Sprawdzanie: wpisz szafę, wybierz panel i gniazdo, celuj w oznacznik (tył) lub opisówkę modułu (przód).<br>Nowe kable: odczytaj naklejkę S/N → wybierz trasę → zapisz.<br>powered by WAC</div>
-    <div class="stk row">
+    <div class="stk row" style="flex-wrap:wrap">
+      <div id="aBar" class="hide" style="flex-basis:100%"></div>
       <button class="b" id="kOcr" style="flex:2">📷 Odczytaj napisy</button>
       <button class="b g" id="kAuto" style="flex:1">Auto ✓</button>
       <button class="b g" id="kClr" style="flex:1">Wyczyść</button>
@@ -910,7 +917,9 @@ function aRender(){
   $('aFront').classList.toggle('on',S.aSide==='front'); $('aBack').classList.toggle('on',S.aSide==='back');
   $('aSideA').classList.toggle('on',S.aCab==='A'); $('aSideB').classList.toggle('on',S.aCab==='B'); $('aSideN').classList.toggle('on',!S.aCab);
   $('kLens').classList.toggle('hide',audit); $('kCand').classList.toggle('hide',audit); $('kAsgCard').classList.toggle('hide',audit);
+  $('aBar').classList.toggle('hide',!audit);
   if(!audit) return;
+  aBarRender();
   if(document.activeElement!==$('aRack')) $('aRack').value=S.aRack;
   const E=aEnds(S.aRack), panels=[...new Set(E.map(e=>e.p))].sort();
   $('aPanels').innerHTML=E.length?panels.map(p=>{ const es=E.filter(e=>e.p===p), st=es.map(e=>aLocal(e.x));
@@ -1114,6 +1123,41 @@ $('aRes').onclick=e=>{ const nb=e.target.closest('[data-anext]');
   aShow('ok','➕ Zapisano w liście: '+esc(routeTxt(rec))+' · S/N '+esc(rec.sn)+(rec.len?' · '+esc(rec.len)+' m':'')+(rec.side?' · strona '+esc(rec.side):'')+(was?'<br><small>poprzednio: '+esc(was)+'</small>':''));
   aPend=null; save(); aRender(); beep(1500,.1); vib(60); };
 $('aReset').onclick=()=>ask('Wyczyścić wyniki sprawdzania (✅/❌)?',()=>{ S.audit={}; save(); $('aRes').innerHTML=''; aRender(); });
+/* ---------- Cofnij: stan przed każdą zmianą wyników (odczyt, ❌, cały panel, S/N) ---------- */
+var aUndo=[];   // var: aRender może się wywołać przed tą linią
+const aData=()=>JSON.stringify([S.audit,S.kab.records]);
+const aSnap=()=>JSON.stringify({audit:S.audit,rec:S.kab.records,rack:S.aRack,panel:S.aPanel,slot:S.aSlot,side:S.aSide});
+// wykonaj fn; jeśli zmieniła wyniki lub listę S/N – zapamiętaj stan sprzed niej
+function aUndoable(fn,ocr){ const d=aData(), s=aSnap(); fn(); if(aData()!==d){ const t=$('aRes').textContent.trim().slice(0,70);
+    aUndo.push({s,t,k:ocr?aPreKey:''}); if(aUndo.length>20) aUndo.shift(); aBarRender(); } }   // k = napis, który dał ten wynik (tylko odczyt z aparatu)
+function aUndoLast(){ const u=aUndo.pop(); if(!u){ aShow('w','Nie ma czego cofać.'); return; }
+  const o=JSON.parse(u.s); S.audit=o.audit; S.kab.records=o.rec; S.aRack=o.rack; S.aPanel=o.panel; S.aSlot=o.slot; S.aSide=o.side;
+  // napis, który dał cofnięty wynik, nie zostanie od razu przeczytany ponownie (do tego jest „Powtórz”)
+  aStickKey=u.k||''; aPauseUntil=Date.now()+1500; aLastCab=null; aPend=null;
+  save(); aRender(); aShow('w','↶ Cofnięto: '+esc(u.t||'ostatnia zmiana')); beep(600,.08); vib(30); }
+{ const _f=auditOcr; auditOcr=function(arr,auto){ aUndoable(()=>_f(arr,auto),true); }; }
+{ const _o=$('aSlots').onclick; $('aSlots').onclick=e=>aUndoable(()=>_o(e)); }
+{ const _o=$('aRes').onclick; $('aRes').onclick=e=>aUndoable(()=>_o(e)); }
+/* ---------- dolny pasek pod kciukiem ---------- */
+function aBarRender(){ const el=$('aBar'); if(!el||S.kMode!=='audit') return;
+  const nU=(aUndo||[]).length, E=aEnds(S.aRack), PE=E.filter(e=>e.p===S.aPanel), se=S.aSlot&&PE.find(e=>slotsOf(e).includes(S.aSlot));
+  const panels=[...new Set(E.map(e=>e.p))].sort(), left=PE.filter(e=>!aHere(e.x)).length, side=S.aSide==='front'?'PRZÓD':'TYŁ';
+  let tg;
+  if(se) tg=`${esc(S.aRack)} ${esc(S.aPanel)} · gniazdo ${S.aSlot}<small>${side} · → ${esc(se.fr+' '+se.fp+' '+se.fo)} · ${esc(se.x.t)} ${esc(String(se.x.l))} m · ${aHere(se.x)==='ok'?'✅ sprawdzone':aHere(se.x)==='bad'?'❌ niezgodne':'do sprawdzenia'}</small>`;
+  else if(S.aPanel) tg=`${esc(S.aRack)} ${esc(S.aPanel)}<small>${side} · panel ${panels.indexOf(S.aPanel)+1}/${panels.length} · zostało ${left} z ${PE.length}${left?' · dotknij „Pomiń”, żeby wybrać gniazdo':''}</small>`;
+  else tg=S.aRack?`${esc(S.aRack)}<small>${side} · wybierz panel</small>`:`Wpisz szafę<small>${side}</small>`;
+  el.innerHTML=`<div class="tg">${tg}</div><div class="bt">`+
+    `<button class="b g" data-bar="undo"${nU?'':' disabled'}>↶ Cofnij${nU?` (${nU})`:''}</button>`+
+    `<button class="b bad" data-bar="bad"${se?'':' disabled'}>❌ Niezgodny</button>`+
+    `<button class="b g" data-bar="skip"${S.aPanel?'':' disabled'}>⏭ Pomiń</button>`+
+    `<button class="b g" data-bar="again">🔁 Powtórz</button></div>`; }
+$('aBar').onclick=e=>{ const b=e.target.closest('[data-bar]'); if(!b||b.disabled) return; const a=b.dataset.bar;
+  if(a==='undo') return aUndoLast();
+  if(a==='bad') return $('aSlots').onclick({target:{closest:q=>q==='[data-am]'?{dataset:{am:'bad'}}:null}});
+  if(a==='skip'){ aPickAt=Date.now(); const was=S.aSlot; aNextSlot();
+    if(S.aSlot===was||!S.aSlot){ S.aSlot=was; aShow('w',was?'To jedyne niesprawdzone gniazdo w tym panelu.':'Wszystkie gniazda w tym panelu są sprawdzone.'); }
+    else $('aRes').innerHTML=''; save(); aRender(); return; }
+  if(a==='again'){ aStickKey=''; aPreKey=''; aLastKey=''; aPauseUntil=0; aShow('w','🔁 Czytam jeszcze raz – celuj w napis.'); if(!$('kOcr').disabled) $('kOcr').click(); } };
 // --- raport sprawdzania do Excela (lista w trybie Sprawdzanie)
 const AHEAD=['Raum','von','Panel','Ports','nach','Panel','Ports','Kabeltyp','Länge [m]','Status','SN (gelesen)','Etikett (gelesen)','Problem','Datum','Ende von','Ende nach','Kabeletikett'];
 function arows(){ const T=q=>q==='ok'?'OK':(q==='bad'?'FEHLER':''); return PROJ.filter(x=>!S.kRoom||x.r===S.kRoom).map(x=>{ const a=aEntry(x);
