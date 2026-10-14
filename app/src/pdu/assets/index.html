@@ -896,7 +896,14 @@ function auditOcr(arr,auto){
   if(r.vRack&&r.nRack){ // oznacznik kabla
     const c={vRoom:r.vRoom,vRack:r.vRack,vPanel:r.vPanel,vPorts:r.vPorts,nRoom:r.nRoom||r.vRoom,nRack:r.nRack,nPanel:r.nPanel,nPorts:r.nPorts};
     const same=(x,R,P,O,R2,P2,O2)=>(x.v===R||x.va===R)&&x.vp===P&&np(x.vo)===np(O)&&(x.n===R2||x.na===R2)&&x.np===P2&&np(x.no)===np(O2);
-    const x=PROJ.find(x=>(!S.kRoom||x.r===S.kRoom)&&(same(x,c.vRack,c.vPanel,c.vPorts,c.nRack,c.nPanel,c.nPorts)||same(x,c.nRack,c.nPanel,c.nPorts,c.vRack,c.vPanel,c.vPorts)));
+    let x=PROJ.find(x=>(!S.kRoom||x.r===S.kRoom)&&(same(x,c.vRack,c.vPanel,c.vPorts,c.nRack,c.nPanel,c.nPorts)||same(x,c.nRack,c.nPanel,c.nPorts,c.vRack,c.vPanel,c.vPorts)));
+    // kabel „do góry nogami”: szafa+panel z obu stron się zgadzają, a moduły są zamienione (np. 1+2 na jednym końcu, 3+4 na drugim) – liczymy jako zgodny
+    let flip='';
+    if(!x){ const rp=(x,R,P,R2,P2)=>(x.v===R||x.va===R)&&x.vp===P&&(x.n===R2||x.na===R2)&&x.np===P2;
+      const C=PROJ.filter(x=>(!S.kRoom||x.r===S.kRoom)&&(rp(x,c.vRack,c.vPanel,c.nRack,c.nPanel)||rp(x,c.nRack,c.nPanel,c.vRack,c.vPanel)));
+      const end=(x,R)=>(x.v===R||x.va===R)?np(x.vo):np(x.no);
+      x=C.find(x=>end(x,c.vRack)===np(c.vPorts))||C.find(x=>end(x,c.nRack)===np(c.nPorts))||null;
+      if(x) flip=`moduły odwrócone: ${c.vRack} ${c.vPorts} ↔ ${c.nRack} ${c.nPorts} (kabel do góry nogami) – szafy i panele zgodne`; }
     key='K|'+routeTxt(c)+'|'+(r.sn||'');
     const lbl=`${c.vRack} ${c.vPanel} ${c.vPorts} → ${c.nRack} ${c.nPanel} ${c.nPorts}`;
     if(!x){ cls='bad'; const here=S.aPanel?E.filter(e=>e.p===S.aPanel&&(!S.aSlot||slotsOf(e).includes(S.aSlot))):[];
@@ -910,7 +917,7 @@ function auditOcr(arr,auto){
       if(r.sn&&old.sn&&old.sn!==r.sn) probs.push(`inny S/N niż przy poprzednim sprawdzeniu (${old.sn})`);
       if(r.len&&Math.abs(+r.len-+x.l)>0.5) probs.push(`na naklejce ${r.len} m, w projekcie ${x.l} m`);
       if(probs.length){ cls='bad'; aMark(x,'bad',{sn:r.sn||old.sn,txt:lbl,why:probs.join('; ')}); msg='❌ '+esc(lbl)+'<br>'+probs.map(esc).join('<br>'); }
-      else { cls='ok'; aMark(x,'ok',{sn:r.sn||old.sn,txt:lbl,why:''}); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${r.sn?'<br>S/N '+esc(r.sn):''}`; }
+      else { cls='ok'; aMark(x,'ok',{sn:r.sn||old.sn,txt:lbl,why:flip}); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}${r.sn?'<br>S/N '+esc(r.sn):''}`; }
     }
   } else if(PL.length){ // opisówka panelu
     const lab=PL[0]; key='P|'+lab.txt+'|'+S.aRack+S.aPanel;
