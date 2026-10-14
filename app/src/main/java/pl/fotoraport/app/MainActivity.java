@@ -814,6 +814,26 @@ public class MainActivity extends Activity {
             MainActivity.this.toast(msg);
         }
 
+        // Latarka przez Androida (gdy podgląd w WebView nie obsługuje „torch”): tylny aparat z lampą
+        @JavascriptInterface
+        public String torch(boolean on) {
+            try {
+                android.hardware.camera2.CameraManager cm = (android.hardware.camera2.CameraManager) getSystemService(CAMERA_SERVICE);
+                for (String id : cm.getCameraIdList()) {
+                    android.hardware.camera2.CameraCharacteristics c = cm.getCameraCharacteristics(id);
+                    Boolean flash = c.get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                    Integer facing = c.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING);
+                    if (Boolean.TRUE.equals(flash) && facing != null && facing == android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK) {
+                        cm.setTorchMode(id, on);
+                        return "ok";
+                    }
+                }
+                return "brak lampy";
+            } catch (Throwable e) {
+                return "blad: " + e.getMessage();
+            }
+        }
+
         // Odczyt napisów ze zdjęcia (ML Kit, offline). Zwraca tekst dla obrotów 0/90/180/270 –
         // oznacznik i naklejka S/N na kablu bywają odwrócone względem siebie.
         @JavascriptInterface

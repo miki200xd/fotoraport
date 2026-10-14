@@ -141,7 +141,7 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
     <div id="aim"></div>
     <div id="focusRing"></div>
     <div id="focusBar" class="hide"><span>Ostrość</span><input type="range" id="fDist"><button id="bAF">AUTO</button></div>
-    <div id="camBtns"><button id="bFocus" class="hide" title="Ręczna ostrość">🎯</button><button id="bTorch" title="Latarka">🔦</button><button id="bCam">⏸</button></div>
+    <div id="camBtns"><button id="bFocus" class="hide" title="Ręczna ostrość">🎯</button><button id="bTorch" title="Latarka">🔦</button><button id="bSwap" title="Inny obiektyw">🔄</button><button id="bCam">⏸</button></div>
     <div id="camMsg">Uruchamiam aparat…</div>
   </div>
   <div id="log"></div>
@@ -994,7 +994,9 @@ async function startCam(){
   wantCam=true; if(running) return;
   $('camMsg').textContent='Uruchamiam aparat…';
   try{
-    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
+    const res={width:{ideal:1920},height:{ideal:1080}};
+    try{ stream=await navigator.mediaDevices.getUserMedia({audio:false,video:S.camId?Object.assign({deviceId:{exact:S.camId}},res):Object.assign({facingMode:{ideal:'environment'}},res)}); }
+    catch(e){ if(!S.camId) throw e; S.camId=''; save(); stream=await navigator.mediaDevices.getUserMedia({audio:false,video:Object.assign({facingMode:{ideal:'environment'}},res)}); }
     const v=$('vid'); v.srcObject=stream; await v.play();
     const tr=stream.getVideoTracks()[0];
     try{ const cap=tr.getCapabilities?tr.getCapabilities():{}; 
@@ -1067,10 +1069,30 @@ $('bAF').onclick=()=>{ $('focusBar').classList.add('hide'); if(stream) stream.ge
 async function setTorch(on){ if(!stream) return false; const tr=stream.getVideoTracks()[0];
   try{ await tr.applyConstraints({advanced:[{torch:on}]}); }catch(e){ try{ await tr.applyConstraints({torch:on}); }catch(e2){ return false; } }
   const st=tr.getSettings?tr.getSettings():{}; return st.torch===undefined?true:st.torch===on; }
+// tylne aparaty (obiektywy) – do szukania tego z lampą i do ręcznego przełączania
+async function backCams(){ try{ return (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'&&!/front|user|przed/i.test(d.label)); }catch(e){ return []; } }
+async function findTorchCam(){
+  const cur=stream&&stream.getVideoTracks()[0].getSettings().deviceId; stopCam(); wantCam=true;
+  for(const d of await backCams()){ if(d.deviceId===cur) continue; let s;
+    try{ s=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:d.deviceId}}}); }catch(e){ continue; }
+    const c=s.getVideoTracks()[0].getCapabilities?s.getVideoTracks()[0].getCapabilities():{}; s.getTracks().forEach(t=>t.stop());
+    if(c.torch) return d.deviceId; }
+  return null; }
+function torchUi(on){ $('bTorch').style.background=on?'#f9c80e':''; $('bTorch').style.color=on?'#000':''; }
+let nativeTorch=false;
+$('bSwap').onclick=async e=>{ e.stopPropagation(); const cams=await backCams(); if(cams.length<2){ log('Jeden tylny obiektyw – nie ma na co przełączyć'); return; }
+  const cur=stream&&stream.getVideoTracks()[0].getSettings().deviceId, i=cams.findIndex(d=>d.deviceId===cur), nx=cams[(i+1)%cams.length];
+  S.camId=nx.deviceId; save(); stopCam(); await startCam(); log('Obiektyw '+((i+1)%cams.length+1)+'/'+cams.length+(nx.label?' · '+nx.label:'')); };
 $('bTorch').onclick=async e=>{ e.stopPropagation(); if(!stream){ log('Najpierw włącz aparat ▶'); return; }
-  const want=!torchOn, ok=await setTorch(want);
-  if(ok){ torchOn=want; S.torch=want; save(); $('bTorch').style.background=want?'#f9c80e':''; $('bTorch').style.color=want?'#000':''; log(want?'🔦 Latarka włączona':'Latarka wyłączona'); }
-  else log('Ten telefon nie pozwala włączyć latarki z podglądu aparatu'); };
+  const want=!(torchOn||nativeTorch);
+  if(!want&&nativeTorch&&window.AndroidBridge&&AndroidBridge.torch){ AndroidBridge.torch(false); nativeTorch=false; S.torch=false; save(); torchUi(false); log('Latarka wyłączona'); return; }
+  let ok=await setTorch(want);
+  if(!ok&&want){ log('Szukam obiektywu z lampą…'); const id=await findTorchCam();
+    if(id){ S.camId=id; save(); await startCam(); ok=await setTorch(true); }
+    else await startCam(); }
+  if(!ok&&want&&window.AndroidBridge&&AndroidBridge.torch){ const r=AndroidBridge.torch(true); if(r==='ok'){ nativeTorch=true; S.torch=true; save(); torchUi(true); log('🔦 Latarka włączona (Android)'); return; } log('Latarka: '+r); }
+  if(ok){ torchOn=want; S.torch=want; save(); torchUi(want); log(want?'🔦 Latarka włączona':'Latarka wyłączona'); }
+  else if(want) log('Nie udało się włączyć latarki na tym telefonie – napisz model, poszukam innej drogi'); };
 document.addEventListener('visibilitychange',()=>{ if(document.hidden){ const w=wantCam; stopCam(); wantCam=w; } else if(wantCam && $('vList').classList.contains('hide')) startCam(); });
 
 render();
