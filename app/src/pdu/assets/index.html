@@ -157,9 +157,7 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
       <div id="aSlots"></div>
       <div id="aRes"></div>
       <div id="aList"></div>
-      <details class="ocr" id="aDemoBox"><summary>🧪 Demo / test bez skanowania</summary>
-        <div class="row" style="margin-top:6px"><select id="aDemoSel" style="flex:2"></select><button class="b g" id="aDemoGo" style="flex:1">Symuluj skan</button></div>
-        <div class="row" style="margin-top:6px"><button class="b g" id="aDemoProj" style="flex:1">Wczytaj projekt demo</button><button class="b g" id="aReset" style="flex:1">Wyczyść wyniki</button></div></details>
+      <div class="row" style="margin-top:8px"><button class="b g" id="aReset" style="flex:1">Wyczyść wyniki sprawdzania</button></div>
     </div>
     <div class="row" style="margin-top:8px">
       <button class="b" id="kOcr" style="flex:2">📷 Odczytaj napisy</button>
@@ -892,6 +890,7 @@ function aRender(){
         return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${lwl&&S.aSide==='back'?`<small>${k===1?'1+2':'3+4'}</small><br>`:''}${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}`:'pusty'}</div>`; }).join('')+'</div>';
     const se=S.aSlot&&PE.find(e=>slotsOf(e).includes(S.aSlot));
     if(se) $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Gniazdo ${S.aSlot}: <b>${esc(S.aPanel+' '+se.o)} → ${esc(se.fr+' '+se.fp+' '+se.fo)}</b> · ${se.x.l} m – zeskanuj oznacznik albo zaznacz ręcznie:</span><button class="b ok" data-am="ok">✅ Zgodny</button><button class="b bad" data-am="bad">❌ Niezgodny</button><button class="b g" data-am="clr">↺</button></div>`;
+    $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Cały panel ${esc(S.aPanel)} (${PE.length} kabli):</span><button class="b ok" data-pall="ok">✅ Cały panel zgodny</button><button class="b g" data-pall="clr">↺ Wyczyść panel</button></div>`;
   } else $('aSlots').innerHTML='';
   const L=S.aPanel?PE:E;
   $('aList').innerHTML=L.map(e=>{ const a=S.audit[aKey(e.x)]||{}; return `<div class="arow"><span>${a.st==='ok'?'✅':a.st==='bad'?'❌':'○'}</span><b>${esc(e.p)} ${esc(e.o)}</b><span>→ ${esc(e.fr)} ${esc(e.fp)} ${esc(e.fo)}</span><span style="margin-left:auto;font-size:11px">${e.x.l} m ${e.x.t}${a.sn?'<br>'+esc(a.sn):''}</span></div>`; }).join('');
@@ -906,7 +905,13 @@ $('aPanels').onclick=e=>{ const b=e.target.closest('[data-ap]'); if(!b) return; 
 function aNextSlot(){ const PE=aEnds(S.aRack).filter(e=>e.p===S.aPanel);
   const ks=[1,2,3,4].filter(k=>PE.some(e=>slotsOf(e).includes(k)&&aStatusOf(e.x)!=='ok'));
   S.aSlot=ks.find(k=>k>S.aSlot)||ks[0]||0; }
-$('aSlots').onclick=e=>{ const b=e.target.closest('[data-am]');
+$('aSlots').onclick=e=>{ const pb=e.target.closest('[data-pall]');
+  if(pb){ const L=aEnds(S.aRack).filter(x=>x.p===S.aPanel); if(!L.length) return;
+    if(pb.dataset.pall==='clr'){ L.forEach(x=>{ delete S.audit[aKey(x.x)]; }); aShow('w','Wyczyszczono panel '+esc(S.aPanel)); }
+    else { L.forEach(x=>{ if(aStatusOf(x.x)!=='ok') aMark(x.x,'ok',{txt:`${x.p} ${x.o} → ${x.fr} ${x.fp} ${x.fo}`,why:'cały panel zaznaczony ręcznie'}); });
+      aShow('ok','✅ Panel '+esc(S.aPanel)+' zaznaczony jako zgodny ('+L.length+' kabli)'); beep(1500,.1); vib(60); S.aSlot=0; }
+    save(); aRender(); return; }
+  const b=e.target.closest('[data-am]');
   if(b){ const se=aEnds(S.aRack).find(e=>e.p===S.aPanel&&slotsOf(e).includes(S.aSlot)); if(!se) return; const lbl=`${se.p} ${se.o} → ${se.fr} ${se.fp} ${se.fo}`;
     if(b.dataset.am==='clr'){ delete S.audit[aKey(se.x)]; aShow('w','Wyczyszczono: '+esc(lbl)); }
     else { const ok=b.dataset.am==='ok'; aMark(se.x,ok?'ok':'bad',{txt:lbl,why:ok?'zaznaczone ręcznie':'zaznaczone ręcznie jako niezgodne'});
@@ -989,20 +994,6 @@ function auditOcr(arr,auto){
 // kod kreskowy w trybie sprawdzania (np. S/N z naklejki) – jak OCR z samym S/N
 { const _k=kabScan; kabScan=function(t,f){ if(S.kMode!=='audit') return _k(t,f); const v=String(t).trim(); if(v.length<8||/^https?:/i.test(v)) return; auditOcr(['SN: '+v],true); }; }
 { const _r=render; render=function(){ _r(); aRender(); }; }
-// --- demo: sprawdzenie działania bez aparatu
-const DEMO_PROJ=[{r:'DEMO',v:'D07',vp:'P07',vo:'1+2',n:'E07',np:'P07',no:'1+2',t:'LWL',l:20},{r:'DEMO',v:'D07',vp:'P07',vo:'3+4',n:'E07',np:'P07',no:'3+4',t:'LWL',l:20},
-  {r:'DEMO',v:'D07',vp:'P10',vo:'1-6',n:'D09',np:'P01',no:'1-6',t:'CU',l:10},{r:'DEMO',v:'D07',vp:'P10',vo:'7-12',n:'D11',np:'P01',no:'1-6',t:'CU',l:12},
-  {r:'DEMO',v:'D07',vp:'P10',vo:'13-18',n:'D12',np:'P01',no:'1-6',t:'CU',l:13},{r:'DEMO',v:'D07',vp:'P10',vo:'19-24',n:'D13',np:'P01',no:'1-6',t:'CU',l:14}];
-const DEMO_SCANS=[
-  ['Kabel OK – D07 P07 3+4 (20 m, S/N)',['v. RZ2B D07 - P07-3+4\nn. RZ2B E07 - P07-3+4\nL: 20 m\nSN: 020OSI011009390003']],
-  ['Kabel OK – D07 P10 7-12',['v. RZ2B D07 - P10 7-12\nn. RZ2B D11 - P01 1-6']],
-  ['Kabel ZŁY – trasy nie ma w projekcie',['v. RZ2B D07 - P10 7-12\nn. RZ2B D15 - P01 1-6']],
-  ['Kabel ZŁY – zła długość (40 m)',['v. RZ2B D07 - P07-1+2\nn. RZ2B E07 - P07-1+2\nL: 40 m\nSN: 020OSI011009430001']],
-  ['Opisówka panelu P07 – dobra',['1 - zu RZ2B E07 - P07-1']],
-  ['Opisówka panelu P10 – zła',['zu RZ2B D08 P01 1-24']]];
-$('aDemoSel').innerHTML=DEMO_SCANS.map((d,i)=>`<option value="${i}">${esc(d[0])}</option>`).join('');
-$('aDemoProj').onclick=()=>{ S.proj=DEMO_PROJ; PROJ=DEMO_PROJ; S.kRoom='DEMO'; S.aRack='D07'; S.aPanel='P10'; S.aSide='back'; S.aSlot=0; save(); render(); aShow('w','Projekt demo: szafa D07, panele P07 (światłowód) i P10 (RJ45). Wybierz scenariusz i „Symuluj skan”. Gniazda możesz zaznaczać dotykiem.'); };
-$('aDemoGo').onclick=()=>auditOcr(DEMO_SCANS[+$('aDemoSel').value][1],false);
 $('aReset').onclick=()=>ask('Wyczyścić wyniki sprawdzania (✅/❌)?',()=>{ S.audit={}; save(); $('aRes').innerHTML=''; aRender(); });
 // --- raport sprawdzania do Excela (lista w trybie Sprawdzanie)
 const AHEAD=['Raum','von','Panel','Ports','nach','Panel','Ports','Kabeltyp','Länge [m]','Status','SN (gelesen)','Etikett (gelesen)','Problem','Datum'];
