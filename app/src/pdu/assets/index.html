@@ -550,6 +550,9 @@ function parseOcr(texts){
   m=all.match(/Trunk[^\n]{0,30}?MPE\s*\/\s*MPE/i) || all.match(/COPPER\s*TOR-?\s*G2/i);
   if(m) r.type=m[0].replace(/\s+/g,' ').trim();
   m=all.match(/MPE\s*\/\s*MPE\s+([AB])\b/); if(m) r.side=m[1];
+  // typ kabla z napisów: miedź (COPPER, CU, RJ45) lub światłowód (MPE/MPE, LWL, FIBER, SM)
+  if(/COPPER|\bCU\b|\bRJ\s*-?\s*45\b|TOR-?\s*G2/i.test(all)) r.tt='CU RJ45';
+  else if(/MPE\s*\/\s*MPE|\bLWL\b|\bFIBER\b|\bFIBRE\b|\bSM\b|OS[12]/i.test(all)) r.tt='LWL';
   return r;
 }
 function kMerge(r,force){ const c=S.kab.cur; let n=0; for(const k of KF){ if(r[k]&&(force||!c[k])){ if(c[k]!==r[k]) n++; c[k]=r[k]; } } return n; }
@@ -972,13 +975,15 @@ function auditOcr(arr,auto){
       const old=S.audit[aKey(x)]||{}; let recSaved=false;
       if(r.sn&&old.sn&&old.sn!==r.sn) probs.push(`inny S/N niż przy poprzednim sprawdzeniu (${old.sn})`);
       if(r.len&&Math.abs(+r.len-+x.l)>0.5) probs.push(`na naklejce ${r.len} m, w projekcie ${x.l} m`);
+      const projT=x.t==='CU'?'CU RJ45':'LWL';
+      if(r.tt&&r.tt!==projT) probs.push(`na naklejce typ ${r.tt}, w projekcie ${projT}`);
       const sdr=(loc&&S.aRack)?aSideIn(x,S.aRack):'';
       if(probs.length){ cls='bad'; const placeBad=probs.some(q=>/ma być w|nie szafę/.test(q)); aMark(x,'bad',{sn:r.sn||old.sn,txt:lbl,why:probs.join('; ')},placeBad&&sdr?[sdr,'c']:['c']); msg='❌ '+esc(lbl)+'<br>'+probs.map(esc).join('<br>'); }
       else { cls='ok'; if(oldNr.length) flip=[flip,'stary numer panelu na naklejce: '+oldNr.join(', ')].filter(Boolean).join('; '); aMark(x,'ok',{sn:r.sn||old.sn,txt:lbl,why:flip},sdr?[sdr,'c']:['c']);
         if(r.sn){ const rec={vRoom:x.r,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,nRoom:x.r,nRack:c.nRack,nPanel:c.nPanel,nPorts:c.nPorts,
-            type:x.t==='CU'?'CU RJ45':'LWL',len:String(r.len||x.l),side:r.side||'',sn:r.sn,fa:r.fa||'',at:new Date().toISOString()};
+            type:r.tt||(x.t==='CU'?'CU RJ45':'LWL'),len:String(r.len||x.l),side:r.side||'',sn:r.sn,fa:r.fa||'',at:new Date().toISOString()};
           const ri=S.kab.records.findIndex(q=>q.sn===rec.sn); if(ri>=0) S.kab.records[ri]=Object.assign({},S.kab.records[ri],rec); else S.kab.records.push(rec);
-          recSaved=true; } if(loc&&S.aPanel===loc.p&&S.aSlot) aNextSlot(); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}${r.sn?'<br>S/N '+esc(r.sn)+(r.side?' · strona '+esc(r.side):''):''}${recSaved?'<br><small>zapisano w liście S/N ('+S.kab.records.length+')</small>':''}`; }
+          recSaved=true; } if(loc&&S.aPanel===loc.p&&S.aSlot) aNextSlot(); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}<br><small>${esc(r.tt||projT)} · ${esc(String(r.len||x.l))} m${r.sn?' · S/N '+esc(r.sn):''}${r.side?' · strona '+esc(r.side):''}</small>${recSaved?'<br><small>zapisano w liście S/N ('+S.kab.records.length+')</small>':''}`; }
     }
   } else if(PL.length){ // opisówka panelu
     const lab=PL[0]; key='P|'+lab.txt+'|'+S.aRack+S.aPanel; const labP0=lab.panel; lab.panel=canonP(S.kRoom,lab.rack,lab.panel);
