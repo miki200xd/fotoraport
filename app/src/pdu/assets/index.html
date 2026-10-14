@@ -849,7 +849,7 @@ function aEnds(R){ const out=[]; if(!R) return out;
 // gniazdo 1–4 w panelu (4 miejsca): CU moduł k = porty 6k-5..6k, LWL 1+2 = 1,2 / 3+4 = 3,4
 function slotsOf(e){ const o=np(e.o); let m=o.match(/^(\d+)-(\d+)$/);
   if(m){ const a=+m[1], b=+m[2]; if(b-a>=20) return [1,2,3,4]; return [Math.ceil(a/6)]; }
-  m=o.match(/^(\d)\+(\d)$/); if(m) return [+m[1],+m[2]];
+  m=o.match(/^(\d)\+(\d)$/); if(m) return [Math.ceil(+m[2]/2)];   // światłowód: gniazdo 1 = 1+2, gniazdo 2 = 3+4
   return []; }
 function aStatusOf(x){ return (S.audit[aKey(x)]||{}).st||''; }
 function aMark(x,st,info){ S.audit[aKey(x)]=Object.assign({},S.audit[aKey(x)]||{},{st,at:new Date().toISOString()},info||{}); }
@@ -868,10 +868,10 @@ function aRender(){
     :`<span style="font-size:12px;color:var(--mut)">${S.aRack?'Brak szafy '+esc(S.aRack)+' w projekcie '+esc(S.kRoom):'Wpisz szafę, np. D07'}</span>`;
   // panel z tyłu: od prawej 1, 2, 3, 4 (z przodu odwrotnie)
   const PE=E.filter(e=>e.p===S.aPanel);
-  if(S.aPanel){ const order=S.aSide==='back'?[4,3,2,1]:[1,2,3,4];
-    $('aSlots').innerHTML=`<div style="font-size:12px;color:var(--mut);margin-top:8px">${S.aPanel} – widok z ${S.aSide==='back'?'tyłu (1 = skrajnie po prawej)':'przodu (1 = skrajnie po lewej)'} · dotknij gniazda, w które wpięty jest skanowany kabel</div><div class="slots">`+
+  if(S.aPanel){ const lwl=PE.length&&PE.every(e=>e.x.t==='LWL'), n=lwl?2:4, seq=[...Array(n)].map((_,i)=>i+1), order=S.aSide==='back'?seq.slice().reverse():seq;
+    $('aSlots').innerHTML=`<div style="font-size:12px;color:var(--mut);margin-top:8px">${S.aPanel} – widok z ${S.aSide==='back'?'tyłu (1 = skrajnie po prawej)':'przodu (1 = skrajnie po lewej)'} · dotknij gniazda, w które wpięty jest skanowany kabel</div><div class="slots" style="grid-template-columns:repeat(${n},1fr)">`+
       order.map(k=>{ const e=PE.find(e=>slotsOf(e).includes(k)); const st=e?aStatusOf(e.x):'';
-        return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}`:'pusty'}</div>`; }).join('')+'</div>';
+        return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${lwl?`<small>${k===1?'1+2':'3+4'}</small><br>`:''}${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}`:'pusty'}</div>`; }).join('')+'</div>';
   } else $('aSlots').innerHTML='';
   const L=S.aPanel?PE:E;
   $('aList').innerHTML=L.map(e=>{ const a=S.audit[aKey(e.x)]||{}; return `<div class="arow"><span>${a.st==='ok'?'✅':a.st==='bad'?'❌':'○'}</span><b>${esc(e.p)} ${esc(e.o)}</b><span>→ ${esc(e.fr)} ${esc(e.fp)} ${esc(e.fo)}</span><span style="margin-left:auto;font-size:11px">${e.x.l} m ${e.x.t}${a.sn?'<br>'+esc(a.sn):''}</span></div>`; }).join('');
@@ -912,7 +912,7 @@ function auditOcr(arr,auto){
       const loc=E.find(e=>e.x===x), probs=[];
       if(S.aRack&&!loc) probs.push(`ten kabel wg projektu łączy ${x.v} ${x.vp} – ${x.n} ${x.np}, nie szafę ${S.aRack}`);
       if(loc&&S.aPanel&&loc.p!==S.aPanel) probs.push(`ten kabel ma być w ${loc.p}, nie w ${S.aPanel}`);
-      if(loc&&S.aPanel===loc.p&&S.aSlot&&!slotsOf(loc).includes(S.aSlot)) probs.push(`ten kabel ma być w gnieździe ${slotsOf(loc).join('+')}, a jest w ${S.aSlot}`);
+      if(loc&&S.aPanel===loc.p&&S.aSlot&&!slotsOf(loc).includes(S.aSlot)&&!flip) probs.push(`ten kabel ma być w gnieździe ${slotsOf(loc).join('+')}, a jest w ${S.aSlot}`);
       const old=S.audit[aKey(x)]||{};
       if(r.sn&&old.sn&&old.sn!==r.sn) probs.push(`inny S/N niż przy poprzednim sprawdzeniu (${old.sn})`);
       if(r.len&&Math.abs(+r.len-+x.l)>0.5) probs.push(`na naklejce ${r.len} m, w projekcie ${x.l} m`);
