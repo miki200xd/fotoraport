@@ -73,6 +73,16 @@ tr.sel td{background:rgba(21,101,192,.08)}
 .chips button.done{opacity:.45}
 .cand{display:flex;gap:6px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--ln);font-size:13px}
 .cand.done{opacity:.45}.cand b{font-family:ui-monospace,Consolas,monospace}
+.seg{gap:0}.seg button{flex:1;border:1px solid var(--ln);background:var(--bg);color:var(--tx);padding:8px;font:inherit;font-weight:600}
+.seg button:first-child{border-radius:9px 0 0 9px}.seg button:last-child{border-radius:0 9px 9px 0}.seg button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.chips button.ok{background:#1b8a3a;color:#fff;border-color:#1b8a3a}.chips button.bad{background:#c62828;color:#fff;border-color:#c62828}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}
+.slots div{border:2px solid var(--ln);border-radius:8px;padding:6px 3px;text-align:center;font-size:11px;min-height:54px}
+.slots div b{display:block;font-size:16px}.slots div.ok{border-color:#1b8a3a;background:rgba(27,138,58,.12)}.slots div.bad{border-color:#c62828;background:rgba(198,40,40,.12)}
+.slots div.sel{box-shadow:0 0 0 3px var(--ac)}.slots div.empty{opacity:.4}
+.ares{margin-top:8px;padding:10px;border-radius:10px;font-weight:600;font-size:15px}
+.ares.ok{background:#dff3e4;color:#145c28}.ares.bad{background:#fde0e0;color:#8e1b1b}.ares.w{background:#fff3cd;color:#7a4d00}
+.arow{display:flex;gap:6px;padding:6px 2px;border-bottom:1px solid var(--ln);font-size:13px;align-items:center}.arow b{font-family:ui-monospace,Consolas,monospace}
 details.ocr{font-size:11px;color:var(--mut);margin-top:6px}
 details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
 #dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
@@ -137,6 +147,18 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
   <div id="log"></div>
 
   <div id="kabPane" class="hide">
+    <div class="row seg" style="margin-top:8px"><button id="kmAssign">Przypisz S/N</button><button id="kmAudit">Sprawdzanie</button></div>
+    <div id="aCard" class="card hide" style="margin-top:8px">
+      <div class="row"><div style="flex:1"><label class="f">Szafa</label><input id="aRack" class="big" placeholder="D07" autocapitalize="characters"></div>
+        <div style="flex:1"><label class="f">Strona</label><div class="row seg"><button id="aFront">Przód</button><button id="aBack">Tył</button></div></div></div>
+      <div id="aPanels" class="chips"></div>
+      <div id="aSlots"></div>
+      <div id="aRes"></div>
+      <div id="aList"></div>
+      <details class="ocr" id="aDemoBox"><summary>🧪 Demo / test bez skanowania</summary>
+        <div class="row" style="margin-top:6px"><select id="aDemoSel" style="flex:2"></select><button class="b g" id="aDemoGo" style="flex:1">Symuluj skan</button></div>
+        <div class="row" style="margin-top:6px"><button class="b g" id="aDemoProj" style="flex:1">Wczytaj projekt demo</button><button class="b g" id="aReset" style="flex:1">Wyczyść wyniki</button></div></details>
+    </div>
     <div class="row" style="margin-top:8px">
       <button class="b" id="kOcr" style="flex:2">📷 Odczytaj napisy</button>
       <button class="b g" id="kAuto" style="flex:1">Auto ✓</button>
@@ -739,8 +761,8 @@ function rowsToProj(rows){
   let il=h.findIndex(x=>/gesamt/i.test(x)); if(il<0) il=h.findIndex(x=>/l(ä|a)nge|długo/i.test(x));
   const ir=h.findIndex(x=>/^(raum|sala)$/i.test(x));
   let room0=''; for(const r of rows){ if(r&&H(r[0])==='Raum:'){ room0=H(r[3]).toUpperCase(); break; } }
-  const sp=x=>{ const t=H(x).toUpperCase(), last=t.split('/').pop().trim();
-    const m=last.match(/^(RZ\d[A-Z])?\s*([A-H])\s*0?(\d{1,2})$/); return m?{room:m[1]||'',rack:m[2]+m[3].padStart(2,'0')}:null; };
+  const one=x=>{ const m=String(x).trim().match(/^(RZ\d[A-Z])?\s*([A-H])\s*0?(\d{1,2})$/); return m?{room:m[1]||'',rack:m[2]+m[3].padStart(2,'0')}:null; };
+  const sp=x=>{ const parts=H(x).toUpperCase().split('/'), a=one(parts.pop()); if(!a) return null; const o=parts.length?one(parts[0]):null; if(o) a.alt=o.rack; return a; };
   const pp=x=>{ const m=[...String(x||'').matchAll(/P\s*0?(\d{1,2})/gi)].pop(); return m?'P'+m[1].padStart(2,'0'):''; };
   const out=[];
   for(const r of rows.slice(hi+1)){ if(!r) continue;
@@ -750,7 +772,7 @@ function rowsToProj(rows){
     const L=il>=0?+String(r[il]??'0').replace(',','.'):0;
     const room=a.room||(ir>=0?H(r[ir]).toUpperCase():'')||room0||'LISTA';
     const kv=H(r[ivp+1]), kn=H(r[inp+1]);
-    const push=(vo,no)=>out.push({r:room,v:a.rack,vp,vo,n:b.rack,np,no,t,l:L});
+    const push=(vo,no)=>out.push({r:room,v:a.rack,va:a.alt||'',vp,vo,n:b.rack,na:b.alt||'',np,no,t,l:L});
     if(/^ports$/i.test(h[ivp+1]||'')) { push(kv,kn); continue; }   // nasz format – porty wprost
     if(cu){
       if((kv.match(/\+/g)||[]).length===3) for(let k=0;k<4;k++) push(`${6*k+1}-${6*k+6}`,`${6*k+1}-${6*k+6}`);
@@ -814,6 +836,138 @@ $('kAuto').onclick=()=>{ S.kAuto=!S.kAuto; save(); $('kAuto').textContent=S.kAut
 }
 { const _s=$('kSave').onclick; $('kSave').onclick=()=>{ const c=S.kab.cur; lastSaved={sn:c.sn,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,at:Date.now()}; kPauseUntil=Date.now()+1500; _s(); }; }
 { const _a=applyMode; applyMode=function(){ _a(); $('kAuto').textContent=S.kAuto?'Auto ✓':'Auto ✗'; if(S.mode==='kab'&&!autoT&&!ocrBusy) autoOcr(); }; }
+/* ---------- tryb Sprawdzanie: stare oznaczniki i S/N vs projekt, szafa po szafie ---------- */
+S.kMode=S.kMode||'assign'; S.audit=S.audit||{}; S.aRack=S.aRack||''; S.aPanel=S.aPanel||''; S.aSide=S.aSide||'back'; S.aSlot=S.aSlot||0;
+const aKey=x=>pRoute(x);
+const isR=(R,x,end)=>end==='v'?(x.v===R||x.va===R):(x.n===R||x.na===R);
+// końce kabli w szafie R: panel, porty tutaj i drugi koniec
+function aEnds(R){ const out=[]; if(!R) return out;
+  for(const x of PROJ){ if(S.kRoom&&x.r!==S.kRoom) continue;
+    if(isR(R,x,'v')) out.push({x,p:x.vp,o:x.vo,fr:x.n,fp:x.np,fo:x.no});
+    if(isR(R,x,'n')) out.push({x,p:x.np,o:x.no,fr:x.v,fp:x.vp,fo:x.vo}); }
+  return out; }
+// gniazdo 1–4 w panelu (4 miejsca): CU moduł k = porty 6k-5..6k, LWL 1+2 = 1,2 / 3+4 = 3,4
+function slotsOf(e){ const o=np(e.o); let m=o.match(/^(\d+)-(\d+)$/);
+  if(m){ const a=+m[1], b=+m[2]; if(b-a>=20) return [1,2,3,4]; return [Math.ceil(a/6)]; }
+  m=o.match(/^(\d)\+(\d)$/); if(m) return [+m[1],+m[2]];
+  return []; }
+function aStatusOf(x){ return (S.audit[aKey(x)]||{}).st||''; }
+function aMark(x,st,info){ S.audit[aKey(x)]=Object.assign({},S.audit[aKey(x)]||{},{st,at:new Date().toISOString()},info||{}); }
+function aShow(cls,txt){ $('aRes').innerHTML=`<div class="ares ${cls}">${txt}</div>`; }
+function aRender(){
+  const audit=S.kMode==='audit';
+  $('aCard').classList.toggle('hide',!audit); $('kForm').classList.toggle('hide',audit); $('kSave').parentElement.classList.toggle('hide',audit);
+  $('kmAssign').classList.toggle('on',!audit); $('kmAudit').classList.toggle('on',audit);
+  $('aFront').classList.toggle('on',S.aSide==='front'); $('aBack').classList.toggle('on',S.aSide==='back');
+  $('kLens').classList.toggle('hide',audit); $('kCand').classList.toggle('hide',audit);
+  if(!audit) return;
+  if(document.activeElement!==$('aRack')) $('aRack').value=S.aRack;
+  const E=aEnds(S.aRack), panels=[...new Set(E.map(e=>e.p))].sort();
+  $('aPanels').innerHTML=E.length?panels.map(p=>{ const es=E.filter(e=>e.p===p), st=es.map(e=>aStatusOf(e.x));
+      const cls=st.includes('bad')?'bad':(st.every(v=>v==='ok')?'ok':''); return `<button data-ap="${p}" class="${cls} ${p===S.aPanel?'on':''}">${p} <small>${st.filter(v=>v==='ok').length}/${es.length}</small></button>`; }).join('')
+    :`<span style="font-size:12px;color:var(--mut)">${S.aRack?'Brak szafy '+esc(S.aRack)+' w projekcie '+esc(S.kRoom):'Wpisz szafę, np. D07'}</span>`;
+  // panel z tyłu: od prawej 1, 2, 3, 4 (z przodu odwrotnie)
+  const PE=E.filter(e=>e.p===S.aPanel);
+  if(S.aPanel){ const order=S.aSide==='back'?[4,3,2,1]:[1,2,3,4];
+    $('aSlots').innerHTML=`<div style="font-size:12px;color:var(--mut);margin-top:8px">${S.aPanel} – widok z ${S.aSide==='back'?'tyłu (1 = skrajnie po prawej)':'przodu (1 = skrajnie po lewej)'} · dotknij gniazda, w które wpięty jest skanowany kabel</div><div class="slots">`+
+      order.map(k=>{ const e=PE.find(e=>slotsOf(e).includes(k)); const st=e?aStatusOf(e.x):'';
+        return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}`:'pusty'}</div>`; }).join('')+'</div>';
+  } else $('aSlots').innerHTML='';
+  const L=S.aPanel?PE:E;
+  $('aList').innerHTML=L.map(e=>{ const a=S.audit[aKey(e.x)]||{}; return `<div class="arow"><span>${a.st==='ok'?'✅':a.st==='bad'?'❌':'○'}</span><b>${esc(e.p)} ${esc(e.o)}</b><span>→ ${esc(e.fr)} ${esc(e.fp)} ${esc(e.fo)}</span><span style="margin-left:auto;font-size:11px">${e.x.l} m ${e.x.t}${a.sn?'<br>'+esc(a.sn):''}</span></div>`; }).join('');
+}
+$('kmAssign').onclick=()=>{ S.kMode='assign'; save(); render(); };
+$('kmAudit').onclick=()=>{ S.kMode='audit'; save(); render(); };
+$('aFront').onclick=()=>{ S.aSide='front'; save(); aRender(); };
+$('aBack').onclick=()=>{ S.aSide='back'; save(); aRender(); };
+$('aRack').addEventListener('change',e=>{ const v=e.target.value.toUpperCase().replace(/\s+/g,''); const m=v.match(/^([A-H])0?(\d{1,2})$/); S.aRack=m?m[1]+m[2].padStart(2,'0'):v; S.aPanel=''; S.aSlot=0; $('aRes').innerHTML=''; save(); aRender(); });
+$('aPanels').onclick=e=>{ const b=e.target.closest('[data-ap]'); if(!b) return; S.aPanel=S.aPanel===b.dataset.ap?'':b.dataset.ap; S.aSlot=0; $('aRes').innerHTML=''; save(); aRender(); };
+$('aSlots').onclick=e=>{ const d=e.target.closest('[data-slot]'); if(!d) return; S.aSlot=S.aSlot===+d.dataset.slot?0:+d.dataset.slot; save(); aRender(); };
+// opisówka panelu: „zu RZ2B C08 P01 1-24”, „1 - zu RZ2B E07 - P07-1”
+function parsePanelLabels(texts){ const out=[];
+  for(const t of texts) for(const line of String(t).split('\n')){
+    const m=line.match(/zu\s*(R\s*Z\s*[0-9OIlZ]\s*[AB8])?\s*([A-H])\s*([0-9OIl]{1,2})\s*[-–—]?\s*P\s*([0-9OIl]{1,2})/i); if(!m) continue;
+    out.push({rack:m[2].toUpperCase()+String(+dig(m[3])).padStart(2,'0'),panel:'P'+String(+dig(m[4])).padStart(2,'0'),txt:line.trim()}); }
+  return out; }
+let aLastKey='', aLastAt=0;
+function auditOcr(arr,auto){
+  const r=parseOcr(arr), PL=parsePanelLabels(arr), E=aEnds(S.aRack);
+  let key='', cls='', msg='';
+  if(r.vRack&&r.nRack){ // oznacznik kabla
+    const c={vRoom:r.vRoom,vRack:r.vRack,vPanel:r.vPanel,vPorts:r.vPorts,nRoom:r.nRoom||r.vRoom,nRack:r.nRack,nPanel:r.nPanel,nPorts:r.nPorts};
+    const same=(x,R,P,O,R2,P2,O2)=>(x.v===R||x.va===R)&&x.vp===P&&np(x.vo)===np(O)&&(x.n===R2||x.na===R2)&&x.np===P2&&np(x.no)===np(O2);
+    const x=PROJ.find(x=>(!S.kRoom||x.r===S.kRoom)&&(same(x,c.vRack,c.vPanel,c.vPorts,c.nRack,c.nPanel,c.nPorts)||same(x,c.nRack,c.nPanel,c.nPorts,c.vRack,c.vPanel,c.vPorts)));
+    key='K|'+routeTxt(c)+'|'+(r.sn||'');
+    const lbl=`${c.vRack} ${c.vPanel} ${c.vPorts} → ${c.nRack} ${c.nPanel} ${c.nPorts}`;
+    if(!x){ cls='bad'; const here=S.aPanel?E.filter(e=>e.p===S.aPanel&&(!S.aSlot||slotsOf(e).includes(S.aSlot))):[];
+      msg=`❌ Oznacznik „${esc(lbl)}” – takiej trasy nie ma w projekcie`+(here.length?`<br>Wg projektu tu powinno być: ${here.map(e=>esc(`${e.p} ${e.o} → ${e.fr} ${e.fp} ${e.fo}`)).join('; ')}`:''); }
+    else {
+      const loc=E.find(e=>e.x===x), probs=[];
+      if(S.aRack&&!loc) probs.push(`ten kabel wg projektu łączy ${x.v} ${x.vp} – ${x.n} ${x.np}, nie szafę ${S.aRack}`);
+      if(loc&&S.aPanel&&loc.p!==S.aPanel) probs.push(`ten kabel ma być w ${loc.p}, nie w ${S.aPanel}`);
+      if(loc&&S.aPanel===loc.p&&S.aSlot&&!slotsOf(loc).includes(S.aSlot)) probs.push(`ten kabel ma być w gnieździe ${slotsOf(loc).join('+')}, a jest w ${S.aSlot}`);
+      const old=S.audit[aKey(x)]||{};
+      if(r.sn&&old.sn&&old.sn!==r.sn) probs.push(`inny S/N niż przy poprzednim sprawdzeniu (${old.sn})`);
+      if(r.len&&Math.abs(+r.len-+x.l)>0.5) probs.push(`na naklejce ${r.len} m, w projekcie ${x.l} m`);
+      if(probs.length){ cls='bad'; aMark(x,'bad',{sn:r.sn||old.sn,txt:lbl,why:probs.join('; ')}); msg='❌ '+esc(lbl)+'<br>'+probs.map(esc).join('<br>'); }
+      else { cls='ok'; aMark(x,'ok',{sn:r.sn||old.sn,txt:lbl,why:''}); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${r.sn?'<br>S/N '+esc(r.sn):''}`; }
+    }
+  } else if(PL.length){ // opisówka panelu
+    const lab=PL[0]; key='P|'+lab.txt+'|'+S.aRack+S.aPanel;
+    if(!S.aPanel){ cls='w'; msg='Opisówka: '+esc(lab.txt)+'<br>Wybierz panel, na którym jest ta opisówka, żeby sprawdzić.'; }
+    else { const exp=E.filter(e=>e.p===S.aPanel), ok=exp.some(e=>e.fr===lab.rack&&e.fp===lab.panel);
+      const want=[...new Set(exp.map(e=>`zu ${e.fr} ${e.fp}`))].join(', ')||'– (panel bez kabli w projekcie)';
+      cls=ok?'ok':'bad'; msg=(ok?'✅ Opisówka panelu zgodna: ':'❌ Opisówka panelu NIEZGODNA: ')+esc(lab.txt)+(ok?'':'<br>Wg projektu: '+esc(want));
+      S.audit['PANEL|'+S.kRoom+'|'+S.aRack+'|'+S.aPanel]={st:cls,txt:lab.txt,at:new Date().toISOString()}; }
+  } else if(r.sn){ key='S|'+r.sn; const hit=PROJ.find(x=>(S.audit[aKey(x)]||{}).sn===r.sn);
+    cls='w'; msg='S/N '+esc(r.sn)+(hit?` – sprawdzony wcześniej przy ${esc(pTxt(hit))}`:' – zeskanuj też oznacznik tego kabla'); }
+  if(!key){ if(!auto){ aShow('w','Nie znalazłem oznacznika ani opisówki – podejdź bliżej i spróbuj jeszcze raz.'); beep(300,.2); } return; }
+  if(auto&&key===aLastKey&&Date.now()-aLastAt<6000) return; aLastKey=key; aLastAt=Date.now();
+  aShow(cls,msg); if(cls==='ok'){ beep(1500,.1); vib(60); } else if(cls==='bad'){ beep(250,.35); vib([80,60,80]); } else beep(900,.08);
+  save(); aRender();
+}
+{ const _n=window.__ocrNative; window.__ocrNative=(id,json)=>{
+    if(!(S.mode==='kab'&&S.kMode==='audit')) return _n(id,json);
+    const auto=ocrAuto; ocrBusy=false; $('kOcr').disabled=false; $('kOcr').textContent='📷 Odczytaj napisy';
+    let arr; try{ arr=JSON.parse(json); }catch(e){ arr=null; }
+    if(Array.isArray(arr)) auditOcr(arr,auto); else if(!auto) warn('Błąd odczytu');
+    autoOcr(); }; }
+// w trybie sprawdzania czytamy cały czas (nie czekamy na „komplet”)
+{ const _a=autoOcr; autoOcr=function(){ if(S.mode==='kab'&&S.kMode==='audit'){ clearTimeout(autoT); autoT=null;
+    if(!S.kAuto||!running||!(window.AndroidBridge&&AndroidBridge.recognizeTextR)) return;
+    autoT=setTimeout(()=>{ autoT=null; if(!ocrBusy&&$('vList').classList.contains('hide')) grabOcr(autoFlip++%2?'90,270':'0,180',1600,true); else autoOcr(); },700); return; }
+  return _a(); }; }
+// kod kreskowy w trybie sprawdzania (np. S/N z naklejki) – jak OCR z samym S/N
+{ const _k=kabScan; kabScan=function(t,f){ if(S.kMode!=='audit') return _k(t,f); const v=String(t).trim(); if(v.length<8||/^https?:/i.test(v)) return; auditOcr(['SN: '+v],true); }; }
+{ const _r=render; render=function(){ _r(); aRender(); }; }
+// --- demo: sprawdzenie działania bez aparatu
+const DEMO_PROJ=[{r:'DEMO',v:'D07',vp:'P07',vo:'1+2',n:'E07',np:'P07',no:'1+2',t:'LWL',l:20},{r:'DEMO',v:'D07',vp:'P07',vo:'3+4',n:'E07',np:'P07',no:'3+4',t:'LWL',l:20},
+  {r:'DEMO',v:'D07',vp:'P10',vo:'1-6',n:'D09',np:'P01',no:'1-6',t:'CU',l:10},{r:'DEMO',v:'D07',vp:'P10',vo:'7-12',n:'D11',np:'P01',no:'1-6',t:'CU',l:12},
+  {r:'DEMO',v:'D07',vp:'P10',vo:'13-18',n:'D12',np:'P01',no:'1-6',t:'CU',l:13},{r:'DEMO',v:'D07',vp:'P10',vo:'19-24',n:'D13',np:'P01',no:'1-6',t:'CU',l:14}];
+const DEMO_SCANS=[
+  ['Kabel OK – D07 P07 3+4 (20 m, S/N)',['v. RZ2B D07 - P07-3+4\nn. RZ2B E07 - P07-3+4\nL: 20 m\nSN: 020OSI011009390003']],
+  ['Kabel OK – D07 P10 7-12',['v. RZ2B D07 - P10 7-12\nn. RZ2B D11 - P01 1-6']],
+  ['Kabel ZŁY – trasy nie ma w projekcie',['v. RZ2B D07 - P10 7-12\nn. RZ2B D15 - P01 1-6']],
+  ['Kabel ZŁY – zła długość (40 m)',['v. RZ2B D07 - P07-1+2\nn. RZ2B E07 - P07-1+2\nL: 40 m\nSN: 020OSI011009430001']],
+  ['Opisówka panelu P07 – dobra',['1 - zu RZ2B E07 - P07-1']],
+  ['Opisówka panelu P10 – zła',['zu RZ2B D08 P01 1-24']]];
+$('aDemoSel').innerHTML=DEMO_SCANS.map((d,i)=>`<option value="${i}">${esc(d[0])}</option>`).join('');
+$('aDemoProj').onclick=()=>{ S.proj=DEMO_PROJ; PROJ=DEMO_PROJ; S.kRoom='DEMO'; S.aRack='D07'; S.aPanel='P10'; S.aSide='back'; S.aSlot=0; save(); render(); aShow('w','Projekt demo: szafa D07, panele P07 (światłowód) i P10 (RJ45). Wybierz scenariusz i „Symuluj skan”. Gniazda możesz zaznaczać dotykiem.'); };
+$('aDemoGo').onclick=()=>auditOcr(DEMO_SCANS[+$('aDemoSel').value][1],false);
+$('aReset').onclick=()=>ask('Wyczyścić wyniki sprawdzania (✅/❌)?',()=>{ S.audit={}; save(); $('aRes').innerHTML=''; aRender(); });
+// --- raport sprawdzania do Excela (lista w trybie Sprawdzanie)
+const AHEAD=['Raum','von','Panel','Ports','nach','Panel','Ports','Kabeltyp','Länge [m]','Status','SN (gelesen)','Etikett (gelesen)','Problem','Datum'];
+function arows(){ return PROJ.filter(x=>!S.kRoom||x.r===S.kRoom).map(x=>{ const a=S.audit[aKey(x)]||{};
+  return [x.r,x.va?`${x.v} (${x.va})`:x.v,x.vp,x.vo,x.na?`${x.n} (${x.na})`:x.n,x.np,x.no,x.t,x.l,a.st==='ok'?'OK':a.st==='bad'?'FEHLER':'nicht geprüft',a.sn||'',a.txt||'',a.why||'',locTime(a.at)]; }); }
+{ const _sl=showList; showList=function(){ if(!(S.mode==='kab'&&S.kMode==='audit')) return _sl();
+    $('vScan').classList.add('hide'); $('vList').classList.remove('hide'); stopCam(); applyMode(); $('bXlsx').textContent='Zapisz raport sprawdzania (Excel)';
+    const R=arows(), ok=R.filter(r=>r[9]==='OK').length, bad=R.filter(r=>r[9]==='FEHLER').length;
+    $('tbl').innerHTML=`<tr><th colspan="4">${esc(S.kRoom)}: ✅ ${ok} · ❌ ${bad} · ○ ${R.length-ok-bad}</th></tr><tr><th></th><th>v.</th><th>n.</th><th>problem</th></tr>`+
+      R.filter(r=>r[9]!=='nicht geprüft').map(r=>`<tr><td>${r[9]==='OK'?'✅':'❌'}</td><td>${esc(r[1]+' '+r[2]+' '+r[3])}</td><td>${esc(r[4]+' '+r[5]+' '+r[6])}</td><td>${esc(r[12])}</td></tr>`).join(''); };
+  const oX=$('bXlsx').onclick; $('bXlsx').onclick=()=>{ if(!(S.mode==='kab'&&S.kMode==='audit')) return oX();
+    const d=new Date(),p=n=>String(n).padStart(2,'0');
+    saveFile(`Pruefung_Kabel_${S.kRoom||'DC'}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.xlsx`,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xlsx(AHEAD,arows(),[8,12,7,8,12,7,8,9,9,12,22,30,40,17],'Prüfung')); }; }
+
 /* ---------- aparat i dekodowanie ---------- */
 let stream=null, running=false, timer=null, detector=null, zx=null, torchOn=false, wantCam=true;
 const canvas=document.createElement('canvas'), cctx=canvas.getContext('2d',{willReadFrequently:true});
