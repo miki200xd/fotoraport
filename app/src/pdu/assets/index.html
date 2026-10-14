@@ -963,7 +963,11 @@ function auditOcr(arr,auto){
       if(em){ ok=em.fr===lab.rack&&em.fp===lab.panel&&(!lab.fmod||lab.fmod===fmod); want=`${lab.mod} - zu ${em.fr} ${em.fp}${em.fpa?' (stary nr '+em.fpa+')':''}-${fmod}`; }
       else { ok=exp.some(e=>e.fr===lab.rack&&e.fp===lab.panel); want=[...new Set(exp.map(e=>`zu ${e.fr} ${e.fp}`))].join(', ')||'– (panel bez kabli w projekcie)'; }
       cls=ok?'ok':'bad'; msg=(ok?'✅ Opisówka panelu zgodna: ':'❌ Opisówka panelu NIEZGODNA: ')+esc(lab.txt)+(ok&&labP0!==lab.panel?`<br><small>${esc(lab.rack)} ${labP0} to stary numer = ${lab.panel} w projekcie</small>`:'')+(ok?'':'<br>Wg projektu: '+esc(want));
-      S.audit['PANEL|'+S.kRoom+'|'+S.aRack+'|'+S.aPanel]={st:cls,txt:lab.txt,at:new Date().toISOString()}; }
+      S.audit['PANEL|'+S.kRoom+'|'+S.aRack+'|'+S.aPanel]={st:cls,txt:lab.txt,at:new Date().toISOString()};
+      // zgodna opisówka sama zalicza kable: z numerem modułu – ten jeden kabel, bez numeru – wszystkie kable panelu idące do tej szafy/panelu
+      if(ok){ const hit=em?[em]:exp.filter(e=>e.fr===lab.rack&&e.fp===lab.panel); let n=0;
+        for(const e of hit){ if(aStatusOf(e.x)==='bad') continue; aMark(e.x,'ok',Object.assign({},S.audit[aKey(e.x)]||{},{txt:lab.txt,why:'opisówka panelu zgodna'})); n++; }
+        if(n){ msg+=`<br><small>zaliczono kable: ${n}</small>`; if(S.aSlot) aNextSlot(); } } }
   } else if(r.sn){ key='S|'+r.sn; const hit=PROJ.find(x=>(S.audit[aKey(x)]||{}).sn===r.sn);
     cls='w'; msg='S/N '+esc(r.sn)+(hit?` – sprawdzony wcześniej przy ${esc(pTxt(hit))}`:' – zeskanuj też oznacznik tego kabla'); }
   if(!key){ if(!auto){ aShow('w','Nie znalazłem oznacznika ani opisówki – podejdź bliżej i spróbuj jeszcze raz.'); beep(300,.2); } return; }
