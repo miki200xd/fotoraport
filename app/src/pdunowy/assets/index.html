@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Data Center</title>
+<style>
+:root{--bg:#f2f4f7;--card:#fff;--tx:#1d2733;--mut:#6b7785;--ac:#1565c0;--ok:#1b8a3a;--warn:#c77700;--bad:#c62828;--ln:#dde2e8}
+@media (prefers-color-scheme:dark){:root{--bg:#12171d;--card:#1c232c;--tx:#e8edf2;--mut:#93a0ad;--ln:#2c3540}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.35 system-ui,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1e2a38;color:#fff;position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;flex:1}
+header button{background:#2f4156;color:#fff;border:0;border-radius:8px;padding:7px 10px;font-size:14px}
+.wrap{padding:10px;max-width:720px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:10px;margin-bottom:10px}
+.row{display:flex;gap:8px;align-items:center}
+label.f{display:block;font-size:12px;color:var(--mut);margin:0 0 2px}
+input,select{width:100%;font:inherit;padding:8px 9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--tx)}
+input.big{font-size:20px;font-weight:600}
+button.b{font:inherit;border:0;border-radius:9px;padding:10px 12px;background:var(--ac);color:#fff;font-weight:600}
+button.g{background:var(--ln);color:var(--tx);font-weight:500}
+button.ok{background:var(--ok)}
+button.bad{background:var(--bad)}
+#cam{position:relative;background:#000;border-radius:12px;overflow:hidden;height:34vh;min-height:200px}
+#cam video{width:100%;height:100%;object-fit:cover;display:block}
+#aim{position:absolute;left:10%;right:10%;top:18%;bottom:18%;border:3px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.25);pointer-events:none;transition:border-color .15s}
+#aim.hit{border-color:#3ddc84}
+#aim.txt{left:5%;right:5%;top:33%;bottom:33%}
+.amb{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;font-size:12px}.amb button{flex:1;min-width:90px}
+#camMsg{position:absolute;left:0;right:0;bottom:6px;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 3px #000}
+#camBtns{position:absolute;top:6px;right:6px;display:flex;gap:6px}
+/* ostrość: dotknięcie = punkt ostrości, suwak = ręcznie (gdy telefon pozwala) */
+#focusRing{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;border:2px solid #ffd54f;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .2s,transform .3s;transform:scale(1.4)}
+#focusRing.on{opacity:1;transform:scale(1)}
+#focusBar{position:absolute;left:8px;right:8px;bottom:26px;display:flex;gap:8px;align-items:center;color:#fff;font-size:12px;text-shadow:0 1px 3px #000}
+#focusBar input{flex:1}
+#focusBar button{background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:8px;padding:5px 8px;font-size:12px}
+#camBtns button{background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:8px;padding:7px 9px;font-size:14px}
+.rails{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:520px){.rails{grid-template-columns:1fr}}
+.rail{border:2px solid var(--ln);border-radius:12px;padding:8px;background:var(--card)}
+.rail.act{border-color:var(--ac);box-shadow:0 0 0 2px rgba(21,101,192,.18)}
+.rail h3{margin:0 0 6px;font-size:15px;display:flex;align-items:center;gap:6px}
+.rail h3 select{width:auto;padding:3px 6px;font-size:13px}
+.badge{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--ln);color:var(--tx);font-weight:600}
+.badge.m,.rail h3 select.m{background:#1565c0;color:#fff}.badge.s,.rail h3 select.s{background:#f9a825;color:#000}
+.badge.a{background:#e53935;color:#fff}.badge.bb{background:#1e88e5;color:#fff}
+.fld{display:flex;align-items:center;gap:6px;margin:4px 0}
+.fld span.k{width:62px;font-size:12px;color:var(--mut);flex:none}
+.fld input{padding:6px 7px;font-size:14px;font-family:ui-monospace,Consolas,monospace}
+.fld i{font-style:normal;width:18px;text-align:center;flex:none}
+.chk{font-size:12px;margin-top:4px;color:var(--mut)}
+.chk .o{color:var(--ok)}.chk .w{color:var(--warn)}.chk .x{color:var(--bad)}
+#log{font-size:12px;color:var(--mut);min-height:16px;margin-top:6px}
+#banner{display:none;padding:9px 10px;border-radius:10px;margin-bottom:10px;font-weight:600}
+#banner.w{display:block;background:#fff3cd;color:#7a4d00}
+#banner.x{display:block;background:#fde0e0;color:#8e1b1b}
+#banner.o{display:block;background:#dff3e4;color:#145c28}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{border-bottom:1px solid var(--ln);padding:5px 4px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:500}
+td.mono{font-family:ui-monospace,Consolas,monospace}
+tr.sel td{background:rgba(21,101,192,.08)}
+.hide{display:none!important}
+.foot{font-size:11px;color:var(--mut);text-align:center;margin:14px 0 30px}
+.kgrid{display:grid;grid-template-columns:44px 1fr 1fr 1fr;gap:5px;align-items:center;margin-bottom:6px}
+.kgrid b{font-size:13px;color:var(--mut)}
+.kgrid input,.kf input,.kf select{padding:6px 7px;font-size:14px;font-family:ui-monospace,Consolas,monospace}
+.kf{display:grid;grid-template-columns:76px 1fr;gap:5px;align-items:center}
+.kf span{font-size:12px;color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chips button{border:1px solid var(--ln);background:var(--bg);color:var(--tx);border-radius:14px;padding:4px 9px;font:inherit;font-size:13px}
+.chips button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.chips button.done{opacity:.45}
+.cand{display:flex;gap:6px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--ln);font-size:13px}
+.cand.done{opacity:.45}.cand b{font-family:ui-monospace,Consolas,monospace}
+.seg{gap:0}.seg button{flex:1;border:1px solid var(--ln);background:var(--bg);color:var(--tx);padding:8px;font:inherit;font-weight:600}
+.seg button:first-child{border-radius:9px 0 0 9px}.seg button:last-child{border-radius:0 9px 9px 0}.seg button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.chips button.ok{background:#1b8a3a;color:#fff;border-color:#1b8a3a}.chips button.bad{background:#c62828;color:#fff;border-color:#c62828}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}
+.slots div{border:2px solid var(--ln);border-radius:8px;padding:6px 3px;text-align:center;font-size:11px;min-height:54px}
+.slots div b{display:block;font-size:16px}.slots div.ok{border-color:#1b8a3a;background:rgba(27,138,58,.12)}.slots div.bad{border-color:#c62828;background:rgba(198,40,40,.12)}
+.slots div.part{border-color:#f9a825;background:rgba(249,168,37,.15)}.slots div.sel{box-shadow:0 0 0 3px var(--ac)}.slots div.empty{opacity:.4}
+.ares{margin-top:8px;padding:10px;border-radius:10px;font-weight:600;font-size:15px}
+.ares.ok{background:#dff3e4;color:#145c28}.ares.bad{background:#fde0e0;color:#8e1b1b}.ares.w{background:#fff3cd;color:#7a4d00}
+.arow{display:flex;gap:6px;padding:6px 2px;border-bottom:1px solid var(--ln);font-size:13px;align-items:center}.arow b{font-family:ui-monospace,Consolas,monospace}
+details.ocr{font-size:11px;color:var(--mut);margin-top:6px}
+details.lst>summary{font-weight:700;padding:8px 0;cursor:pointer}
+.stk{position:sticky;bottom:0;z-index:5;background:var(--bg);padding:8px 0;margin-top:8px;border-top:1px solid var(--ln)}
+details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+#dlg.on{display:flex}
+#dlg .card{max-width:420px;width:100%}
+</style>
+<style>
+/* Ekran startowy z logo WAC (wac_logo.png / wac_logo_dark.png); znika po ~1,6 s albo po dotknięciu – jak w Networks! i Cellnex-Nokia */
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:var(--bg);color:var(--tx);transition:opacity .45s ease;padding:24px;text-align:center;--wac:#0066B4}
+#splash.hide{opacity:0;pointer-events:none}
+#splash img{width:min(68vw,340px);height:auto}
+#splash .line{width:56px;height:3px;border-radius:2px;background:var(--wac);margin-block:6px}
+#splash .app{font-weight:700;font-size:28px;letter-spacing:.02em}
+#splash .sub{font-size:15px;color:var(--mut);margin-top:-8px}
+#splash .by{font-size:13px;color:var(--wac);letter-spacing:.16em;text-transform:uppercase;font-weight:600}
+@media (prefers-color-scheme: dark){ #splash{--wac:#6EAAF0} }
+</style>
+</head>
+<body>
+<div id="splash" role="img" aria-label="Data Center – aplikacja firmy WAC">
+  <picture>
+    <source srcset="wac_logo_dark.png" media="(prefers-color-scheme: dark)">
+    <img src="wac_logo.png" alt="WAC – Wireless Advance Connect">
+  </picture>
+  <div class="line"></div>
+  <div class="app">Data Center</div>
+  <div class="sub">Listwy PDU · kable · sprawdzanie</div>
+  <div class="by">powered by WAC</div>
+</div>
+<script>
+(function(){var sp=document.getElementById('splash'),done=false;
+ function hide(){if(done)return;done=true;sp.classList.add('hide');setTimeout(function(){sp.remove()},500)}
+ setTimeout(hide,1600);sp.addEventListener('click',hide);})();
+</script>
+
+<header>
+  <h1 id="title">Data Center</h1>
+  <button id="bMode">Kable ›</button>
+  <button id="bList">Lista (<span id="cnt">0</span>)</button>
+</header>
+
+<div class="wrap" id="vScan">
+  <div id="banner"></div>
+
+  <div class="card" id="pduTop">
+    <div class="row">
+      <div style="flex:1"><label class="f">Sala</label><input id="room" placeholder="RZ2B" autocapitalize="characters"></div>
+      <div style="flex:1.2"><label class="f">Szafa</label><input id="rack" class="big" placeholder="F7" autocapitalize="characters"></div>
+      <div style="flex:1"><label class="f">Stara nazwa / uwagi</label><input id="note" placeholder="B5"></div>
+    </div>
+  </div>
+
+  <div id="cam">
+    <video id="vid" playsinline muted></video>
+    <div id="aim"></div>
+    <div id="focusRing"></div>
+    <div id="focusBar" class="hide"><span>Ostrość</span><input type="range" id="fDist"><button id="bAF">AUTO</button></div>
+    <div id="camBtns"><button id="bFocus" class="hide" title="Ręczna ostrość">🎯</button><button id="bTorch" title="Latarka">🔦</button><button id="bSwap" title="Inny obiektyw">🔄</button><button id="bCam">⏸</button></div>
+    <div id="camMsg">Uruchamiam aparat…</div>
+  </div>
+  <div id="log"></div>
+
+  <div id="kabPane" class="hide">
+    <div class="row seg" style="margin-top:8px"><button id="kmAudit">✔ Sprawdzanie</button><button id="kmAssign">🏷 Nowe kable</button></div>
+    <div id="aCard" class="card hide" style="margin-top:8px">
+      <div class="row" style="align-items:flex-end">
+        <div style="flex:1"><label class="f">Szafa</label><input id="aRack" class="big" placeholder="D07" autocapitalize="characters"></div>
+        <div style="flex:1.3"><label class="f">Widok</label><div class="row seg"><button id="aFront">Przód</button><button id="aBack">Tył</button></div></div>
+      </div>
+      <div id="aPanels" class="chips" style="margin-top:8px"></div>
+      <div id="aSlots"></div>
+      <div id="aRes"></div>
+      <div class="row" style="margin-top:8px;align-items:center"><span style="font-size:12px;color:var(--mut);flex:1">Strona kabla w tej szafie (do S/N):</span><div class="row seg" style="flex:1"><button id="aSideA">A</button><button id="aSideB">B</button><button id="aSideN">auto</button></div></div>
+      <details class="lst"><summary>📋 Lista kabli</summary><div id="aList"></div>
+        <div class="row" style="margin-top:8px"><button class="b g" id="aReset" style="flex:1">Wyczyść wyniki sprawdzania</button></div>
+      </details>
+    </div>
+    <div class="card hide" id="kAsgCard" style="margin-top:8px">
+      <div id="kLens" class="chips"></div>
+      <div id="kCand"></div>
+    </div>
+    <div class="card" style="margin-top:8px" id="kForm"></div>
+    <div class="row"><button class="b ok" id="kSave" style="flex:1">Zapisz kabel i dalej ›</button></div>
+    <details class="lst card" style="margin-top:8px"><summary>⚙ Projekt i ustawienia</summary>
+      <div class="row" style="margin-top:6px"><select id="kRoom" style="flex:1"></select><button class="b g" id="kImp" style="flex:1">📂 Wczytaj listę</button><input type="file" id="kFile" accept=".xlsx,.csv,.txt" class="hide"></div>
+    </details>
+    <div class="foot">Sprawdzanie: wpisz szafę, wybierz panel i gniazdo, celuj w oznacznik (tył) lub opisówkę modułu (przód).<br>Nowe kable: odczytaj naklejkę S/N → wybierz trasę → zapisz.<br>powered by WAC</div>
+    <div class="stk row">
+      <button class="b" id="kOcr" style="flex:2">📷 Odczytaj napisy</button>
+      <button class="b g" id="kAuto" style="flex:1">Auto ✓</button>
+      <button class="b g" id="kClr" style="flex:1">Wyczyść</button>
+    </div>
+  </div>
+
+  <div id="pduPane">
+  <div class="rails" style="margin-top:8px">
+    <div class="rail" id="r0"></div>
+    <div class="rail" id="r1"></div>
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <button class="b g" id="bClear" style="flex:1">Wyczyść</button>
+    <button class="b ok" id="bSave" style="flex:2">Zapisz szafę i dalej ›</button>
+  </div>
+  <div class="foot">Skanuj po kolei: QR zasilania (góra), kod kreskowy S/N, QR ETH1 i ETH2.<br>Kolejność nie ma znaczenia – aplikacja sama rozpoznaje kody. Pola można poprawić ręcznie.<br>powered by WAC</div>
+  </div>
+</div>
+
+<div class="wrap hide" id="vList">
+  <div class="card">
+    <div class="row" style="flex-wrap:wrap">
+      <button class="b" id="bXlsx" style="flex:1 1 100%">Zapisz Excel (jak „PDUs DC110”)</button>
+      <button class="b g" id="bShare" style="flex:1">Wyślij plik</button>
+      <button class="b g" id="bCopy" style="flex:1">Kopiuj tabelę</button>
+      <button class="b g" id="bCsv" style="flex:1">CSV szczegółowy</button>
+    </div>
+    <div class="foot" style="margin-top:6px">Excel: 1 wiersz na szafę – Rack, SN Master, SN Slave, MAC ETH1 (Master). CSV: każda listwa osobno (zasilanie, ETH2, kontrola).</div>
+    <div id="expMsg" class="chk"></div>
+  </div>
+  <div class="card" style="overflow-x:auto"><table id="tbl"></table></div>
+  <div class="row"><button class="b g" id="bBack" style="flex:1">‹ Wróć do skanowania</button></div>
+  <div class="row" style="margin-top:20px"><button class="b bad" id="bWipe" style="flex:1">Usuń całą listę</button></div>
+  <div class="foot">Dotknij szafy, żeby ją otworzyć i poprawić.</div>
+</div>
+
+<div id="dlg"><div class="card"><div id="dlgTx" style="margin-bottom:12px"></div>
+  <div class="row"><button class="b g" id="dlgNo" style="flex:1">Anuluj</button><button class="b" id="dlgYes" style="flex:1">OK</button></div></div></div>
+
+<script src="zxing.min.js"></script>
+<script>
+// lista PDU z „PDUs DC110.xlsx” (Rack, SN Master, SN Slave, MAC ETH1 Master) – do sprawdzania na miejscu
+const PDU_LIST=[{"rack":"RZ3AB5","m":"R1A40000316","s":"R1A50000304","mac":"00:0D:5D:3E:9E:30"},{"rack":"RZ3AB6","m":"R1A40000327","s":"R1A50000287","mac":"00:0D:5D:3E:9B:7E"},{"rack":"RZ3AB7","m":"R1A40000315","s":"R1A50000307","mac":"00:0D:5D:3E:9E:EA"},{"rack":"RZ3AB8","m":"R1A40000305","s":"R1A50000301","mac":"00:0D:5D:3E:9E:D5"},{"rack":"RZ3AB9","m":"R1A40000302","s":"R1A50000316","mac":"00:0D:5D:3E:9E:D2"},{"rack":"RZ3AB10","m":"R1A40000300","s":"R1A50000298","mac":"00:0D:5D:3E:9E:C9"},{"rack":"RZ3AB11","m":"R1A40000301","s":"R1A50000318","mac":"00:0D:5D:3E:9E:CF"},{"rack":"RZ3AB12","m":"R1A40000303","s":"R1A50000310","mac":"00:0D:5D:3E:9E:DE"},{"rack":"RZ3AB13","m":"R1A40000328","s":"R1A50000309","mac":"00:0D:5D:3E:9B:7B"},{"rack":"RZ3AB14","m":"R1A40000330","s":"R1A50000306","mac":"00:0D:5D:3E:9B:66"},{"rack":"RZ3AB15","m":"R1A40000322","s":"R1A50000302","mac":"00:0D:5D:3E:9B:78"},{"rack":"RZ3AB16","m":"R1A40000318","s":"R1A50000308","mac":"00:0D:5D:3E:9B:63"},{"rack":"RZ3AB17","m":"R1A40000319","s":"R1A50000300","mac":"00:0D:5D:3E:9E:E7"},{"rack":"RZ3AB18","m":"R1A40000307","s":"R1A50000305","mac":"00:0D:5D:3E:9B:72"},{"rack":"RZ3AB19","m":"R1A40000298","s":"R1A50000292","mac":"00:0D:5D:3E:9E:E1"},{"rack":"RZ3AB20","m":"R1A40000299","s":"R1A50000311","mac":"00:0D:5D:3E:9E:E4"},{"rack":"RZ3AB21","m":"R1A40000297","s":"R1A50000303","mac":"00:0D:5D:3E:9E:CC"},{"rack":"RZ3AC7","m":"R1A40000326","s":"R1A50000312","mac":"00:0D:5D:3E:9B:75"},{"rack":"RZ3AC8","m":"R1A40000321","s":"R1A50000290","mac":"00:0D:5D:3E:9D:D3"},{"rack":"RZ3AC10","m":"R1A40000313","s":"R1A50000314","mac":"00:0D:5D:3E:9E:39"},{"rack":"RZ3AC11","m":"R1A40000308","s":"R1A50000317","mac":"00:0D:5D:3E:9D:DC"},{"rack":"RZ3AC12","m":"R1A40000309","s":"R1A50000313","mac":"00:0D:5D:3E:9E:A2"},{"rack":"RZ3AC13","m":"R1A40000296","s":"R1A50000241","mac":"00:0D:5D:3E:9B:15"},{"rack":"RZ3AC14","m":"R1A40000275","s":"R1A50000245","mac":"00:0D:5D:3E:9B:69"},{"rack":"RZ3AC15","m":"R1A40000271","s":"R1A50000253","mac":"00:0D:5D:3E:9B:8A"},{"rack":"RZ3AC16","m":"R1A40000249","s":"R1A50000243","mac":"00:0D:5D:3E:9F:8C"},{"rack":"RZ3AC18","m":"R1A40000282","s":"R1A50000248","mac":"00:0D:5D:3E:9B:6C"},{"rack":"RZ3AC19","m":"R1A40000292","s":"R1A50000255","mac":"00:0D:5D:3E:1C:A4"},{"rack":"RZ3AC20","m":"R1A40000286","s":"R1A50000252","mac":"00:0D:5D:3E:9B:0F"},{"rack":"RZ3AD7","m":"R1A40000287","s":"R1A50000234","mac":"00:0D:5D:3E:9B:81"},{"rack":"RZ3AD8","m":"R1A40000241","s":"R1A50000240","mac":"00:0D:5D:3E:9F:77"},{"rack":"RZ3AD10","m":"R1A40000252","s":"R1A50000230","mac":"00:0D:5D:3E:9F:9B"},{"rack":"RZ3AD11","m":"R1A40000256","s":"R1A50000238","mac":"00:0D:5D:3E:9F:62"},{"rack":"RZ3AD12","m":"R1A40000255","s":"R1A50000226","mac":"00:0D:5D:3E:9F:68"},{"rack":"RZ3AD13","m":"R1A40000257","s":"R1A50000233","mac":"00:0D:5D:3E:9F:95"},{"rack":"RZ3AD14","m":"R1A40000251","s":"R1A50000257","mac":"00:0D:5D:3E:9F:98"},{"rack":"RZ3AD15","m":"R1A40000253","s":"R1A50000235","mac":"00:0D:5D:3E:9F:6B"},{"rack":"RZ3AD16","m":"R1A40000248","s":"R1A50000227","mac":"00:0D:5D:3E:9F:7A"},{"rack":"RZ3AD18","m":"R1A40000246","s":"R1A50000258","mac":"00:0D:5D:3E:9F:59"},{"rack":"RZ3AD19","m":"R1A40000245","s":"R1A50000266","mac":"00:0D:5D:3E:9F:9E"},{"rack":"RZ3AD20","m":"R1A40000290","s":"R1A50000229","mac":"00:0D:5D:3E:9B:21"},{"rack":"RZ3AE7","m":"R1A40000243","s":"R1A50000237","mac":"00:0D:5D:3E:9F:86"},{"rack":"RZ3AE8","m":"R1A40000250","s":"R1A50000277","mac":"00:0D:5D:3E:9F:80"},{"rack":"RZ3AE10","m":"R1A40000281","s":"R1A50000285","mac":"00:0D:5D:3E:9B:42"},{"rack":"RZ3AE11","m":"R1A40000244","s":"R1A50000282","mac":"00:0D:5D:3E:9F:5C"},{"rack":"RZ3AE12","m":"R1A40000242","s":"R1A50000244","mac":"00:0D:5D:3E:9F:89"},{"rack":"RZ3AE13","m":"R1A40000266","s":"R1A50000232","mac":"00:0D:5D:3E:9D:E2"},{"rack":"RZ3AE14","m":"R1A40000267","s":"R1A50000259","mac":"00:0D:5D:3E:9D:DF"},{"rack":"RZ3AE15","m":"R1A40000240","s":"R1A50000271","mac":"00:0D:5D:3E:9F:71"},{"rack":"RZ3AE16","m":"R1A40000269","s":"R1A50000267","mac":"00:0D:5D:3E:9D:E5"},{"rack":"RZ3AE18","m":"R1A40000254","s":"R1A50000236","mac":"00:0D:5D:3E:9F:8F"},{"rack":"RZ3AE19","m":"R1A40000237","s":"R1A50000246","mac":"00:0D:5D:3E:9F:65"},{"rack":"RZ3AE20","m":"R1A40000279","s":"R1A50000242","mac":"00:0D:5D:3E:9B:2A"},{"rack":"RZ3AF7","m":"R1A40000270","s":"R1A50000276","mac":"00:0D:5D:3E:9B:2D"},{"rack":"RZ3AF8","m":"R1A40000276","s":"R1A50000256","mac":"00:0D:5D:3E:9B:30"},{"rack":"RZ3AF10","m":"R1A40000260","s":"R1A50000265","mac":"00:0D:5D:3E:9B:3C"},{"rack":"RZ3AF11","m":"R1A40000288","s":"R1A50000250","mac":"00:0D:5D:3E:9B:84"},{"rack":"RZ3AF12","m":"R1A40000273","s":"R1A50000261","mac":"00:0D:5D:3E:9B:87"},{"rack":"RZ3AF13","m":"R1A40000293","s":"R1A50000262","mac":"00:0D:5D:3E:9B:0C"},{"rack":"RZ3AF14","m":"R1A40000259","s":"R1A50000249","mac":"00:0D:5D:3E:9F:92"},{"rack":"RZ3AF15","m":"R1A40000280","s":"R1A50000274","mac":"00:0D:5D:3E:9B:03"},{"rack":"RZ3AF16","m":"R1A40000261","s":"R1A50000263","mac":"00:0D:5D:3E:9F:7D"},{"rack":"RZ3AF18","m":"R1A40000274","s":"R1A50000247","mac":"00:0D:5D:3E:9B:00"},{"rack":"RZ3AF19","m":"R1A40000263","s":"R1A50000280","mac":"00:0D:5D:3E:9B:39"},{"rack":"RZ3AF20","m":"R1A40000283","s":"R1A50000275","mac":"00:0D:5D:3E:9B:1B"},{"rack":"RZ3AG5","m":"R1A40000295","s":"R1A50000279","mac":"00:0D:5D:3E:9B:09"},{"rack":"RZ3AG6","m":"R1A40000262","s":"R1A50000264","mac":"00:0D:5D:3E:9B:33"},{"rack":"RZ3AG7","m":"R1A40000278","s":"R1A50000260","mac":"00:0D:5D:3E:9B:27"},{"rack":"RZ3AG8","m":"R1A40000239","s":"R1A50000268","mac":"00:0D:5D:3E:9F:74"},{"rack":"RZ3AG9","m":"R1A40000265","s":"R1A50000228","mac":"00:0D:5D:3E:9B:24"},{"rack":"RZ3AG10","m":"R1A40000285","s":"R1A50000239","mac":"00:0D:5D:3E:9B:12"},{"rack":"RZ3AG11","m":"R1A40000247","s":"R1A50000270","mac":"00:0D:5D:3E:9F:83"},{"rack":"RZ3AG12","m":"R1A40000289","s":"R1A50000273","mac":"00:0D:5D:3E:9B:6F"},{"rack":"RZ3AG13","m":"R1A40000294","s":"R1A50000251","mac":"00:0D:5D:3E:9B:18"},{"rack":"RZ3AG14","m":"R1A40000277","s":"R1A50000272","mac":"00:0D:5D:3E:9B:3F"},{"rack":"RZ3AG15","m":"R1A40000258","s":"R1A50000284","mac":"00:0D:5D:3E:9F:6E"},{"rack":"RZ3AG16","m":"R1A40000238","s":"R1A50000281","mac":"00:0D:5D:3E:9F:5F"},{"rack":"RZ3AG17","m":"R1A40000284","s":"R1A50000254","mac":"00:0D:5D:3E:9B:1E"},{"rack":"RZ3AG18","m":"R1A40000291","s":"R1A50000283","mac":"00:0D:5D:3E:9A:FD"},{"rack":"RZ3AG19","m":"R1A40000264","s":"R1A50000278","mac":"00:0D:5D:3E:9B:36"},{"rack":"RZ3AG20","m":"R1A40000268","s":"R1A50000269","mac":"00:0D:5D:3E:9D:D0"},{"rack":"RZ3AG21","m":"R1A40000272","s":"R1A50000231","mac":"00:0D:5D:3E:9B:06"},{"rack":"RZ2AG12","m":"R1A40000314","s":"R1A50000289","mac":"00:0D:5D:3E:9E:3C"},{"rack":"RZ2AG13","m":"R1A40000312","s":"R1A50000295","mac":"00:0D:5D:3E:9E:2A"},{"rack":"RZ2AG14","m":"R1A40000320","s":"R1A50000299","mac":"00:0D:5D:3E:9D:CD"},{"rack":"RZ2AG15","m":"R1A40000306","s":"R1A50000293","mac":"00:0D:5D:3E:9E:45"},{"rack":"RZ2AG16","m":"R1A40000304","s":"R1A50000291","mac":"00:0D:5D:3E:9E:D8"},{"rack":"RZ2AG17","m":"R1A40000325","s":"R1A50000315","mac":"00:0D:5D:3E:9D:D6"},{"rack":"RZ2AH12","m":"R1A40000317","s":"R1A50000319","mac":"00:0D:5D:3E:9E:27"},{"rack":"RZ2AH13","m":"R1A40000329","s":"R1A50000297","mac":"00:0D:5D:3E:9D:D9"},{"rack":"RZ2AH14","m":"R1A40000323","s":"R1A50000286","mac":"00:0D:5D:3E:9D:E8"},{"rack":"RZ2AH15","m":"R1A40000310","s":"R1A50000288","mac":"00:0D:5D:3E:9E:36"},{"rack":"RZ2AH16","m":"R1A40000311","s":"R1A50000296","mac":"00:0D:5D:3E:9E:33"},{"rack":"RZ2AH17","m":"R1A40000324","s":"R1A50000294","mac":"00:0D:5D:3E:9E:9F"}];
+const BY_SN={}, BY_MAC={};
+for(const r of PDU_LIST){
+  if(r.m) BY_SN[r.m]={rack:r.rack,role:'Master'};
+  if(r.s) BY_SN[r.s]={rack:r.rack,role:'Slave'};
+  if(r.mac) BY_MAC[r.mac]={rack:r.rack,sn:r.m};
+}
+
+const $=id=>document.getElementById(id);
+const KEY='pduSkaner.v1';
+const FIELDS=[['feed','Zasilanie'],['sn','S/N'],['eth1','ETH1'],['eth2','ETH2']];
+const emptyRail=side=>({side,feed:'',sn:'',eth1:'',eth2:''});
+let S=load();
+function load(){
+  try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.cur) return s; }catch(e){}
+  return {records:[],cur:{room:'RZ2B',rack:'',note:'',rails:[emptyRail('lewa'),emptyRail('prawa')]},act:0};
+}
+function save(){ localStorage.setItem(KEY,JSON.stringify(S)); }
+
+/* ---------- rozpoznawanie zeskanowanego tekstu ---------- */
+const MAC_RE=/([0-9A-F]{2})[:\-]?([0-9A-F]{2})[:\-]?([0-9A-F]{2})[:\-]?([0-9A-F]{2})[:\-]?([0-9A-F]{2})[:\-]?([0-9A-F]{2})/i;
+function classify(text,format){
+  const t=String(text).trim();
+  const up=t.toUpperCase();
+  if(/PDU-\d/i.test(t)) return {k:'feed',v:t.replace(/\s*[\r\n]+\s*/g,' ').trim()};
+  const sn=up.match(/\bR\d[A-Z]\d{7,9}\b/);
+  if(sn) return {k:'sn',v:sn[0]};
+  const hasSep=/[0-9A-F]{2}[:\-][0-9A-F]{2}/i.test(t);
+  const m=up.match(MAC_RE);
+  if(m && (hasSep||/ETH/i.test(t)||/^[0-9A-F]{12}$/i.test(up))){
+    const mac=m.slice(1,7).join(':');
+    const which=/ETH\s*2/i.test(t)?'eth2':/ETH\s*1/i.test(t)?'eth1':'';
+    return {k:'mac',v:mac,which};
+  }
+  if(/^S\/?N[:\s]/i.test(t)) return {k:'sn',v:t.replace(/^S\/?N[:\s]*/i,'').trim()};
+  if(format && /CODE_?128|CODE_?39|code_128|code_39/i.test(format) && /^[A-Z0-9\-]{6,20}$/.test(up)) return {k:'sn',v:up};
+  return {k:'other',v:t};
+}
+const macNum=m=>parseInt(m.replace(/:/g,''),16);
+
+/* ---------- przypisywanie do listwy ---------- */
+let lastVal='', lastAt=0;
+function onScan(text,format){
+  const now=Date.now();
+  if(text===lastVal && now-lastAt<2500) return;
+  lastVal=text; lastAt=now;
+  const c=classify(text,format);
+  const rails=S.cur.rails;
+  // ten sam kod już jest w tej szafie → nic nie rób
+  const all=rails.flatMap(r=>[r.feed,r.sn,r.eth1,r.eth2]);
+  if(c.k!=='other' && all.includes(c.v)){ flash(); log('Już jest: '+c.v); return; }
+  if(c.k==='other'){ log('Nierozpoznany kod: '+c.v.slice(0,60)); return; }
+  let r=rails[S.act];
+  // aktywna listwa ma już tę wartość innego rodzaju → przejdź na drugą, jeśli tam jest miejsce
+  const full=x=>c.k==='mac' ? (x.eth1&&x.eth2) : !!x[c.k];
+  if(full(r)){
+    const o=1-S.act;
+    if(!full(rails[o])){ S.act=o; r=rails[o]; }
+    else { warn(`Obie listwy mają już ${c.k==='mac'?'ETH1 i ETH2':c.k==='sn'?'S/N':'zasilanie'}. Zeskanowano: ${c.v}`); beep(220,.25); render(); return; }
+  }
+  if(c.k==='mac'){
+    if(c.which){ r[c.which]=c.v; }
+    else if(!r.eth1 && !r.eth2) r.eth1=c.v;
+    else { // drugi MAC: mniejszy = ETH1, większy = ETH2
+      const a=r.eth1||r.eth2; const pair=[a,c.v].sort((x,y)=>macNum(x)-macNum(y));
+      r.eth1=pair[0]; r.eth2=pair[1];
+    }
+  } else r[c.k]=c.v;
+  beep(1150,.08); vib(40); flash();
+  log(`✓ ${labelOf(c.k==='mac'?(r.eth2===c.v?'eth2':'eth1'):c.k)} listwy ${S.act+1}: ${c.v}`);
+  // komplet na listwie → następna
+  if(r.sn&&r.eth1&&r.eth2){
+    const o=1-S.act; const ro=rails[o];
+    if(!(ro.sn&&ro.eth1&&ro.eth2)){ S.act=o; setTimeout(()=>{beep(880,.08);setTimeout(()=>beep(880,.08),120);},150); }
+    else { setTimeout(()=>{beep(1300,.12);setTimeout(()=>beep(1600,.18),150);},150); vib([60,60,60]); }
+  }
+  save(); render();
+}
+const labelOf=k=>({feed:'Zasilanie',sn:'S/N',eth1:'ETH1',eth2:'ETH2'})[k]||k;
+
+/* ---------- sprawdzanie z listą i duplikatów ---------- */
+function railInfo(r){
+  const out=[]; let role='';
+  if(r.sn){
+    const l=BY_SN[r.sn];
+    if(l){ role=l.role; out.push(['o',`na liście: ${l.rack} · ${l.role}`]); }
+    else if(PDU_LIST.length) out.push(['o','nowa listwa – spoza listy DC110']);
+    if(!role){ if(/^R1A4/.test(r.sn)) role='Master'; else if(/^R1A5/.test(r.sn)) role='Slave'; }
+  }
+  // Master/Slave: ręczny wybór ma pierwszeństwo, potem lista, potem początek numeru
+  const l0=r.sn&&BY_SN[r.sn];
+  if(r.role){ if(l0&&l0.role!==r.role) out.push(['w',`Na liście to ${l0.role}, ustawiono ręcznie ${r.role}`]); role=r.role; }
+  else if(r.sn&&role&&!l0) out.push(['o',`${role} wg numeru (${r.sn.slice(0,4)}…) – sprawdź na tabliczce`]);
+  else if(r.sn&&!role) out.push(['w','Nie wiem, czy Master czy Slave – wybierz u góry']);
+  if(r.eth1 && PDU_LIST.length){
+    const l=BY_MAC[r.eth1];
+    if(l){
+      if(r.sn && l.sn!==r.sn) out.push(['x',`ETH1 na liście należy do ${l.sn} (${l.rack})`]);
+      else out.push(['o','ETH1 zgodny z listą']);
+    } else if(role==='Master') out.push(['w','ETH1 inny niż na liście'+(BY_SN[r.sn]?': '+(PDU_LIST.find(x=>x.m===r.sn)||{}).mac:'')]);
+  }
+  if(r.eth1&&r.eth2 && macNum(r.eth2)-macNum(r.eth1)!==1) out.push(['w','ETH1/ETH2 nie są kolejne – sprawdź, czy z jednej listwy']);
+  for(const k of ['sn','eth1','eth2']){
+    if(!r[k]) continue;
+    const d=S.records.find(x=>!sameRack(x,S.cur) && x.rails.some(y=>y[k]===r[k]));
+    if(d) out.push(['x',`${labelOf(k)} już zapisany w ${d.room} ${d.rack}!`]);
+  }
+  return {role,out};
+}
+function rackCheck(){
+  const [a,b]=S.cur.rails.map(r=>r.sn&&BY_SN[r.sn]);
+  if(a&&b&&a.rack!==b.rack) return ['x',`Listwy z różnych szaf na liście: ${a.rack} / ${b.rack}`];
+  if(a&&b&&a.role===b.role) return ['w',`Obie listwy to ${a.role}`];
+  const ra=S.cur.rails.map(r=>railInfo(r).role);
+  if(ra[0]&&ra[0]===ra[1]) return ['w',`Obie listwy to ${ra[0]}`];
+  return null;
+}
+const sameRack=(x,c)=>norm(x.room)===norm(c.room)&&norm(x.rack)===norm(c.rack);
+const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
+
+/* ---------- widok ---------- */
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+function feedBadge(f){ const m=String(f).match(/PDU-(\d)\.([AB])/i); if(!m) return ''; const A=m[2].toUpperCase()==='A'; return `<span class="badge ${A?'a':'bb'}">${A?'A':'B'} · PDU-${m[1]}</span>`; }
+function render(){
+  $('room').value=S.cur.room; $('rack').value=S.cur.rack; $('note').value=S.cur.note||'';
+  S.cur.rails.forEach((r,i)=>{
+    const inf=railInfo(r);
+    const el=$('r'+i); el.className='rail'+(S.act===i?' act':'');
+    el.innerHTML=`<h3>Listwa ${i+1}
+      <select data-side="${i}"><option value="lewa"${r.side==='lewa'?' selected':''}>lewa</option><option value="prawa"${r.side==='prawa'?' selected':''}>prawa</option></select>
+      <select data-role="${i}" class="${inf.role==='Master'?'m':inf.role==='Slave'?'s':''}"><option value="">typ?</option>${['Master','Slave'].map(v=>`<option${inf.role===v?' selected':''}>${v}</option>`).join('')}</select>${feedBadge(r.feed)}</h3>
+      ${FIELDS.map(([k,l])=>`<div class="fld"><span class="k">${l}</span><input data-r="${i}" data-k="${k}" value="${esc(r[k])}" autocapitalize="characters"><i>${r[k]?'✓':'·'}</i></div>`).join('')}
+      <div class="chk">${inf.out.map(([c,t])=>`<div class="${c}">${c==='o'?'✓':c==='w'?'⚠':'✗'} ${esc(t)}</div>`).join('')}</div>`;
+  });
+  const rc=rackCheck(), errs=S.cur.rails.flatMap(r=>railInfo(r).out).filter(x=>x[0]==='x');
+  const b=$('banner');
+  if(rc&&rc[0]==='x'||errs.length){ b.className='x'; b.textContent=(rc&&rc[0]==='x'?rc[1]:errs[0][1]); }
+  else if(rc){ b.className='w'; b.textContent=rc[1]; }
+  else if(S.cur.rails.every(r=>r.sn&&r.eth1&&r.eth2)){ b.className='o'; b.textContent='Komplet: obie listwy zeskanowane – zapisz szafę.'; }
+  else b.className='';
+  $('cnt').textContent=S.records.length;
+}
+document.addEventListener('click',e=>{ const r=e.target.closest('.rail'); if(r&&!e.target.closest('select')){ const i=+r.id.slice(1); if(S.act!==i){ S.act=i; save(); render(); } } });
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.side!=null){ S.cur.rails[+t.dataset.side].side=t.value; save(); render(); return; }
+  if(t.dataset.role!=null){ // druga listwa w szafie dostaje przeciwny typ, jeśli nie była ustawiona ręcznie
+    const i=+t.dataset.role, o=S.cur.rails[1-i]; S.cur.rails[i].role=t.value;
+    if(t.value&&!o.role) o.role=t.value==='Master'?'Slave':'Master';
+    save(); render(); return; }
+  if(t.dataset.k){
+    let v=t.value.trim(); const k=t.dataset.k;
+    if((k==='eth1'||k==='eth2')&&v){ const m=v.toUpperCase().match(MAC_RE); if(m) v=m.slice(1,7).join(':'); }
+    if(k==='sn') v=v.toUpperCase();
+    S.cur.rails[+t.dataset.r][k]=v; save(); render(); return;
+  }
+});
+for(const id of ['room','rack','note']) $(id).addEventListener('input',()=>{ S.cur[id]=id==='note'?$(id).value:$(id).value.toUpperCase().trim(); save(); });
+$('rack').addEventListener('change',()=>{ const ex=S.records.find(x=>sameRack(x,S.cur)); if(ex && S.cur.rails.every(r=>!r.sn&&!r.eth1)) { S.cur=JSON.parse(JSON.stringify(ex)); log('Otwarto zapisaną szafę '+ex.rack); } save(); render(); });
+
+let logT; function log(t){ $('log').textContent=t; clearTimeout(logT); logT=setTimeout(()=>$('log').textContent='',6000); }
+function warn(t){ const b=$('banner'); b.className='x'; b.textContent=t; }
+function flash(){ const a=$('aim'); a.classList.add('hit'); setTimeout(()=>a.classList.remove('hit'),300); }
+let actx; function beep(f,d){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); const o=actx.createOscillator(),g=actx.createGain(); o.frequency.value=f; g.gain.value=.15; o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime+d);}catch(e){} }
+function vib(p){ try{ navigator.vibrate&&navigator.vibrate(p); }catch(e){} }
+
+function ask(text,yes){ $('dlgTx').innerHTML=text; $('dlg').classList.add('on'); $('dlgYes').onclick=()=>{ $('dlg').classList.remove('on'); yes(); }; $('dlgNo').onclick=()=>$('dlg').classList.remove('on'); }
+
+/* ---------- zapis szafy ---------- */
+function nextRack(r){ const m=String(r).match(/^(.*?)(\d+)$/); return m? m[1]+(+m[2]+1) : r; }
+$('bSave').onclick=()=>{
+  const c=S.cur;
+  if(!c.rack){ warn('Wpisz numer szafy.'); $('rack').focus(); return; }
+  if(c.rails.every(r=>!r.sn&&!r.eth1&&!r.eth2&&!r.feed)){ warn('Nic nie zeskanowano.'); return; }
+  const missing=c.rails.map((r,i)=>['sn','eth1','eth2'].filter(k=>!r[k]).map(k=>`L${i+1} ${labelOf(k)}`)).flat();
+  const doSave=()=>{
+    const rec=JSON.parse(JSON.stringify(c)); rec.at=new Date().toISOString();
+    const i=S.records.findIndex(x=>sameRack(x,c));
+    if(i>=0) S.records[i]=rec; else S.records.push(rec);
+    S.cur={room:c.room,rack:nextRack(c.rack),note:/^\D*\d+$/.test(c.note||'')?nextRack(c.note):'',rails:[emptyRail(c.rails[0].side),emptyRail(c.rails[1].side)]};
+    S.act=0; save(); render(); beep(1500,.15); log(`Zapisano ${rec.room} ${rec.rack}. Następna: ${S.cur.rack}`);
+  };
+  const exists=S.records.some(x=>sameRack(x,c));
+  if(missing.length||exists) ask((missing.length?`Brakuje: <b>${missing.join(', ')}</b>.<br>`:'')+(exists?`Szafa <b>${esc(c.room)} ${esc(c.rack)}</b> jest już zapisana – nadpisać?<br>`:'')+'Zapisać mimo to?',doSave);
+  else doSave();
+};
+$('bClear').onclick=()=>ask('Wyczyścić obie listwy tej szafy?',()=>{ S.cur.rails=[emptyRail(S.cur.rails[0].side),emptyRail(S.cur.rails[1].side)]; S.act=0; save(); render(); });
+
+/* ---------- lista i eksport ---------- */
+function rows(){
+  const out=[];
+  for(const x of S.records) x.rails.forEach((r,i)=>{
+    const l=BY_SN[r.sn]; const inf=railInfo(r);
+    out.push([x.room,x.rack,x.note||'',i+1,r.side,inf.role,r.feed,r.sn,r.eth1,r.eth2,l?l.rack:'',inf.out.filter(o=>o[0]!=='o').map(o=>o[1]).join(' | ')||'OK',(x.at||'').slice(0,16).replace('T',' ')]);
+  });
+  return out;
+}
+const HEAD=['Sala','Szafa','Uwagi','Listwa','Strona','Typ','Zasilanie (QR)','S/N','ETH1 MAC','ETH2 MAC','Na liście (szafa)','Kontrola','Data'];
+function showList(){
+  $('vScan').classList.add('hide'); $('vList').classList.remove('hide'); stopCam();
+  $('tbl').innerHTML=`<tr><th>Szafa</th><th>L</th><th>Typ</th><th>S/N</th><th>ETH1 / ETH2</th><th>Zasilanie</th></tr>`+
+    S.records.map((x,ri)=>x.rails.map((r,i)=>{ const inf=railInfo(r); const bad=inf.out.some(o=>o[0]!=='o');
+      return `<tr data-ri="${ri}">${i===0?`<td rowspan="2"><b>${esc(x.room)} ${esc(x.rack)}</b><br>${esc(x.note||'')}</td>`:''}<td>${i+1} ${esc(r.side[0]||'')}</td><td>${esc(inf.role)}</td><td class="mono">${esc(r.sn)}${bad?' ⚠':''}</td><td class="mono">${esc(r.eth1)}<br>${esc(r.eth2)}</td><td>${esc(r.feed)}</td></tr>`; }).join('')).join('');
+}
+$('tbl').onclick=e=>{ const tr=e.target.closest('tr[data-ri]'); if(!tr) return; const x=S.records[+tr.dataset.ri];
+  ask(`Otworzyć <b>${esc(x.room)} ${esc(x.rack)}</b> do poprawy?`,()=>{ S.cur=JSON.parse(JSON.stringify(x)); delete S.cur.at; S.act=0; save(); back(); }); };
+function back(){ $('vList').classList.add('hide'); $('vScan').classList.remove('hide'); render(); startCam(); }
+$('bList').onclick=()=> $('vList').classList.contains('hide')?showList():back();
+$('bBack').onclick=back;
+$('bWipe').onclick=()=>ask('Usunąć <b>wszystkie</b> zapisane szafy? Najpierw zapisz Excel.',()=>{ S.records=[]; save(); showList(); render(); });
+const csvCell=v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+function fname(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return `PDU_${(S.records[0]&&S.records[0].room)||'DC'}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.csv`; }
+$('bCsv').onclick=()=>{
+  if(!S.records.length){ $('expMsg').textContent='Lista jest pusta.'; return; }
+  const txt='﻿'+[HEAD,...rows()].map(r=>r.map(csvCell).join(';')).join('\r\n');
+  const name=fname();
+  if(window.AndroidBridge){
+    const id=AndroidBridge.fileBegin('download','',name,'text/csv');
+    if(!id){ $('expMsg').textContent='Nie udało się zapisać.'; return; }
+    const bytes=new TextEncoder().encode(txt); let bin=''; for(const b of bytes) bin+=String.fromCharCode(b);
+    AndroidBridge.fileAppend(id,btoa(bin));
+    const p=AndroidBridge.fileEnd(id);
+    $('expMsg').innerHTML=p?`Zapisano: <b>${esc(p)}</b> – „Wyślij plik”, żeby przesłać.`:'Błąd zapisu.';
+  } else {
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv'})); a.download=name; a.click();
+    $('expMsg').textContent='Pobrano '+name;
+  }
+};
+/* ---------- Excel jak „PDUs DC110.xlsx”: 1 wiersz na szafę ---------- */
+const XHEAD=['Rack','SN Master','SN Slave','MAC-Adresse ETH1 \n(Master)'];
+function rackKey(s){ const m=norm(s).match(/^(.*?)(\d+)$/); return m?[m[1],+m[2]]:[norm(s),0]; }
+function xrows(){
+  return S.records.map(x=>{
+    let m=null,sl=null;
+    for(const r of x.rails){ const role=railInfo(r).role; if(role==='Master'&&!m) m=r; else if(role==='Slave'&&!sl) sl=r; }
+    // rola nierozpoznana – listwy po kolei
+    const rest=x.rails.filter(r=>r!==m&&r!==sl&&(r.sn||r.eth1));
+    if(!m&&rest.length) m=rest.shift();
+    if(!sl&&rest.length) sl=rest.shift();
+    return [norm(x.room)+norm(x.rack), m?m.sn:'', sl?sl.sn:'', m?m.eth1:''];
+  }).sort((a,b)=>{ const x=rackKey(a[0]),y=rackKey(b[0]); return x[0]<y[0]?-1:x[0]>y[0]?1:x[1]-y[1]; });
+}
+const CRC=(()=>{ const t=[]; for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(b){ let c=-1; for(let i=0;i<b.length;i++) c=CRC[(c^b[i])&255]^(c>>>8); return (c^-1)>>>0; }
+function zip(files){ // [[nazwa, tekst]] → Uint8Array, bez kompresji
+  const enc=new TextEncoder(), parts=[], cen=[]; let off=0;
+  const u16=v=>[v&255,v>>8&255], u32=v=>[v&255,v>>8&255,v>>16&255,v>>>24&255];
+  for(const [n,txt] of files){
+    const nb=enc.encode(n), d=enc.encode(txt), c=crc32(d);
+    const h=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(d.length),...u32(d.length),...u16(nb.length),...u16(0)]);
+    parts.push(h,nb,d);
+    cen.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(d.length),...u32(d.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nb);
+    off+=h.length+nb.length+d.length;
+  }
+  const cs=cen.reduce((a,b)=>a+b.length,0);
+  parts.push(...cen,new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]));
+  const out=new Uint8Array(parts.reduce((a,b)=>a+b.length,0)); let p=0; for(const x of parts){ out.set(x,p); p+=x.length; } return out;
+}
+function xlsx(head,data,W,sheet){
+  const NS='http://schemas.openxmlformats.org', X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const cell=(v,r,i,st)=>`<c r="${String.fromCharCode(65+i)}${r}" t="inlineStr"${st?' s="1"':''}><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+  const sd=`<row r="1">${head.map((v,i)=>cell(v,1,i,1)).join('')}</row>`+data.map((r,j)=>`<row r="${j+2}">${r.map((v,i)=>v?cell(v,j+2,i,0):'').join('')}</row>`).join('');
+  W=W||[18.22,28.89,30.66,29.78];
+  return zip([
+    ['[Content_Types].xml',X+`<Types xmlns="${NS}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+    ['_rels/.rels',X+`<Relationships xmlns="${NS}/package/2006/relationships"><Relationship Id="rId1" Type="${NS}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml',X+`<workbook xmlns="${NS}/spreadsheetml/2006/main" xmlns:r="${NS}/officeDocument/2006/relationships"><sheets><sheet name="${sheet||'Tabellenblatt1'}" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ['xl/_rels/workbook.xml.rels',X+`<Relationships xmlns="${NS}/package/2006/relationships"><Relationship Id="rId1" Type="${NS}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${NS}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml',X+`<styleSheet xmlns="${NS}/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+    ['xl/worksheets/sheet1.xml',X+`<worksheet xmlns="${NS}/spreadsheetml/2006/main"><cols>${W.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${sd}</sheetData></worksheet>`]
+  ]);
+}
+function saveFile(name,mime,bytes){
+  if(window.AndroidBridge){
+    const id=AndroidBridge.fileBegin('download','',name,mime);
+    if(!id){ $('expMsg').textContent='Nie udało się zapisać.'; return; }
+    let bin=''; for(const b of bytes) bin+=String.fromCharCode(b);
+    AndroidBridge.fileAppend(id,btoa(bin));
+    const p=AndroidBridge.fileEnd(id);
+    $('expMsg').innerHTML=p?`Zapisano: <b>${esc(p)}</b> – „Wyślij plik”, żeby przesłać.`:'Błąd zapisu.';
+  } else {
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([bytes],{type:mime})); a.download=name; a.click();
+    $('expMsg').textContent='Pobrano '+name;
+  }
+}
+$('bXlsx').onclick=()=>{
+  if(!S.records.length){ $('expMsg').textContent='Lista jest pusta.'; return; }
+  saveFile(fname().replace(/^PDU_/,'PDUs_').replace(/\.csv$/,'.xlsx'),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xlsx(XHEAD,xrows()));
+};
+$('bShare').onclick=()=>{ if(window.AndroidBridge) AndroidBridge.shareLast(); };
+$('bCopy').onclick=async()=>{
+  const txt=[XHEAD.map(h=>h.replace('\n','')),...xrows()].map(r=>r.join('\t')).join('\n');
+  try{ await navigator.clipboard.writeText(txt); }catch(e){ const t=document.createElement('textarea'); t.value=txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+  $('expMsg').textContent='Skopiowano – wklej w Excelu.';
+};
+
+/* ---------- tryb Kable: oznacznik DYMO + S/N kabla → lista skąd–dokąd ---------- */
+const KF=['vRoom','vRack','vPanel','vPorts','nRoom','nRack','nPanel','nPorts','type','len','side','sn','fa'];
+const emptyCable=()=>({vRoom:'',vRack:'',vPanel:'',vPorts:'',nRoom:'',nRack:'',nPanel:'',nPorts:'',type:'',len:'',side:'',sn:'',fa:'',ocr:''});
+S.mode=S.mode||'pdu';
+S.kab=S.kab||{records:[],cur:emptyCable()};
+const dig=s=>String(s).replace(/[OoQD]/g,'0').replace(/[Il|!]/g,'1').replace(/Z/g,'2').replace(/S/g,'5').replace(/B/g,'8').replace(/G/g,'6');
+// „v. RZ2B D07 - P07-3+4” / „n. RZ3B C08 - P01 1-6”
+const LRE=/(?:^|[^A-Za-z])([vVyYnN])\s*[.,:]?\s*(R\s*Z\s*[0-9OIlZ]\s*[AB8])\s*([A-HP])\s*([0-9OIl]{1,2})\s*[-–—~]?\s*P\s*([0-9OIl]{1,2})\s*[-–—~]?\s*([0-9OIl]{1,2}(?:\s*[+\-–—]\s*[0-9OIl]{1,2})*)/;
+function parseLabelLines(texts){
+  const out=[];
+  for(const t of texts) for(const line of String(t).split('\n')){
+    const m=line.match(LRE); if(!m) continue;
+    const room='RZ'+dig(m[2].replace(/\s/g,'').charAt(2))+m[2].replace(/\s/g,'').charAt(3).replace('8','B');
+    const rack=m[3]+String(+dig(m[4])).padStart(2,'0');
+    const panel='P'+String(+dig(m[5])).padStart(2,'0');
+    const ports=dig(m[6].replace(/\s/g,'').replace(/[–—]/g,'-'));
+    const vn=/[nN]/.test(m[1])?'n':'v';
+    out.push({vn,room,rack,panel,ports});
+  }
+  return out;
+}
+function snFix(raw){
+  let x=raw.replace(/\s/g,'').toUpperCase();
+  const m=x.match(/^(.{3})(.{3})(.{12})$/); // 020 OSI 011009390003
+  if(m && /^[O0][S5][I1L]$/.test(m[2])) return dig(m[1])+'OSI'+dig(m[3]);
+  return x;
+}
+function parseOcr(texts){
+  const r={}; const all=texts.join('\n');
+  const L=parseLabelLines(texts);
+  const v=L.find(x=>x.vn==='v'), n=L.find(x=>x.vn==='n'&&(!v||x.rack!==v.rack||x.panel!==v.panel));
+  const a=v||L[0], b=n||L.find(x=>x!==a&&(x.rack!==a.rack||x.panel!==a.panel));
+  if(a){ r.vRoom=a.room; r.vRack=a.rack; r.vPanel=a.panel; r.vPorts=a.ports; }
+  if(b){ r.nRoom=b.room; r.nRack=b.rack; r.nPanel=b.panel; r.nPorts=b.ports; }
+  let m=all.match(/S\s*N\s*[:;.]?\s*([0-9OQDIlS]{3}\s*[O0][S5][I1l]\s*[0-9OQDIlSBZ ]{12,15})/i)
+      || all.match(/\b([0O]2[0O]\s*[O0][S5][I1l]\s*[0-9OQDIlSBZ]{12})\b/);
+  if(m) r.sn=snFix(m[1]).slice(0,18);
+  else { m=all.match(/S\s*N\s*[:;.]\s*([A-Z0-9][A-Z0-9\-]{6,24})/i); if(m) r.sn=m[1].toUpperCase(); }
+  m=all.match(/FA\s*[0-9OIl]{2}\s*-\s*[0-9OIl]{5}/); if(m) r.fa=dig(m[0].replace(/\s/g,'')).replace(/^FA|^F4/,'FA').replace(/^.{2}/,'FA');
+  m=all.match(/\bL\s*[:;.]\s*([0-9OIl]{1,3}(?:[.,][0-9]{1,2})?)\s*m\b/i); if(m) r.len=dig(m[1]).replace(',','.').replace(/\.0+$/,'');
+  m=all.match(/Trunk[^\n]{0,30}?MPE\s*\/\s*MPE/i) || all.match(/COPPER\s*TOR-?\s*G2/i);
+  if(m) r.type=m[0].replace(/\s+/g,' ').trim();
+  m=all.match(/MPE\s*\/\s*MPE\s+([AB])\b/); if(m) r.side=m[1];
+  // typ kabla z napisów: miedź (COPPER, CU, RJ45) lub światłowód (MPE/MPE, LWL, FIBER, SM)
+  if(/COPPER|\bCU\b|\bRJ\s*-?\s*45\b|TOR-?\s*G2/i.test(all)) r.tt='CU RJ45';
+  else if(/MPE\s*\/\s*MPE|\bLWL\b|\bFIBER\b|\bFIBRE\b|\bSM\b|OS[12]/i.test(all)) r.tt='LWL';
+  return r;
+}
+function kMerge(r,force){ const c=S.kab.cur; let n=0; for(const k of KF){ if(r[k]&&(force||!c[k])){ if(c[k]!==r[k]) n++; c[k]=r[k]; } } return n; }
+const route=c=>[c.vRoom,c.vRack,c.vPanel,c.vPorts,c.nRoom,c.nRack,c.nPanel,c.nPorts].join('|');
+const routeTxt=c=>`${c.vRoom} ${c.vRack} ${c.vPanel} ${c.vPorts} → ${c.nRoom} ${c.nRack} ${c.nPanel} ${c.nPorts}`.replace(/\s+/g,' ');
+const revRoute=c=>[c.nRoom,c.nRack,c.nPanel,c.nPorts,c.vRoom,c.vRack,c.vPanel,c.vPorts].join('|');
+function kCheck(c){
+  const out=[];
+  if(!c.vRack||!c.nRack) out.push(['w','Brak „v.” albo „n.” z oznacznika – zrób zdjęcie oznacznika']);
+  if(!c.sn&&!c.fa) out.push(['w','Brak S/N – zrób zdjęcie naklejki S/N albo zeskanuj kod z pudełka']);
+  if(c.sn){
+    const d=S.kab.records.find(x=>x.sn===c.sn);
+    if(d&&!c.vRack) out.push(['o',`Ten kabel jest już przypisany: ${routeTxt(d)} – zeskanuj oznacznik, żeby sprawdzić`]);
+    else if(d&&route(d)!==route(c)&&revRoute(d)!==route(c)) out.push(['x',`Oznacznik NIEZGODNY – ten S/N przypisano do ${routeTxt(d)}`]);
+    else if(d) out.push(['o','Oznacznik zgodny z przypisaniem ✓']);
+  }
+  if(c.vRack){
+    const d=S.kab.records.find(x=>(route(x)===route(c)||revRoute(x)===route(c))&&x.sn&&c.sn&&x.sn!==c.sn);
+    if(d) out.push(['w',`Ta trasa jest już zapisana z S/N ${d.sn}`]);
+  }
+  return out;
+}
+function kRender(){
+  const c=S.kab.cur, f=(k,ph)=>`<input data-kk="${k}" value="${esc(c[k])}" placeholder="${ph||''}" autocapitalize="characters">`;
+  const chk=kCheck(c);
+  $('kForm').innerHTML=`<div class="kgrid"><b></b><b>Szafa</b><b>Panel</b><b>Porty</b>
+    <b>v.</b>${f('vRack','D07')}${f('vPanel','P07')}${f('vPorts','3+4')}
+    <b>n.</b>${f('nRack','E07')}${f('nPanel','P07')}${f('nPorts','3+4')}</div>
+    <div class="kf"><span>Sala v. / n.</span><div class="row">${f('vRoom','RZ2B')}${f('nRoom','RZ2B')}</div>
+    <span>S/N</span>${f('sn','020OSI…')}
+    <span>Partia (FA)</span>${f('fa','FA26-…')}
+    <span>Typ</span>${f('type','Trunk, 24KSM, MPE/MPE')}
+    <span>Długość [m]</span><div class="row">${f('len','20')}<select data-kk="side" style="width:90px"><option value="">strona</option>${['A','B'].map(x=>`<option${c.side===x?' selected':''}>${x}</option>`).join('')}</select></div></div>
+    <div class="chk">${chk.map(([k,t])=>`<div class="${k}">${k==='o'?'✓':k==='w'?'⚠':'✗'} ${esc(t)}</div>`).join('')}</div>
+    ${c.ocr?`<details class="ocr"><summary>odczytany tekst</summary><pre>${esc(c.ocr)}</pre></details>`:''}`;
+  const b=$('banner');
+  if(S.mode==='kab'){
+    const x=chk.find(o=>o[0]==='x');
+    if(x){ b.className='x'; b.textContent=x[1]; }
+    else if(c.vRack&&c.nRack&&(c.sn||c.fa)){ b.className='o'; b.textContent='Komplet: '+routeTxt(c)+' · '+(c.sn||c.fa); }
+    else b.className='';
+  }
+}
+document.addEventListener('change',e=>{ const k=e.target.dataset&&e.target.dataset.kk; if(!k) return;
+  let v=e.target.value.trim(); if(k!=='type') v=v.toUpperCase(); S.kab.cur[k]=v; save(); kRender(); });
+function kabScan(text,format){
+  const t=String(text).trim(), now=Date.now();
+  if(t===kLast && now-kLastAt<3000) return; kLast=t; kLastAt=now;
+  const c=S.kab.cur;
+  if(/^FA\d{2}-\d{5}$/i.test(t)){ if(c.fa===t.toUpperCase()) return; c.fa=t.toUpperCase(); log('✓ Partia (pudełko): '+c.fa); }
+  else if(/^CU\d{5,7}$/i.test(t)||/^https?:/i.test(t)) return; // numer pozycji z pudełka / linki – pomijamy
+  else if(t.length>=8 && !c.sn){ c.sn=t.toUpperCase(); log('✓ S/N z kodu: '+c.sn); }
+  else return;
+  flash(); beep(1200,.08); vib(40); save(); kRender();
+}
+let kLast='', kLastAt=0, ocrBusy=false;
+window.__ocrNative=(id,json)=>{
+  ocrBusy=false; $('kOcr').disabled=false; $('kOcr').textContent='📷 Odczytaj napisy';
+  let arr; try{ arr=JSON.parse(json); }catch(e){ arr={error:String(e)}; }
+  if(!Array.isArray(arr)){ warn('Błąd odczytu: '+(arr.error||'?')); return; }
+  const r=parseOcr(arr); const n=kMerge(r,false);
+  const best=arr.reduce((a,b)=>(b.length>a.length?b:a),'');
+  S.kab.cur.ocr=(S.kab.cur.ocr?S.kab.cur.ocr+'\n---\n':'')+best.trim();
+  save(); kRender();
+  const got=Object.keys(r).filter(k=>r[k]);
+  if(got.length){ beep(1500,.1); vib(60); log(`Odczytano: ${got.map(k=>({vRack:'v.',nRack:'n.',sn:'S/N',len:'długość',type:'typ',side:'strona',fa:'partia'})[k]).filter(Boolean).join(', ')}${n?'':' (bez zmian)'}`); }
+  else { beep(300,.2); log('Nie znalazłem napisów – podejdź bliżej, dotknij obraz (ostrość) i spróbuj jeszcze raz.'); }
+};
+$('kOcr').onclick=()=>{
+  if(ocrBusy) return;
+  const v=$('vid'); if(!stream||v.readyState<2){ warn('Aparat nie działa – włącz ▶'); return; }
+  if(!(window.AndroidBridge&&AndroidBridge.recognizeText)){ warn('Odczyt napisów działa tylko w aplikacji na telefonie.'); return; }
+  const cv=document.createElement('canvas'); cv.width=v.videoWidth; cv.height=v.videoHeight; cv.getContext('2d').drawImage(v,0,0);
+  const b64=cv.toDataURL('image/jpeg',0.92).split(',')[1];
+  ocrBusy=true; $('kOcr').disabled=true; $('kOcr').textContent='⏳ Czytam…'; flash();
+  AndroidBridge.recognizeText('k'+Date.now(),b64);
+};
+$('kClr').onclick=()=>ask('Wyczyścić pola tego kabla?',()=>{ S.kab.cur=emptyCable(S.kab.cur); save(); kRender(); render(); });
+$('kSave').onclick=()=>{
+  const c=S.kab.cur;
+  if(!c.vRack&&!c.sn&&!c.fa){ warn('Nic nie odczytano.'); return; }
+  const chk=kCheck(c), bad=chk.filter(o=>o[0]!=='o');
+  const doSave=()=>{
+    const rec=JSON.parse(JSON.stringify(c)); rec.at=new Date().toISOString(); delete rec.ocr;
+    const i=S.kab.records.findIndex(x=>(c.sn&&x.sn===c.sn)||(!c.sn&&route(x)===route(c)));
+    if(i>=0) S.kab.records[i]=rec; else S.kab.records.push(rec);
+    S.kab.cur=emptyCable(c); save(); render(); beep(1500,.15); log('Zapisano: '+routeTxt(rec));
+  };
+  if(bad.length) ask(bad.map(o=>esc(o[1])).join('<br>')+'<br><br>Zapisać mimo to?',doSave); else doSave();
+};
+const KHEAD=['von','Panel','Ports','nach','Panel','Ports','Kabeltyp','Länge [m]','Seite','SN','Charge (FA)','Datum'];
+function locTime(iso){ if(!iso) return ''; const d=new Date(iso),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+function krows(){
+  const k=x=>[x.vRoom,x.vRack,x.vPanel,x.vPorts].join(' ');
+  return S.kab.records.slice().sort((a,b)=>k(a).localeCompare(k(b),'pl',{numeric:true})).map(x=>[
+    `${x.vRoom} ${x.vRack}`.trim(),x.vPanel,x.vPorts,`${x.nRoom} ${x.nRack}`.trim(),x.nPanel,x.nPorts,x.type,x.len,x.side,x.sn,x.fa,locTime(x.at)]);
+}
+function applyMode(){
+  const k=S.mode==='kab';
+  $('kabPane').classList.toggle('hide',!k); $('pduPane').classList.toggle('hide',k); $('pduTop').classList.toggle('hide',k);
+  $('bMode').textContent=k?'Listwy ›':'Kable ›'; $('title').textContent=k?'Data Center · Kable':'Data Center · PDU';
+  $('bXlsx').textContent=k?'Zapisz Excel (lista kabli)':'Zapisz Excel (jak „PDUs DC110”)';
+  $('bCsv').classList.toggle('hide',k);
+  $('cnt').textContent=k?S.kab.records.length:S.records.length;
+}
+const _render=render; render=function(){ _render(); kRender(); applyMode(); };
+const _onScan=onScan; onScan=function(t,f){ return S.mode==='kab'?kabScan(t,f):_onScan(t,f); };
+$('bMode').onclick=()=>{ S.mode=S.mode==='kab'?'pdu':'kab'; save(); if(!$('vList').classList.contains('hide')) showList(); else { $('banner').className=''; render(); } };
+const _showList=showList; showList=function(){
+  if(S.mode!=='kab') return _showList();
+  $('vScan').classList.add('hide'); $('vList').classList.remove('hide'); stopCam(); applyMode();
+  $('tbl').innerHTML=`<tr><th>v.</th><th>n.</th><th>S/N</th><th>m</th></tr>`+S.kab.records.map((x,i)=>{ const bad=kCheck(x).some(o=>o[0]==='x');
+    return `<tr data-ki="${i}"><td><b>${esc(x.vRack)}</b> ${esc(x.vPanel)} ${esc(x.vPorts)}</td><td><b>${esc(x.nRack)}</b> ${esc(x.nPanel)} ${esc(x.nPorts)}</td><td class="mono">${esc(x.sn||x.fa)}${bad?' ⚠':''}</td><td>${esc(x.len)}${x.side?' '+esc(x.side):''}</td></tr>`; }).join('');
+};
+$('tbl').addEventListener('click',e=>{ const tr=e.target.closest('tr[data-ki]'); if(!tr) return; const x=S.kab.records[+tr.dataset.ki];
+  ask(`Otworzyć <b>${esc(routeTxt(x))}</b> do poprawy?`,()=>{ S.kab.cur=Object.assign(emptyCable(),JSON.parse(JSON.stringify(x))); delete S.kab.cur.at; save(); back(); }); });
+{ const oX=$('bXlsx').onclick, oC=$('bCopy').onclick, oW=$('bWipe').onclick;
+  $('bXlsx').onclick=()=>{ if(S.mode!=='kab') return oX();
+    if(!S.kab.records.length){ $('expMsg').textContent='Lista jest pusta.'; return; }
+    const d=new Date(),p=n=>String(n).padStart(2,'0');
+    saveFile(`Kable_SN_${(S.kab.records[0].vRoom)||'DC'}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.xlsx`,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xlsx(KHEAD,krows(),[14,8,8,14,8,8,24,10,7,24,14,17],'Kabel'));
+  };
+  $('bCopy').onclick=async()=>{ if(S.mode!=='kab') return oC();
+    const txt=[KHEAD,...krows()].map(r=>r.join('\t')).join('\n');
+    try{ await navigator.clipboard.writeText(txt); }catch(e){ const t=document.createElement('textarea'); t.value=txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    $('expMsg').textContent='Skopiowano – wklej w Excelu.'; };
+  $('bWipe').onclick=()=>{ if(S.mode!=='kab') return oW();
+    ask('Usunąć <b>wszystkie</b> zapisane kable? Najpierw zapisz Excel.',()=>{ S.kab.records=[]; save(); showList(); render(); }); };
+}
+// do testów: window.__ocrTest(['v. RZ2B D07 - P07-3+4\nn. RZ2B E07 - P07-3+4','SN: 020OSI011009390003'])
+window.__ocrTest=a=>window.__ocrNative('t',JSON.stringify(a));
+
+/* ---------- projekt kabli (Excel V09_3, RZ2B + RZ3B + RZ5B Q-Cage – nowe nazwy) i podpowiedź po długości ---------- */
+const PROJ_DC110=[{"r":"RZ2B","v":"D07","vp":"P09","vo":"1-6","n":"D08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ2B","v":"D07","vp":"P09","vo":"7-12","n":"D08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ2B","v":"D07","vp":"P09","vo":"13-18","n":"D08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ2B","v":"D07","vp":"P09","vo":"19-24","n":"D08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ2B","v":"D07","vp":"P10","vo":"1-6","n":"D09","np":"P01","no":"1-6","t":"CU","l":10},{"r":"RZ2B","v":"D07","vp":"P10","vo":"7-12","n":"D11","np":"P01","no":"1-6","t":"CU","l":12},{"r":"RZ2B","v":"D07","vp":"P10","vo":"13-18","n":"D12","np":"P01","no":"1-6","t":"CU","l":13},{"r":"RZ2B","v":"D07","vp":"P10","vo":"19-24","n":"D13","np":"P01","no":"1-6","t":"CU","l":14},{"r":"RZ2B","v":"D07","vp":"P11","vo":"1-6","n":"D14","np":"P01","no":"1-6","t":"CU","l":15},{"r":"RZ2B","v":"D07","vp":"P11","vo":"7-12","n":"D15","np":"P01","no":"1-6","t":"CU","l":16},{"r":"RZ2B","v":"D07","vp":"P11","vo":"13-18","n":"D16","np":"P01","no":"1-6","t":"CU","l":17},{"r":"RZ2B","v":"D07","vp":"P11","vo":"19-24","n":"D18","np":"P01","no":"1-6","t":"CU","l":19},{"r":"RZ2B","v":"D07","vp":"P12","vo":"1-6","n":"D19","np":"P01","no":"1-6","t":"CU","l":20},{"r":"RZ2B","v":"C07","vp":"P09","vo":"1-6","n":"C08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ2B","v":"C07","vp":"P09","vo":"7-12","n":"C08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ2B","v":"C07","vp":"P09","vo":"13-18","n":"C08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ2B","v":"C07","vp":"P09","vo":"19-24","n":"C08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ2B","v":"E07","vp":"P09","vo":"1-6","n":"E08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ2B","v":"E07","vp":"P09","vo":"7-12","n":"E08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ2B","v":"E07","vp":"P09","vo":"13-18","n":"E08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ2B","v":"E07","vp":"P09","vo":"19-24","n":"E08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ2B","v":"F07","vp":"P09","vo":"1-6","n":"F08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ2B","v":"F07","vp":"P09","vo":"7-12","n":"F08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ2B","v":"F07","vp":"P09","vo":"13-18","n":"F08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ2B","v":"F07","vp":"P09","vo":"19-24","n":"F08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P09","vo":"1-6","n":"C08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P09","vo":"7-12","n":"C08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P09","vo":"13-18","n":"C08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P09","vo":"19-24","n":"C08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ3B","v":"C07","vp":"P10","vo":"1-6","n":"C09","np":"P01","no":"1-6","t":"CU","l":10},{"r":"RZ3B","v":"C07","vp":"P10","vo":"7-12","n":"C11","np":"P01","no":"1-6","t":"CU","l":12},{"r":"RZ3B","v":"C07","vp":"P10","vo":"13-18","n":"C12","np":"P01","no":"1-6","t":"CU","l":13},{"r":"RZ3B","v":"C07","vp":"P10","vo":"19-24","n":"C13","np":"P01","no":"1-6","t":"CU","l":14},{"r":"RZ3B","v":"C07","vp":"P11","vo":"1-6","n":"C14","np":"P01","no":"1-6","t":"CU","l":15},{"r":"RZ3B","v":"C07","vp":"P11","vo":"7-12","n":"C15","np":"P01","no":"1-6","t":"CU","l":16},{"r":"RZ3B","v":"C07","vp":"P11","vo":"13-18","n":"C16","np":"P01","no":"1-6","t":"CU","l":17},{"r":"RZ3B","v":"C07","vp":"P11","vo":"19-24","n":"C18","np":"P01","no":"1-6","t":"CU","l":19},{"r":"RZ3B","v":"C07","vp":"P12","vo":"1-6","n":"C19","np":"P01","no":"1-6","t":"CU","l":20},{"r":"RZ3B","v":"D07","vp":"P09","vo":"1-6","n":"D08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ3B","v":"D07","vp":"P09","vo":"7-12","n":"D08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ3B","v":"D07","vp":"P09","vo":"13-18","n":"D08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ3B","v":"D07","vp":"P09","vo":"19-24","n":"D08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ3B","v":"E07","vp":"P09","vo":"1-6","n":"E08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ3B","v":"E07","vp":"P09","vo":"7-12","n":"E08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ3B","v":"E07","vp":"P09","vo":"13-18","n":"E08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ3B","v":"E07","vp":"P09","vo":"19-24","n":"E08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ3B","v":"F07","vp":"P09","vo":"1-6","n":"F08","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ3B","v":"F07","vp":"P09","vo":"7-12","n":"F08","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ3B","v":"F07","vp":"P09","vo":"13-18","n":"F08","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ3B","v":"F07","vp":"P09","vo":"19-24","n":"F08","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ2B","v":"D08","vp":"P05","vo":"1+2","n":"D09","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"D08","vp":"P05","vo":"3+4","n":"D09","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ2B","v":"D08","vp":"P06","vo":"1+2","n":"D11","np":"P02","no":"1+2","t":"LWL","l":11},{"r":"RZ2B","v":"D08","vp":"P06","vo":"3+4","n":"D11","np":"P02","no":"3+4","t":"LWL","l":11},{"r":"RZ2B","v":"D08","vp":"P07","vo":"1+2","n":"D12","np":"P02","no":"1+2","t":"LWL","l":12},{"r":"RZ2B","v":"D08","vp":"P07","vo":"3+4","n":"D12","np":"P02","no":"3+4","t":"LWL","l":12},{"r":"RZ2B","v":"D08","vp":"P08","vo":"1+2","n":"D13","np":"P02","no":"1+2","t":"LWL","l":13},{"r":"RZ2B","v":"D08","vp":"P08","vo":"3+4","n":"D13","np":"P02","no":"3+4","t":"LWL","l":13},{"r":"RZ2B","v":"D08","vp":"P09","vo":"1+2","n":"D14","np":"P02","no":"1+2","t":"LWL","l":14},{"r":"RZ2B","v":"D08","vp":"P09","vo":"3+4","n":"D14","np":"P02","no":"3+4","t":"LWL","l":14},{"r":"RZ2B","v":"D08","vp":"P10","vo":"1+2","n":"D15","np":"P02","no":"1+2","t":"LWL","l":15},{"r":"RZ2B","v":"D08","vp":"P10","vo":"3+4","n":"D15","np":"P02","no":"3+4","t":"LWL","l":15},{"r":"RZ2B","v":"D08","vp":"P11","vo":"1+2","n":"D16","np":"P02","no":"1+2","t":"LWL","l":16},{"r":"RZ2B","v":"D08","vp":"P11","vo":"3+4","n":"D16","np":"P02","no":"3+4","t":"LWL","l":16},{"r":"RZ2B","v":"D08","vp":"P12","vo":"1+2","n":"D18","np":"P02","no":"1+2","t":"LWL","l":18},{"r":"RZ2B","v":"D08","vp":"P12","vo":"3+4","n":"D18","np":"P02","no":"3+4","t":"LWL","l":18},{"r":"RZ2B","v":"D08","vp":"P13","vo":"1+2","n":"D19","np":"P02","no":"1+2","t":"LWL","l":19},{"r":"RZ2B","v":"D08","vp":"P13","vo":"3+4","n":"D19","np":"P02","no":"3+4","t":"LWL","l":19},{"r":"RZ2B","v":"D08","vp":"P05","vo":"1+2","n":"D07","np":"P05","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"D08","vp":"P05","vo":"3+4","n":"D07","np":"P05","no":"3+4","t":"LWL","l":9},{"r":"RZ2B","v":"D08","vp":"P03","vo":"1+2","n":"C08","np":"P03","no":"1+2","t":"LWL","l":33},{"r":"RZ2B","v":"D08","vp":"P03","vo":"3+4","n":"C07","np":"P06","no":"1+2","t":"LWL","l":34},{"r":"RZ2B","v":"D07","vp":"P03","vo":"3+4","n":"C07","np":"P06","no":"3+4","t":"LWL","l":17},{"r":"RZ2B","v":"D07","vp":"P06","vo":"1+2","n":"C08","np":"P03","no":"3+4","t":"LWL","l":18},{"r":"RZ2B","v":"C07","vp":"P05","vo":"1+2","n":"C08","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"C07","vp":"P05","vo":"3+4","n":"C08","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ2B","v":"C07","vp":"P04","vo":"1+2","n":"F07","np":"P04","no":"1+2","t":"LWL","l":40},{"r":"RZ2B","v":"C07","vp":"P04","vo":"3+4","n":"F07","np":"P04","no":"3+4","t":"LWL","l":40},{"r":"RZ2B","v":"D07","vp":"P07","vo":"1+2","n":"E07","np":"P07","no":"1+2","t":"LWL","l":20},{"r":"RZ2B","v":"D07","vp":"P07","vo":"3+4","n":"E07","np":"P07","no":"3+4","t":"LWL","l":20},{"r":"RZ2B","v":"E08","vp":"P05","vo":"1+2","n":"E07","np":"P05","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"E08","vp":"P05","vo":"3+4","n":"E07","np":"P05","no":"3+4","t":"LWL","l":9},{"r":"RZ2B","v":"E08","vp":"P03","vo":"1+2","n":"F08","np":"P03","no":"1+2","t":"LWL","l":33},{"r":"RZ2B","v":"E08","vp":"P03","vo":"3+4","n":"F07","np":"P06","no":"1+2","t":"LWL","l":18},{"r":"RZ2B","v":"E07","vp":"P06","vo":"3+4","n":"F07","np":"P06","no":"3+4","t":"LWL","l":17},{"r":"RZ2B","v":"E07","vp":"P06","vo":"1+2","n":"F08","np":"P03","no":"3+4","t":"LWL","l":34},{"r":"RZ2B","v":"F07","vp":"P05","vo":"1+2","n":"F08","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ2B","v":"F07","vp":"P05","vo":"3+4","n":"F08","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P05","vo":"1+2","n":"C09","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P05","vo":"3+4","n":"C09","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P06","vo":"1+2","n":"C11","np":"P02","no":"1+2","t":"LWL","l":11},{"r":"RZ3B","v":"C08","vp":"P06","vo":"3+4","n":"C11","np":"P02","no":"3+4","t":"LWL","l":11},{"r":"RZ3B","v":"C08","vp":"P07","vo":"1+2","n":"C12","np":"P02","no":"1+2","t":"LWL","l":12},{"r":"RZ3B","v":"C08","vp":"P07","vo":"3+4","n":"C12","np":"P02","no":"3+4","t":"LWL","l":12},{"r":"RZ3B","v":"C08","vp":"P08","vo":"1+2","n":"C13","np":"P02","no":"1+2","t":"LWL","l":13},{"r":"RZ3B","v":"C08","vp":"P08","vo":"3+4","n":"C13","np":"P02","no":"3+4","t":"LWL","l":13},{"r":"RZ3B","v":"C08","vp":"P09","vo":"1+2","n":"C14","np":"P02","no":"1+2","t":"LWL","l":14},{"r":"RZ3B","v":"C08","vp":"P09","vo":"3+4","n":"C14","np":"P02","no":"3+4","t":"LWL","l":14},{"r":"RZ3B","v":"C08","vp":"P10","vo":"1+2","n":"C15","np":"P02","no":"1+2","t":"LWL","l":15},{"r":"RZ3B","v":"C08","vp":"P10","vo":"3+4","n":"C15","np":"P02","no":"3+4","t":"LWL","l":15},{"r":"RZ3B","v":"C08","vp":"P11","vo":"1+2","n":"C16","np":"P02","no":"1+2","t":"LWL","l":16},{"r":"RZ3B","v":"C08","vp":"P11","vo":"3+4","n":"C16","np":"P02","no":"3+4","t":"LWL","l":16},{"r":"RZ3B","v":"C08","vp":"P12","vo":"1+2","n":"C18","np":"P02","no":"1+2","t":"LWL","l":18},{"r":"RZ3B","v":"C08","vp":"P12","vo":"3+4","n":"C18","np":"P02","no":"3+4","t":"LWL","l":18},{"r":"RZ3B","v":"C08","vp":"P13","vo":"1+2","n":"C19","np":"P02","no":"1+2","t":"LWL","l":19},{"r":"RZ3B","v":"C08","vp":"P13","vo":"3+4","n":"C19","np":"P02","no":"3+4","t":"LWL","l":19},{"r":"RZ3B","v":"C08","vp":"P05","vo":"1+2","n":"C07","np":"P05","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P05","vo":"3+4","n":"C07","np":"P05","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"C08","vp":"P03","vo":"1+2","n":"D08","np":"P03","no":"1+2","t":"LWL","l":33},{"r":"RZ3B","v":"C08","vp":"P03","vo":"3+4","n":"D07","np":"P06","no":"1+2","t":"LWL","l":18},{"r":"RZ3B","v":"C07","vp":"P06","vo":"3+4","n":"D07","np":"P06","no":"3+4","t":"LWL","l":17},{"r":"RZ3B","v":"C07","vp":"P06","vo":"1+2","n":"D08","np":"P03","no":"3+4","t":"LWL","l":34},{"r":"RZ3B","v":"D07","vp":"P05","vo":"1+2","n":"D08","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"D07","vp":"P05","vo":"3+4","n":"D08","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"C07","vp":"P04","vo":"1+2","n":"F07","np":"P04","no":"1+2","t":"LWL","l":40},{"r":"RZ3B","v":"C07","vp":"P04","vo":"3+4","n":"F07","np":"P04","no":"3+4","t":"LWL","l":40},{"r":"RZ3B","v":"D07","vp":"P07","vo":"1+2","n":"E07","np":"P07","no":"1+2","t":"LWL","l":20},{"r":"RZ3B","v":"D07","vp":"P07","vo":"3+4","n":"E07","np":"P07","no":"3+4","t":"LWL","l":20},{"r":"RZ3B","v":"E08","vp":"P05","vo":"1+2","n":"E07","np":"P05","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"E08","vp":"P05","vo":"3+4","n":"E07","np":"P05","no":"3+4","t":"LWL","l":9},{"r":"RZ3B","v":"E08","vp":"P03","vo":"1+2","n":"F08","np":"P03","no":"1+2","t":"LWL","l":33},{"r":"RZ3B","v":"E08","vp":"P03","vo":"3+4","n":"F07","np":"P06","no":"1+2","t":"LWL","l":18},{"r":"RZ3B","v":"E07","vp":"P06","vo":"3+4","n":"F07","np":"P06","no":"3+4","t":"LWL","l":17},{"r":"RZ3B","v":"E07","vp":"P06","vo":"1+2","n":"F08","np":"P03","no":"3+4","t":"LWL","l":34},{"r":"RZ3B","v":"F07","vp":"P05","vo":"1+2","n":"F08","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ3B","v":"F07","vp":"P05","vo":"3+4","n":"F08","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ5B","v":"A11","vp":"P09","vo":"1-6","n":"A12","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ5B","v":"A11","vp":"P09","vo":"7-12","n":"A12","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ5B","v":"A11","vp":"P09","vo":"13-18","n":"A12","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ5B","v":"A11","vp":"P09","vo":"19-24","n":"A12","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ5B","v":"A11","vp":"P10","vo":"1-6","n":"A13","np":"P01","no":"1-6","t":"CU","l":10},{"r":"RZ5B","v":"A11","vp":"P10","vo":"7-12","n":"A14","np":"P01","no":"1-6","t":"CU","l":11},{"r":"RZ5B","v":"A11","vp":"P10","vo":"13-18","n":"A15","np":"P01","no":"1-6","t":"CU","l":12},{"r":"RZ5B","v":"A11","vp":"P10","vo":"19-24","n":"A16","np":"P01","no":"1-6","t":"CU","l":13},{"r":"RZ5B","v":"B11","vp":"P09","vo":"1-6","n":"B12","np":"P01","no":"1-6","t":"CU","l":9},{"r":"RZ5B","v":"B11","vp":"P09","vo":"7-12","n":"B12","np":"P01","no":"7-12","t":"CU","l":9},{"r":"RZ5B","v":"B11","vp":"P09","vo":"13-18","n":"B12","np":"P01","no":"13-18","t":"CU","l":9},{"r":"RZ5B","v":"B11","vp":"P09","vo":"19-24","n":"B12","np":"P01","no":"19-24","t":"CU","l":9},{"r":"RZ5B","v":"B11","vp":"P10","vo":"1-6","n":"B13","np":"P01","no":"1-6","t":"CU","l":10},{"r":"RZ5B","v":"B11","vp":"P10","vo":"7-12","n":"B15","np":"P01","no":"1-6","t":"CU","l":12},{"r":"RZ5B","v":"B11","vp":"P10","vo":"13-18","n":"B16","np":"P01","no":"1-6","t":"CU","l":13},{"r":"RZ5B","v":"B11","vp":"P10","vo":"19-24","n":"B17","np":"P01","no":"1-6","t":"CU","l":14},{"r":"RZ5B","v":"A12","vp":"P05","vo":"1+2","n":"A13","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ5B","v":"A12","vp":"P05","vo":"3+4","n":"A13","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ5B","v":"A12","vp":"P06","vo":"1+2","n":"A14","np":"P02","no":"1+2","t":"LWL","l":10},{"r":"RZ5B","v":"A12","vp":"P06","vo":"3+4","n":"A14","np":"P02","no":"3+4","t":"LWL","l":10},{"r":"RZ5B","v":"A12","vp":"P07","vo":"1+2","n":"A15","np":"P02","no":"1+2","t":"LWL","l":11},{"r":"RZ5B","v":"A12","vp":"P07","vo":"3+4","n":"A15","np":"P02","no":"3+4","t":"LWL","l":11},{"r":"RZ5B","v":"A12","vp":"P08","vo":"1+2","n":"A16","np":"P02","no":"1+2","t":"LWL","l":12},{"r":"RZ5B","v":"A12","vp":"P08","vo":"3+4","n":"A16","np":"P02","no":"3+4","t":"LWL","l":12},{"r":"RZ5B","v":"B12","vp":"P05","vo":"1+2","n":"B13","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ5B","v":"B12","vp":"P05","vo":"3+4","n":"B13","np":"P02","no":"3+4","t":"LWL","l":9},{"r":"RZ5B","v":"B12","vp":"P06","vo":"1+2","n":"B15","np":"P02","no":"1+2","t":"LWL","l":11},{"r":"RZ5B","v":"B12","vp":"P06","vo":"3+4","n":"B15","np":"P02","no":"3+4","t":"LWL","l":11},{"r":"RZ5B","v":"B12","vp":"P07","vo":"1+2","n":"B16","np":"P02","no":"1+2","t":"LWL","l":12},{"r":"RZ5B","v":"B12","vp":"P07","vo":"3+4","n":"B16","np":"P02","no":"3+4","t":"LWL","l":12},{"r":"RZ5B","v":"A12","vp":"P02","vo":"1+2","n":"A11","np":"P05","no":"1+2","t":"LWL","l":9},{"r":"RZ5B","v":"A12","vp":"P02","vo":"3+4","n":"A11","np":"P05","no":"3+4","t":"LWL","l":9},{"r":"RZ5B","v":"A12","vp":"P03","vo":"1+2","n":"B12","np":"P03","no":"1+2","t":"LWL","l":33},{"r":"RZ5B","v":"A12","vp":"P03","vo":"3+4","n":"B11","np":"P06","no":"1+2","t":"LWL","l":18},{"r":"RZ5B","v":"A11","vp":"P06","vo":"3+4","n":"B11","np":"P06","no":"3+4","t":"LWL","l":17},{"r":"RZ5B","v":"A11","vp":"P06","vo":"1+2","n":"B12","np":"P03","no":"3+4","t":"LWL","l":34},{"r":"RZ5B","v":"B11","vp":"P05","vo":"1+2","n":"B12","np":"P02","no":"1+2","t":"LWL","l":9},{"r":"RZ5B","v":"B11","vp":"P05","vo":"3+4","n":"B12","np":"P02","no":"3+4","t":"LWL","l":9}];
+// Excel ma „(P02) P05” – wg rysunków szaf (Rack-Planung) i na miejscu panel w szafie x8 to P02 (C08 ma osobny P05 do C09)
+for(const [r,R,R2] of [['RZ2B','D08','D07'],['RZ2B','E08','E07'],['RZ3B','C08','C07'],['RZ3B','E08','E07']])
+  for(const x of PROJ_DC110){ if(x.r!==r) continue;
+    if(x.v===R&&x.n===R2&&x.vp==='P05') x.vp='P02'; if(x.n===R&&x.v===R2&&x.np==='P05') x.np='P02'; }
+let PROJ=S.proj||PROJ_DC110;
+// stary numer panelu -> numer z projektu (P02 -> P05 w tej szafie)
+function canonP(room,R,P){ if(!P) return P; for(const x of PROJ){ if(room&&x.r!==room) continue;
+    if((x.v===R||x.va===R)&&x.vpa===P) return x.vp; if((x.n===R||x.na===R)&&x.npa===P) return x.np; } return P; }
+S.kRoom=S.kRoom||'RZ3B';
+const np=s=>String(s||'').toUpperCase().replace(/\s+/g,'').replace(/[–—]/g,'-');
+const pRoute=(x,rev)=>rev?[x.r,x.n,x.np,np(x.no),x.r,x.v,x.vp,np(x.vo)].join('|'):[x.r,x.v,x.vp,np(x.vo),x.r,x.n,x.np,np(x.no)].join('|');
+const cRoute=c=>[c.vRoom,c.vRack,canonP(c.vRoom,c.vRack,c.vPanel),np(c.vPorts),c.nRoom||c.vRoom,c.nRack,canonP(c.nRoom||c.vRoom,c.nRack,c.nPanel),np(c.nPorts)].join('|');
+function pFind(c){ if(!c.vRack||!c.nRack) return null; const k=cRoute(c); return PROJ.find(x=>pRoute(x)===k||pRoute(x,1)===k)||null; }
+function pDone(x){ return S.kab.records.some(r=>{ const k=cRoute(r); return k===pRoute(x)||k===pRoute(x,1); }); }
+const pTxt=x=>`${x.v} ${x.vp} ${x.vo} → ${x.n} ${x.np} ${x.no}`;
+let selLen=null;
+function kProj(){
+  const rooms=[...new Set(PROJ.map(x=>x.r))];
+  if(!rooms.includes(S.kRoom)) S.kRoom=rooms[0]||'';
+  $('kRoom').innerHTML=rooms.map(r=>`<option${r===S.kRoom?' selected':''}>${esc(r)}</option>`).join('')+(S.proj?'<option value="__def">↺ projekt DC110</option>':'');
+  const P=PROJ.filter(x=>x.r===S.kRoom), c=S.kab.cur;
+  const lens=[...new Set(P.map(x=>+x.l))].sort((a,b)=>a-b);
+  const L=selLen!=null?selLen:(c.len&&!c.vRack?+c.len:null);
+  const done=P.filter(pDone).length;
+  $('kLens').innerHTML=`<span style="font-size:12px;color:var(--mut);align-self:center">${done}/${P.length} kabli · długość:</span>`+lens.map(l=>{ const all=P.filter(x=>+x.l===l), left=all.filter(x=>!pDone(x)).length;
+    return `<button data-len="${l}" class="${l===L?'on':''} ${left?'':'done'}">${l} m <small>${left}/${all.length}</small></button>`; }).join('');
+  if(L==null){ $('kCand').innerHTML=''; return; }
+  const C=P.filter(x=>+x.l===L).sort((a,b)=>pDone(a)-pDone(b));
+  $('kCand').innerHTML=`<div style="font-size:12px;color:var(--mut);margin:8px 0 2px">Kable ${L} m – dotknij, żeby wpisać trasę:</div>`+
+    C.map((x,i)=>`<div class="cand ${pDone(x)?'done':''}" data-pi="${PROJ.indexOf(x)}"><span>${pDone(x)?'✓':'○'}</span><b>${esc(pTxt(x))}</b><span style="margin-left:auto">${x.t}</span></div>`).join('');
+}
+$('kLens').onclick=e=>{ const b=e.target.closest('button[data-len]'); if(!b) return; const l=+b.dataset.len; selLen=selLen===l?null:l; kProj(); };
+$('kCand').onclick=e=>{ const d=e.target.closest('[data-pi]'); if(!d) return; const x=PROJ[+d.dataset.pi]; const c=S.kab.cur;
+  Object.assign(c,{vRoom:x.r,vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRoom:x.r,nRack:x.n,nPanel:x.np,nPorts:x.no});
+  if(!c.len) c.len=String(x.l); if(!c.type) c.type=x.t==='CU'?'CU RJ45':'LWL';
+  selLen=null; save(); render(); log('Wpisano trasę z projektu: '+pTxt(x)); };
+$('kRoom').onchange=e=>{ if(e.target.value==='__def'){ ask('Wrócić do projektu DC110 (RZ2B, RZ3B, RZ5B) zamiast wczytanej listy?',()=>{ S.proj=null; PROJ=PROJ_DC110; save(); render(); }); kProj(); return; }
+  S.kRoom=e.target.value; selLen=null; save(); kProj(); };
+// po odczycie trasy: długość i typ z projektu, kontrola długości z naklejki
+function pApply(){ const c=S.kab.cur, x=pFind(c); if(!x) return;
+  if(!c.len) c.len=String(x.l); if(!c.type) c.type=x.t==='CU'?'CU RJ45':'LWL'; if(x.r&&S.kRoom!==x.r) S.kRoom=x.r; }
+const _kCheck=kCheck; kCheck=function(c){ const out=_kCheck(c); if(!c.vRack||!c.nRack) return out;
+  const x=pFind(c);
+  if(!x) out.push(['w','Tej trasy nie ma w projekcie – sprawdź oznacznik']);
+  else { out.push(['o',`w projekcie: ${x.l} m ${x.t}`]); if(c.len&&Math.abs(+c.len-+x.l)>0.5) out.push(['w',`Na naklejce ${c.len} m, w projekcie ${x.l} m`]); }
+  return out; };
+const _kRender=kRender; kRender=function(){ _kRender(); kProj(); };
+
+/* ---------- wczytanie listy/projektu z Excela (.xlsx) albo CSV: kolumny von | Panel | Ports | nach | Panel | Ports | Typ | Länge ---------- */
+async function readXlsx(buf){
+  const u=new Uint8Array(buf), dv=new DataView(buf), td=new TextDecoder();
+  let e=u.length-22; while(e>=0&&dv.getUint32(e,true)!==0x06054b50) e--;
+  if(e<0) throw new Error('to nie jest plik .xlsx');
+  const cnt=dv.getUint16(e+10,true); let p=dv.getUint32(e+16,true); const F={};
+  for(let i=0;i<cnt;i++){ const nl=dv.getUint16(p+28,true), xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true);
+    F[td.decode(u.subarray(p+46,p+46+nl))]={m:dv.getUint16(p+10,true),cs:dv.getUint32(p+20,true),off:dv.getUint32(p+42,true)}; p+=46+nl+xl+cl; }
+  const get=async n=>{ const f=F[n]; if(!f) return null; const st=f.off+30+dv.getUint16(f.off+26,true)+dv.getUint16(f.off+28,true), d=u.slice(st,st+f.cs);
+    if(f.m===0) return td.decode(d); return await new Response(new Blob([d]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text(); };
+  const P=new DOMParser(), ss=[], sst=await get('xl/sharedStrings.xml');
+  if(sst) for(const si of P.parseFromString(sst,'application/xml').getElementsByTagName('si')) ss.push([...si.getElementsByTagName('t')].map(t=>t.textContent).join(''));
+  const names=Object.keys(F).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort((x,y)=>parseInt(x.match(/\d+/))-parseInt(y.match(/\d+/)));
+  if(!names.length) throw new Error('brak arkusza');
+  const sheets=[];
+  for(const n of names){ const rows=[];
+    for(const r of P.parseFromString(await get(n),'application/xml').getElementsByTagName('row')){ const row=[];
+      for(const c of r.getElementsByTagName('c')){ const col=c.getAttribute('r').replace(/\d+/g,'').split('').reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1, t=c.getAttribute('t');
+        let v; if(t==='inlineStr') v=[...c.getElementsByTagName('t')].map(x=>x.textContent).join(''); else { const ve=c.getElementsByTagName('v')[0]; v=ve?ve.textContent:''; if(t==='s') v=ss[+v]; }
+        row[col]=v; }
+      rows[(+r.getAttribute('r')||rows.length+1)-1]=row; }
+    sheets.push(rows); }
+  return sheets;
+}
+function rowsToProj(rows){
+  const H=x=>String(x??'').replace(/\s+/g,' ').trim();
+  const hi=rows.findIndex(r=>r&&r.some(x=>/^von$/i.test(H(x)))&&r.some(x=>/^nach$/i.test(H(x))));
+  if(hi<0) return [];
+  const h=[...rows[hi]].map(H), iv=h.findIndex(x=>/^von$/i.test(x)), inn=h.findIndex(x=>/^nach$/i.test(x));
+  const nextPanel=i=>h.findIndex((x,j)=>j>i&&/^panel$/i.test(x));
+  const ivp=nextPanel(iv), inp=nextPanel(inn);
+  const it=h.findIndex(x=>/kabeltyp|trunkart|^typ/i.test(x));
+  let il=h.findIndex(x=>/gesamt/i.test(x)); if(il<0) il=h.findIndex(x=>/l(ä|a)nge|długo/i.test(x));
+  const ir=h.findIndex(x=>/^(raum|sala)$/i.test(x));
+  let room0=''; for(const r of rows){ if(r&&H(r[0])==='Raum:'){ room0=H(r[3]).toUpperCase(); break; } }
+  const one=x=>{ const m=String(x).trim().match(/^(RZ\d[A-Z])?\s*([A-H])\s*0?(\d{1,2})$/); return m?{room:m[1]||'',rack:m[2]+m[3].padStart(2,'0')}:null; };
+  const sp=x=>{ const parts=H(x).toUpperCase().split('/'), a=one(parts.pop()); if(!a) return null; const o=parts.length?one(parts[0]):null; if(o) a.alt=o.rack; return a; };
+  const pp=x=>{ const m=[...String(x||'').matchAll(/P\s*0?(\d{1,2})/gi)].pop(); return m?'P'+m[1].padStart(2,'0'):''; };
+  const pa=x=>{ const m=String(x||'').match(/\(\s*P\s*0?(\d{1,2})\s*\)/i); return m?'P'+m[1].padStart(2,'0'):''; };
+  const out=[];
+  for(const r of rows.slice(hi+1)){ if(!r) continue;
+    const a=sp(r[iv]), b=sp(r[inn]), vp=pp(r[ivp]), np=pp(r[inp]);
+    if(!a||!b||!vp||!np) continue;              // nagłówki grup, „Querverkabelung”, wiersze bez paneli
+    const tt=H(it>=0?r[it]:''), cu=/^cu|rj|copper/i.test(tt), t=cu?'CU':(tt?'LWL':'');
+    const L=il>=0?+String(r[il]??'0').replace(',','.'):0;
+    const room=a.room||(ir>=0?H(r[ir]).toUpperCase():'')||room0||'LISTA';
+    const kv=H(r[ivp+1]), kn=H(r[inp+1]);
+    const vp2=pa(r[ivp])||vp, np2=pa(r[inp])||np;   // „(P02) P05” -> P02 (jak na rysunku szafy)
+    const push=(vo,no)=>out.push({r:room,v:a.rack,va:a.alt||'',vp:vp2,vo,n:b.rack,na:b.alt||'',np:np2,no,t,l:L});
+    if(/^ports$/i.test(h[ivp+1]||'')) { push(kv,kn); continue; }   // nasz format – porty wprost
+    if(cu){
+      if((kv.match(/\+/g)||[]).length===3) for(let k=0;k<4;k++) push(`${6*k+1}-${6*k+6}`,`${6*k+1}-${6*k+6}`);
+      else { const k=parseInt(kv)||1; push(`${6*k-5}-${6*k}`,'1-6'); }
+    } else {
+      const two=x=>/\//.test(x)||(x.match(/\+/g)||[]).length===3;
+      if(two(kv)) { push('1+2','1+2'); push('3+4','3+4'); } else push(kv,kn);
+    }
+  }
+  return out;
+}
+$('kImp').onclick=()=>$('kFile').click();
+$('kFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
+  try{
+    let sheets;
+    if(/\.xlsx$/i.test(f.name)) sheets=await readXlsx(await f.arrayBuffer());
+    else sheets=[(await f.text()).split(/\r?\n/).map(l=>l.split(l.includes('\t')?'\t':';'))];
+    const P=sheets.flatMap(rowsToProj); if(!P.length) throw new Error('brak wierszy z trasami (szukam kolumn „von” i „nach”)'); S.proj=P; PROJ=P; S.kRoom=P[0].r; save(); render(); log(`Wczytano ${P.length} kabli z „${f.name}”`);
+  }catch(err){ warn('Nie udało się wczytać listy: '+(err.message||err)); }
+  e.target.value=''; };
+
+/* ---------- ciągły odczyt napisów (bez klikania) ---------- */
+S.kAuto=S.kAuto!==false;
+let autoT=null, autoFlip=0, kPauseUntil=0, lastSaved=null;
+function autoOcr(){
+  clearTimeout(autoT); autoT=null;
+  if(S.mode!=='kab'||!S.kAuto||!running||!(window.AndroidBridge&&AndroidBridge.recognizeTextR)) return;
+  autoT=setTimeout(()=>{ autoT=null; const c=S.kab.cur;
+    const need=!(c.vRack&&c.nRack&&(c.sn||c.fa));
+    if(need&&!ocrBusy&&Date.now()>kPauseUntil&&$('vList').classList.contains('hide')) grabOcr(autoFlip++%2?'90,270':'0,180',1600,true);
+    else autoOcr(); },650);
+}
+// wycinek obrazu dokładnie pod ramką celownika (wideo jest „cover”, więc część kadru jest poza ekranem)
+function aimCrop(v){ const vw=v.videoWidth, vh=v.videoHeight, el=v.getBoundingClientRect(), a=$('aim').getBoundingClientRect();
+  if(!el.width||!a.width) return [0,0,vw,vh];
+  const sc=Math.max(el.width/vw, el.height/vh), ox=(vw*sc-el.width)/2, oy=(vh*sc-el.height)/2;
+  let sx=(a.left-el.left+ox)/sc, sy=(a.top-el.top+oy)/sc, sw=a.width/sc, sh=a.height/sc;
+  sx=Math.max(0,sx); sy=Math.max(0,sy); sw=Math.min(vw-sx,sw); sh=Math.min(vh-sy,sh); return [sx,sy,sw,sh]; }
+function grabOcr(rots,maxSide,auto){
+  const v=$('vid'); if(!stream||v.readyState<2) return false;
+  const [sx,sy,sw,sh]=aimCrop(v), k=Math.min(1.5,maxSide/Math.max(sw,sh));
+  const cv=document.createElement('canvas'); cv.width=Math.round(sw*k); cv.height=Math.round(sh*k); cv.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,cv.width,cv.height);
+  ocrBusy=true; ocrAuto=auto;
+  if(!auto){ $('kOcr').disabled=true; $('kOcr').textContent='⏳ Czytam…'; flash(); }
+  AndroidBridge.recognizeTextR('k'+Date.now(),cv.toDataURL('image/jpeg',auto?0.85:0.92).split(',')[1],rots);
+  return true;
+}
+let ocrAuto=false;
+$('kOcr').onclick=()=>{
+  if(ocrBusy) return;
+  if(!(window.AndroidBridge&&AndroidBridge.recognizeTextR)){ warn('Odczyt napisów działa tylko w aplikacji na telefonie.'); return; }
+  if(!grabOcr('0,90,180,270',2600,false)) warn('Aparat nie działa – włącz ▶');
+};
+$('kAuto').onclick=()=>{ S.kAuto=!S.kAuto; save(); $('kAuto').textContent=S.kAuto?'Auto ✓':'Auto ✗'; autoOcr(); };
+{ const _n=window.__ocrNative; window.__ocrNative=(id,json)=>{
+    const auto=ocrAuto;
+    if(auto){ // ciągły odczyt: tylko gdy coś nowego, bez komunikatów o porażce
+      ocrBusy=false; let arr; try{ arr=JSON.parse(json); }catch(e){ arr=null; }
+      if(Array.isArray(arr)){ const r=parseOcr(arr);
+        const same=lastSaved&&Date.now()-lastSaved.at<8000&&((r.sn&&r.sn===lastSaved.sn)||(r.vRack&&r.vRack===lastSaved.vRack&&r.vPanel===lastSaved.vPanel&&r.vPorts===lastSaved.vPorts));
+        if(!same&&kMerge(r,false)){ pApply(); const best=arr.reduce((a,b)=>(b.length>a.length?b:a),''); S.kab.cur.ocr=best.trim(); flash(); beep(1500,.08); vib(40); save(); render();
+          const c=S.kab.cur; log(c.vRack&&c.nRack&&(c.sn||c.fa)?'✓ Komplet – zapisz kabel':'✓ Odczytano: '+[c.vRack&&'v./n.',c.sn&&'S/N',c.len&&c.len+' m'].filter(Boolean).join(', ')); }
+      }
+      autoOcr(); return;
+    }
+    _n(id,json); pApply(); save(); render(); autoOcr(); };
+}
+{ const _s=$('kSave').onclick; $('kSave').onclick=()=>{ const c=S.kab.cur; lastSaved={sn:c.sn,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,at:Date.now()}; kPauseUntil=Date.now()+1500; _s(); }; }
+{ const _a=applyMode; applyMode=function(){ _a(); $('aim').classList.toggle('txt',S.mode==='kab'); $('kAuto').textContent=S.kAuto?'Auto ✓':'Auto ✗'; if(S.mode==='kab'&&!autoT&&!ocrBusy) autoOcr(); }; }
+/* ---------- tryb Sprawdzanie: stare oznaczniki i S/N vs projekt, szafa po szafie ---------- */
+S.aCab=S.aCab||''; S.kMode=S.kMode||'audit'; S.audit=S.audit||{}; S.aRack=S.aRack||''; S.aPanel=S.aPanel||''; S.aSide=S.aSide||'back'; S.aSlot=S.aSlot||0;
+const aKey=x=>pRoute(x);
+const isR=(R,x,end)=>end==='v'?(x.v===R||x.va===R):(x.n===R||x.na===R);
+// końce kabli w szafie R: panel, porty tutaj i drugi koniec
+function aEnds(R){ const out=[]; if(!R) return out;
+  for(const x of PROJ){ if(S.kRoom&&x.r!==S.kRoom) continue;
+    if(isR(R,x,'v')) out.push({x,p:x.vp,pa:x.vpa||'',o:x.vo,fr:x.n,fp:x.np,fpa:x.npa||'',fo:x.no});
+    if(isR(R,x,'n')) out.push({x,p:x.np,pa:x.npa||'',o:x.no,fr:x.v,fp:x.vp,fpa:x.vpa||'',fo:x.vo}); }
+  return out; }
+// gniazdo 1–4 w panelu (4 miejsca): CU moduł k = porty 6k-5..6k, LWL 1+2 = 1,2 / 3+4 = 3,4
+function slotsOf(e){ const o=np(e.o); let m=o.match(/^(\d+)-(\d+)$/);
+  if(m){ const a=+m[1], b=+m[2]; if(b-a>=20) return [1,2,3,4]; return [Math.ceil(a/6)]; }
+  m=o.match(/^(\d)\+(\d)$/); if(m) return S.aSide==='front'?[+m[1],+m[2]]:[Math.ceil(+m[2]/2)];   // światłowód: z przodu moduły 1,2,3,4; z tyłu gniazdo 1 = 1+2, gniazdo 2 = 3+4
+  return []; }
+// każdy kabel ma 3 osobne testy: a = koniec „von”, b = koniec „nach”, c = etykieta kabla; zielony dopiero gdy wszystkie 3 są OK
+function aSideIn(x,R){ return (x.v===R||x.va===R)?'a':((x.n===R||x.na===R)?'b':''); }
+function aCalc(e){
+  // koniec w szafie = przód (f: opisówka/moduł) + tył (k: oznacznik/kabel); zielony koniec dopiero gdy oba OK
+  const end=(f,k)=>(f==='bad'||k==='bad')?'bad':((f==='ok'&&k==='ok')?'ok':((f==='ok'||k==='ok')?'part':''));
+  if(e.fa!==undefined||e.ka!==undefined||e.fb!==undefined||e.kb!==undefined){ e.a=end(e.fa,e.ka); e.b=end(e.fb,e.kb); }
+  const v=[e.a,e.b,e.c]; e.st=v.includes('bad')?'bad':(v.every(q=>q==='ok')?'ok':(v.includes('ok')?'part':'')); return e; }
+function aEntry(x){ const e=S.audit[aKey(x)]||{};
+  if(e.a===undefined&&e.b===undefined&&e.c===undefined&&e.st){ const q=e.st==='ok'?'ok':(e.st==='bad'?'bad':''); return Object.assign({},e,{a:q,b:q,c:q,fa:q,ka:q,fb:q,kb:q}); }
+  const o=Object.assign({},e);
+  if(o.fa===undefined&&o.ka===undefined&&o.a) { o.fa=o.a; o.ka=o.a; }
+  if(o.fb===undefined&&o.kb===undefined&&o.b) { o.fb=o.b; o.kb=o.b; }
+  return o; }
+function aStatusOf(x){ return aEntry(x).st||''; }
+const aPart=()=>S.aSide==='front'?'f':'k';
+// widok z bieżącej szafy i bieżącej strony (przód/tył): zielone tylko to, co sprawdzone właśnie tu
+function aLocal(x){ const e=aEntry(x), sd=aSideIn(x,S.aRack); if(e.st==='bad') return 'bad'; const v=sd?e[aPart()+sd]:''; return v==='ok'?'ok':(v==='bad'?'bad':''); }
+function aWait(x){ const e=aEntry(x), sd=aSideIn(x,S.aRack), o=sd==='a'?'b':'a', ov=aPart()==='f'?'k':'f', w=[];
+  if(sd&&e[ov+sd]!=='ok') w.push(ov==='f'?'przód':'tył'); if(e[o]!=='ok') w.push(o==='a'?x.v:x.n); if(e.c!=='ok') w.push('etykieta'); return w; }
+function aMark(x,st,info,sides,part){ sides=sides&&sides.length?sides:['a','b','c'];
+  const e=aEntry(x); const val=st==='clr'?'':st;
+  sides.forEach(k=>{ if(!k) return; if(k==='c') e.c=val; else (part?[part]:['f','k']).forEach(pp=>{ e[pp+k]=val; }); });
+  Object.assign(e,{at:new Date().toISOString()},info||{}); aCalc(e);
+  if(!e.st&&!e.a&&!e.b&&!e.c&&st==='clr') delete S.audit[aKey(x)]; else S.audit[aKey(x)]=e; }
+function aShow(cls,txt){ $('aRes').innerHTML=`<div class="ares ${cls}">${txt}</div>`; }
+const ic=q=>q==='ok'?'✓':(q==='bad'?'✗':'·');
+function aRender(){
+  const audit=S.kMode==='audit';
+  $('aCard').classList.toggle('hide',!audit); $('kForm').classList.toggle('hide',audit); $('kSave').parentElement.classList.toggle('hide',audit);
+  $('kmAssign').classList.toggle('on',!audit); $('kmAudit').classList.toggle('on',audit);
+  $('aFront').classList.toggle('on',S.aSide==='front'); $('aBack').classList.toggle('on',S.aSide==='back');
+  $('aSideA').classList.toggle('on',S.aCab==='A'); $('aSideB').classList.toggle('on',S.aCab==='B'); $('aSideN').classList.toggle('on',!S.aCab);
+  $('kLens').classList.toggle('hide',audit); $('kCand').classList.toggle('hide',audit); $('kAsgCard').classList.toggle('hide',audit);
+  if(!audit) return;
+  if(document.activeElement!==$('aRack')) $('aRack').value=S.aRack;
+  const E=aEnds(S.aRack), panels=[...new Set(E.map(e=>e.p))].sort();
+  $('aPanels').innerHTML=E.length?panels.map(p=>{ const es=E.filter(e=>e.p===p), st=es.map(e=>aLocal(e.x));
+      const cls=st.includes('bad')?'bad':(st.every(v=>v==='ok')?'ok':(st.some(v=>v==='ok'||v==='part')?'part':'')); const pa=(es.find(e=>e.pa)||{}).pa; return `<button data-ap="${p}" class="${cls} ${p===S.aPanel?'on':''}">${p}${pa?` <small>(${pa})</small>`:''} <small>${st.filter(v=>v==='ok').length}/${es.length}</small></button>`; }).join('')
+    :`<span style="font-size:12px;color:var(--mut)">${S.aRack?'Brak szafy '+esc(S.aRack)+' w projekcie '+esc(S.kRoom):'Wpisz szafę, np. D07'}</span>`;
+  // panel z tyłu: od prawej 1, 2, 3, 4 (z przodu odwrotnie)
+  const PE=E.filter(e=>e.p===S.aPanel);
+  if(S.aPanel){ const lwl=PE.length&&PE.every(e=>e.x.t==='LWL'), n=4, seq=[...Array(n)].map((_,i)=>i+1), order=S.aSide==='back'?seq.slice().reverse():seq;
+    $('aSlots').innerHTML=`<div style="font-size:12px;color:var(--mut);margin-top:8px">${S.aPanel} – widok z ${S.aSide==='back'?'tyłu (1 = skrajnie po prawej)':'przodu (1 = skrajnie po lewej)'} · dotknij gniazda, w które wpięty jest skanowany kabel</div><div class="slots">`+
+      order.map(k=>{ const e=PE.find(e=>slotsOf(e).includes(k)); const st=e?aLocal(e.x):''; const wt=(e&&st==='ok'&&aStatusOf(e.x)!=='ok')?aWait(e.x):[];
+        if(lwl&&k>2&&S.aSide==='back') return `<div class="empty"><b>–</b>światłowód<br>tu nie idzie</div>`;   // trunk LWL: oba gniazda po prawej (1 = 1+2, 2 = 3+4)
+        return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${lwl&&S.aSide==='back'?`<small>${k===1?'1+2':'3+4'}</small><br>`:''}${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}${wt.length?`<br><small style="color:#7a4d00">czeka: ${esc(wt.join(', '))}</small>`:''}`:'pusty'}</div>`; }).join('')+'</div>';
+    const se=S.aSlot&&PE.find(e=>slotsOf(e).includes(S.aSlot));
+    if(se) $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Gniazdo ${S.aSlot}: <b>${esc(S.aPanel+' '+se.o)} → ${esc(se.fr+' '+se.fp+' '+se.fo)}</b> · ${se.x.l} m – zeskanuj ${S.aSide==='front'?'opisówkę modułu':'oznacznik kabla'}.<br><small>${S.aSide==='front'?'PRZÓD':'TYŁ'} · ${esc(se.x.v)} ${ic(aEntry(se.x).a)} · ${esc(se.x.n)} ${ic(aEntry(se.x).b)} · etykieta ${ic(aEntry(se.x).c)}${(aEntry(se.x).sn||S.kab.records.some(q=>cRoute(q)===pRoute(se.x)||cRoute(q)===pRoute(se.x,1)))?'':' · <b>brak S/N</b>'}</small></span><button class="b g" data-am="sn">🔢 Numer seryjny</button><button class="b bad" data-am="bad">❌ Niezgodny</button><button class="b g" data-am="clr">↺</button></div>`;
+    $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Cały panel ${esc(S.aPanel)} (${PE.length} kabli):</span><button class="b ok" data-pall="ok">✅ Cały panel zgodny</button><button class="b g" data-pall="clr">↺ Wyczyść panel</button></div>`;
+  } else $('aSlots').innerHTML='';
+  const L=S.aPanel?PE:E;
+  $('aList').innerHTML=L.map(e=>{ const a=aEntry(e.x); return `<div class="arow"><span>${a.st==='ok'?'✅':a.st==='bad'?'❌':aLocal(e.x)==='ok'?'☑️':a.st==='part'?'◐':'○'}</span><b>${esc(e.p)} ${esc(e.o)}</b><span>→ ${esc(e.fr)} ${esc(e.fp)} ${esc(e.fo)}</span><span style="margin-left:auto;font-size:11px">${e.x.l} m ${e.x.t}<br>${esc(e.x.v)}${ic(a.a)} ${esc(e.x.n)}${ic(a.b)} etykieta${ic(a.c)}<br>${(a.sn||S.kab.records.some(q=>cRoute(q)===pRoute(e.x)||cRoute(q)===pRoute(e.x,1)))?esc(a.sn||''):`<button class="b g" data-snadd="${PROJ.indexOf(e.x)}" style="padding:2px 8px;font-size:11px;opacity:.7">S/N +</button>`}</span></div>`; }).join('');
+}
+$('kmAssign').onclick=()=>{ S.kMode='assign'; save(); render(); };
+$('kmAudit').onclick=()=>{ S.kMode='audit'; save(); render(); };
+$('aSideA').onclick=()=>{ S.aCab='A'; save(); aRender(); };
+$('aSideB').onclick=()=>{ S.aCab='B'; save(); aRender(); };
+$('aSideN').onclick=()=>{ S.aCab=''; save(); aRender(); };
+$('aFront').onclick=()=>{ S.aSide='front'; S.aSlot=0; save(); aRender(); };
+$('aBack').onclick=()=>{ S.aSide='back'; S.aSlot=0; save(); aRender(); };
+$('aRack').addEventListener('change',e=>{ const v=e.target.value.toUpperCase().replace(/\s+/g,''); const m=v.match(/^([A-H])0?(\d{1,2})$/); S.aRack=m?m[1]+m[2].padStart(2,'0'):v; S.aPanel=''; S.aSlot=0; $('aRes').innerHTML=''; save(); aRender(); });
+$('aPanels').onclick=e=>{ const b=e.target.closest('[data-ap]'); if(!b) return; S.aPanel=S.aPanel===b.dataset.ap?'':b.dataset.ap; S.aSlot=0; $('aRes').innerHTML=''; save(); aRender(); };
+// następne gniazdo w panelu, które nie jest jeszcze ✅
+function aNextSlot(){ const PE=aEnds(S.aRack).filter(e=>e.p===S.aPanel);
+  const ks=[1,2,3,4].filter(k=>PE.some(e=>slotsOf(e).includes(k)&&aLocal(e.x)!=='ok'));
+  S.aSlot=ks.find(k=>k>S.aSlot)||ks[0]||0; }
+$('aSlots').onclick=e=>{ const pb=e.target.closest('[data-pall]');
+  if(pb){ const L=aEnds(S.aRack).filter(x=>x.p===S.aPanel); if(!L.length) return;
+    if(pb.dataset.pall==='clr'){ L.forEach(x=>{ aMark(x.x,'clr',{},[aSideIn(x.x,S.aRack)],aPart()); }); aShow('w','Wyczyszczono panel '+esc(S.aPanel)); }
+    else { L.forEach(x=>{ if(aStatusOf(x.x)!=='ok') aMark(x.x,'ok',{txt:`${x.p} ${x.o} → ${x.fr} ${x.fp} ${x.fo}`,why:'cały panel zaznaczony ręcznie'},[aSideIn(x.x,S.aRack)],aPart()); });
+      aShow('ok','✅ Panel '+esc(S.aPanel)+' zaznaczony jako zgodny ('+L.length+' kabli)'); beep(1500,.1); vib(60); S.aSlot=0; }
+    save(); aRender(); return; }
+  const b=e.target.closest('[data-am]');
+  if(b){ const se=aEnds(S.aRack).find(e=>e.p===S.aPanel&&slotsOf(e).includes(S.aSlot)); if(!se) return; const lbl=`${se.p} ${se.o} → ${se.fr} ${se.fp} ${se.fo}`;
+    const sd=aSideIn(se.x,S.aRack)||'a';
+    if(b.dataset.am==='clr'){ aMark(se.x,'clr',{},[sd],aPart()); aShow('w','Wyczyszczono ('+(S.aSide==='front'?'przód':'tył')+', '+esc(S.aRack)+'): '+esc(lbl)); }
+    else if(b.dataset.am==='sn'){ aSnForm(se.x); return; }
+    else { aMark(se.x,'bad',{txt:lbl,why:'zaznaczone ręcznie jako niezgodne ('+(S.aSide==='front'?'przód':'tył')+')'},[sd],aPart());
+      aShow('bad','❌ Zaznaczono jako niezgodny: '+esc(lbl)); beep(250,.3); vib([80,60,80]); }
+    save(); aRender(); return; }
+  const d=e.target.closest('[data-slot]'); if(!d) return; S.aSlot=S.aSlot===+d.dataset.slot?0:+d.dataset.slot; save(); aRender(); };
+// opisówka panelu: „zu RZ2B C08 P01 1-24”, „1 - zu RZ2B E07 - P07-1”
+function parsePanelLabels(texts){ const out=[];
+  for(const t of texts) for(const line of String(t).split('\n')){
+    const m=line.match(/zu\s*(R\s*Z\s*[0-9OIlZ]\s*[AB8])?\s*([A-H])\s*([0-9OIl]{1,2})\s*[-–—]?\s*P\s*([0-9OIl]{1,2})/i); if(!m) continue;
+    // „1 - zu RZ3B F08 - P03-3”: moduł tutaj (1) i moduł po drugiej stronie (3)
+    const lm=line.slice(0,m.index).match(/([1-4])\s*[-–—]?\s*$/), fm=line.slice(m.index+m[0].length).match(/^\s*[-–—]\s*([1-4])(?!\d)/);
+    out.push({rack:m[2].toUpperCase()+String(+dig(m[3])).padStart(2,'0'),panel:'P'+String(+dig(m[4])).padStart(2,'0'),mod:lm?+lm[1]:0,fmod:fm?+fm[1]:0,txt:line.trim()}); }
+  return out; }
+let aLastKey='', aLastAt=0, aPend=null, aLastCab=null;
+function auditOcr(arr,auto){
+  const r=parseOcr(arr), PL=parsePanelLabels(arr), E=aEnds(S.aRack);
+  let key='', cls='', msg='';
+  if(r.vRack&&r.nRack){ // oznacznik kabla
+    const c={vRoom:r.vRoom,vRack:r.vRack,vPanel:canonP(S.kRoom,r.vRack,r.vPanel),vPorts:r.vPorts,nRoom:r.nRoom||r.vRoom,nRack:r.nRack,nPanel:canonP(S.kRoom,r.nRack,r.nPanel),nPorts:r.nPorts};
+    const oldNr=[c.vPanel!==r.vPanel&&`${r.vRack} ${r.vPanel} = ${c.vPanel}`,c.nPanel!==r.nPanel&&`${r.nRack} ${r.nPanel} = ${c.nPanel}`].filter(Boolean);
+    const same=(x,R,P,O,R2,P2,O2)=>(x.v===R||x.va===R)&&x.vp===P&&np(x.vo)===np(O)&&(x.n===R2||x.na===R2)&&x.np===P2&&np(x.no)===np(O2);
+    let x=PROJ.find(x=>(!S.kRoom||x.r===S.kRoom)&&(same(x,c.vRack,c.vPanel,c.vPorts,c.nRack,c.nPanel,c.nPorts)||same(x,c.nRack,c.nPanel,c.nPorts,c.vRack,c.vPanel,c.vPorts)));
+    // kabel „do góry nogami”: szafa+panel z obu stron się zgadzają, a moduły są zamienione (np. 1+2 na jednym końcu, 3+4 na drugim) – liczymy jako zgodny
+    let flip='';
+    if(!x){ const rp=(x,R,P,R2,P2)=>(x.v===R||x.va===R)&&x.vp===P&&(x.n===R2||x.na===R2)&&x.np===P2;
+      const C=PROJ.filter(x=>(!S.kRoom||x.r===S.kRoom)&&(rp(x,c.vRack,c.vPanel,c.nRack,c.nPanel)||rp(x,c.nRack,c.nPanel,c.vRack,c.vPanel)));
+      const end=(x,R)=>(x.v===R||x.va===R)?np(x.vo):np(x.no);
+      x=C.find(x=>end(x,c.vRack)===np(c.vPorts))||C.find(x=>end(x,c.nRack)===np(c.nPorts))||null;
+      if(x) flip=`moduły odwrócone: ${c.vRack} ${c.vPorts} ↔ ${c.nRack} ${c.nPorts} (kabel do góry nogami) – szafy i panele zgodne`; }
+    key='K|'+routeTxt(c)+'|'+(r.sn||'');
+    const lbl=`${c.vRack} ${c.vPanel} ${c.vPorts} → ${c.nRack} ${c.nPanel} ${c.nPorts}`;
+    if(!x){ cls='bad'; const here=S.aPanel?E.filter(e=>e.p===S.aPanel&&(!S.aSlot||slotsOf(e).includes(S.aSlot))):[];
+      msg=`❌ Oznacznik „${esc(lbl)}” – takiej trasy nie ma w projekcie`+(here.length?`<br>Wg projektu tu powinno być: ${here.map(e=>esc(`${e.p} ${e.o} → ${e.fr} ${e.fp} ${e.fo}`)).join('; ')}`:'');
+      aPend=null;
+      if(r.sn){ const ex=S.kab.records.find(q=>q.sn===r.sn);
+        aPend={rec:{vRoom:S.kRoom,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,nRoom:S.kRoom,nRack:c.nRack,nPanel:c.nPanel,nPorts:c.nPorts,type:r.tt||'',len:String(r.len||''),side:r.side||S.aCab||'',sn:r.sn,fa:r.fa||''}};
+        msg+=(ex&&cRoute(ex)!==cRoute(aPend.rec)?`<br>⚠ S/N ${esc(r.sn)} jest już przypisany do: ${esc(routeTxt(ex))}`:'')+
+          `<br><button class="b g" data-padd="1" style="margin-top:6px">${ex?'🔁 Nadpisz kabel w liście':'➕ Dodaj kabel do listy'}</button>`; } }
+    else {
+      const loc=E.find(e=>e.x===x), probs=[];
+      if(S.aRack&&!loc) probs.push(`ten kabel wg projektu łączy ${x.v} ${x.vp} – ${x.n} ${x.np}, nie szafę ${S.aRack}`);
+      if(loc&&S.aPanel&&loc.p!==S.aPanel) probs.push(`ten kabel ma być w ${loc.p}, nie w ${S.aPanel}`);
+      if(loc&&S.aPanel===loc.p&&S.aSlot&&!slotsOf(loc).includes(S.aSlot)&&!flip) probs.push(`ten kabel ma być w gnieździe ${slotsOf(loc).join('+')}, a jest w ${S.aSlot}`);
+      const old=S.audit[aKey(x)]||{}; let recSaved=false, movedFrom='';
+      const sdx=(loc&&S.aRack)?aSideIn(x,S.aRack):'', oth=sdx?(aEntry(x)['s'+(sdx==='a'?'b':'a')]||''):'';
+      if(r.sn&&oth&&oth!==r.sn) probs.push(`S/N po drugiej stronie (${sdx==='a'?x.n:x.v}) to ${oth}, tutaj ${r.sn} – to nie ten sam kabel (naklejka na innym kablu?)`);
+      else if(r.sn&&old.sn&&old.sn!==r.sn) probs.push(`inny S/N niż przy poprzednim sprawdzeniu (${old.sn})`);
+      if(r.len&&Math.abs(+r.len-+x.l)>0.5) probs.push(`na naklejce ${r.len} m, w projekcie ${x.l} m`);
+      const projT=x.t==='CU'?'CU RJ45':'LWL';
+      if(r.tt&&r.tt!==projT) probs.push(`na naklejce typ ${r.tt}, w projekcie ${projT}`);
+      const sdr=(loc&&S.aRack)?aSideIn(x,S.aRack):'';
+      if(probs.length){ cls='bad'; const placeBad=probs.some(q=>/ma być w|nie szafę/.test(q)); aMark(x,'bad',{sn:r.sn||old.sn,txt:lbl,why:probs.join('; ')},placeBad&&sdr?[sdr,'c']:['c'],aPart()); msg='❌ '+esc(lbl)+'<br>'+probs.map(esc).join('<br>'); }
+      else { cls='ok'; if(oldNr.length) flip=[flip,'stary numer panelu na naklejce: '+oldNr.join(', ')].filter(Boolean).join('; '); aMark(x,'ok',Object.assign({sn:r.sn||old.sn,txt:lbl,why:flip},(sdr&&r.sn)?{['s'+sdr]:r.sn}:{}),sdr?[sdr,'c']:['c'],aPart());
+        if(r.sn){ const rec={vRoom:x.r,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,nRoom:x.r,nRack:c.nRack,nPanel:c.nPanel,nPorts:c.nPorts,
+            type:r.tt||(x.t==='CU'?'CU RJ45':'LWL'),len:String(r.len||x.l),side:r.side||S.aCab||'',sn:r.sn,fa:r.fa||'',at:new Date().toISOString()};
+          const ri=S.kab.records.findIndex(q=>q.sn===rec.sn);
+          if(ri>=0&&cRoute(S.kab.records[ri])!==cRoute(rec)) movedFrom=routeTxt(S.kab.records[ri]);
+          if(ri>=0) S.kab.records[ri]=Object.assign({},S.kab.records[ri],rec); else S.kab.records.push(rec);
+          recSaved=true; } aLastCab={x,at:Date.now()}; if(loc&&S.aPanel===loc.p&&S.aSlot) aNextSlot(); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}<br><small>${esc(r.tt||projT)} · ${esc(String(r.len||x.l))} m${r.sn?' · S/N '+esc(r.sn):''}${r.side?' · strona '+esc(r.side):''}</small>${recSaved?'<br><small>zapisano w liście S/N ('+S.kab.records.length+')</small>':''}${movedFrom?'<br><small>⚠ ten S/N był przypisany do: '+esc(movedFrom)+' – przeniesiony</small>':''}${r.sn?'':'<br><small>brak S/N – zeskanuj teraz S/N z naklejki kabla, a dopiszę go do tego kabla</small>'}`; }
+    }
+  } else if(PL.length){ // opisówka panelu
+    const lab=PL[0]; key='P|'+lab.txt+'|'+S.aRack+S.aPanel; const labP0=lab.panel; lab.panel=canonP(S.kRoom,lab.rack,lab.panel);
+    if(!S.aPanel){ cls='w'; msg='Opisówka: '+esc(lab.txt)+'<br>Wybierz panel, na którym jest ta opisówka, żeby sprawdzić.'; }
+    else { const exp=E.filter(e=>e.p===S.aPanel);
+      // pary modułów kabla LWL: 1+2 ↔ 3+4 => [[1,3],[2,4]]
+      const mods=e=>{ const a=np(e.o).match(/^(\d)\+(\d)$/), b=np(e.fo).match(/^(\d)\+(\d)$/); return a&&b?[[+a[1],+b[1]],[+a[2],+b[2]]]:null; };
+      const em=lab.mod&&exp.find(e=>(mods(e)||[]).some(q=>q[0]===lab.mod)), fmod=em&&mods(em).find(q=>q[0]===lab.mod)[1];
+      let ok, want;
+      if(em){ ok=em.fr===lab.rack&&em.fp===lab.panel&&(!lab.fmod||lab.fmod===fmod); want=`${lab.mod} - zu ${em.fr} ${em.fp}${em.fpa?' (stary nr '+em.fpa+')':''}-${fmod}`; }
+      else { ok=exp.some(e=>e.fr===lab.rack&&e.fp===lab.panel); want=[...new Set(exp.map(e=>`zu ${e.fr} ${e.fp}`))].join(', ')||'– (panel bez kabli w projekcie)'; }
+      cls=ok?'ok':'bad'; msg=(ok?'✅ Opisówka panelu zgodna: ':'❌ Opisówka panelu NIEZGODNA: ')+esc(lab.txt)+(ok&&labP0!==lab.panel?`<br><small>${esc(lab.rack)} ${labP0} to stary numer = ${lab.panel} w projekcie</small>`:'')+(ok?'':'<br>Wg projektu: '+esc(want));
+      S.audit['PANEL|'+S.kRoom+'|'+S.aRack+'|'+S.aPanel]={st:cls,txt:lab.txt,at:new Date().toISOString()};
+      // zgodna opisówka sama zalicza kable: z numerem modułu – ten jeden kabel, bez numeru – wszystkie kable panelu idące do tej szafy/panelu
+      if(ok){ const hit=em?[em]:exp.filter(e=>e.fr===lab.rack&&e.fp===lab.panel); let n=0;
+        for(const e of hit){ if(aStatusOf(e.x)==='bad') continue; aMark(e.x,'ok',{txt:lab.txt,why:'opisówka panelu zgodna'},[aSideIn(e.x,S.aRack)],aPart()); n++; }
+        if(n){ msg+=`<br><small>zaliczono kable: ${n}</small>`; if(S.aSlot) aNextSlot(); } } }
+  } else if(r.sn){ key='S|'+r.sn; const hit=PROJ.find(x=>(S.audit[aKey(x)]||{}).sn===r.sn);
+    cls='w'; msg='S/N '+esc(r.sn)+(hit?` – sprawdzony wcześniej przy ${esc(pTxt(hit))}`:' – zeskanuj też oznacznik tego kabla');
+    aPend=null;
+    let se=(S.aPanel&&S.aSlot)?E.find(e=>e.p===S.aPanel&&slotsOf(e).includes(S.aSlot)):null, viaLast=false;
+    if(!se&&aLastCab&&Date.now()-aLastCab.at<120000){ const lx=aLastCab.x; se={x:lx,p:lx.vp,o:lx.vo,fr:lx.n,fp:lx.np,fo:lx.no}; viaLast=true; }
+    if(se){ const x=se.x, ex=S.kab.records.find(q=>q.sn===r.sn);
+      aPend={rec:{vRoom:x.r,vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRoom:x.r,nRack:x.n,nPanel:x.np,nPorts:x.no,type:r.tt||(x.t==='CU'?'CU RJ45':'LWL'),len:String(r.len||x.l),side:r.side||S.aCab||'',sn:r.sn,fa:r.fa||''},x,side:aSideIn(x,S.aRack)};
+      msg+=`<br>${viaLast?'Ostatnio sprawdzany kabel':'Wybrane gniazdo'}: ${esc(se.p+' '+se.o)} → ${esc(se.fr+' '+se.fp+' '+se.fo)}`+
+        (ex&&cRoute(ex)!==cRoute(aPend.rec)?`<br>⚠ S/N jest już przypisany do: ${esc(routeTxt(ex))}`:'')+
+        `<br><button class="b g" data-padd="1" style="margin-top:6px">${ex?'🔁 Przenieś S/N do tego kabla':'➕ Przypisz S/N do tego kabla'}</button>`; } }
+  if(!key){ if(!auto){ aShow('w','Nie znalazłem oznacznika ani opisówki – podejdź bliżej i spróbuj jeszcze raz.'); beep(300,.2); } return; }
+  if(auto&&key===aLastKey&&Date.now()-aLastAt<6000) return; aLastKey=key; aLastAt=Date.now();
+  aShow(cls,msg); if(cls==='ok'){ beep(1500,.1); vib(60); } else if(cls==='bad'){ beep(250,.35); vib([80,60,80]); } else beep(900,.08);
+  save(); aRender();
+}
+{ const _n=window.__ocrNative; window.__ocrNative=(id,json)=>{
+    if(!(S.mode==='kab'&&S.kMode==='audit')) return _n(id,json);
+    const auto=ocrAuto; ocrBusy=false; $('kOcr').disabled=false; $('kOcr').textContent='📷 Odczytaj napisy';
+    let arr; try{ arr=JSON.parse(json); }catch(e){ arr=null; }
+    if(Array.isArray(arr)) auditOcr(arr,auto); else if(!auto) warn('Błąd odczytu');
+    autoOcr(); }; }
+// w trybie sprawdzania czytamy cały czas (nie czekamy na „komplet”)
+{ const _a=autoOcr; autoOcr=function(){ if(S.mode==='kab'&&S.kMode==='audit'){ clearTimeout(autoT); autoT=null;
+    if(!S.kAuto||!running||!(window.AndroidBridge&&AndroidBridge.recognizeTextR)) return;
+    autoT=setTimeout(()=>{ autoT=null; if(!ocrBusy&&$('vList').classList.contains('hide')) grabOcr(autoFlip++%2?'90,270':'0,180',1600,true); else autoOcr(); },700); return; }
+  return _a(); }; }
+// kod kreskowy w trybie sprawdzania (np. S/N z naklejki) – jak OCR z samym S/N
+{ const _k=kabScan; kabScan=function(t,f){ if(S.kMode!=='audit') return _k(t,f); const v=String(t).trim(); if(v.length<8||/^https?:/i.test(v)) return; auditOcr(['SN: '+v],true); }; }
+{ const _r=render; render=function(){ _r(); aRender(); }; }
+function aSnForm(x){ aSnX=x; aShow('w',`🔢 S/N dla ${esc(routeTxt({vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRack:x.n,nPanel:x.np,nPorts:x.no}))}<br><small>strona kabla w ${esc(S.aRack||'tej szafie')}: ${S.aCab||'auto (A/B z naklejki)'}</small><div class="row" style="margin-top:6px"><input id="aSnIn" class="big" placeholder="S/N" autocapitalize="characters"><button class="b ok" data-snsave="1">Zapisz</button></div>`); setTimeout(()=>{ const i=$('aSnIn'); if(i) i.focus(); },50); }
+let aSnX=null;
+$('aList').onclick=e=>{ const b=e.target.closest('[data-snadd]'); if(!b) return; const x=PROJ[+b.dataset.snadd]; if(x) aSnForm(x); };
+$('aRes').onclick=e=>{ const sv=e.target.closest('[data-snsave]');
+  if(sv&&aSnX){ const v=String(($('aSnIn')||{}).value||'').toUpperCase().replace(/\s+/g,''); if(v.length<6){ warn('S/N za krótki'); return; }
+    const x=aSnX, ex=S.kab.records.find(q=>q.sn===v);
+    const rec={vRoom:x.r,vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRoom:x.r,nRack:x.n,nPanel:x.np,nPorts:x.no,type:x.t==='CU'?'CU RJ45':'LWL',len:String(x.l),side:S.aCab||'',sn:v,fa:'',at:new Date().toISOString()};
+    const i=S.kab.records.findIndex(q=>cRoute(q)===cRoute(rec)); const sdn=aSideIn(x,S.aRack);
+    const prev=ex&&cRoute(ex)!==cRoute(rec)?routeTxt(ex):'';
+    if(ex) S.kab.records.splice(S.kab.records.indexOf(ex),1);
+    if(i>=0&&S.kab.records[i]) S.kab.records[i]=Object.assign({},S.kab.records[i],rec); else S.kab.records.push(rec);
+    S.audit[aKey(x)]=Object.assign({},aEntry(x),{sn:v},sdn?{['s'+sdn]:v}:{});
+    aShow('ok','🔢 S/N '+esc(v)+' zapisany: '+esc(routeTxt(rec))+(S.aCab?' · strona '+S.aCab:'')+(prev?'<br><small>⚠ był przypisany do: '+esc(prev)+' – przeniesiony</small>':''));
+    aSnX=null; save(); aRender(); return; }
+  const b=e.target.closest('[data-padd]'); if(!b||!aPend) return;
+  const rec=Object.assign({},aPend.rec,{at:new Date().toISOString()});
+  const i=S.kab.records.findIndex(q=>q.sn===rec.sn); const was=i>=0?routeTxt(S.kab.records[i]):'';
+  if(i>=0) S.kab.records[i]=Object.assign({},S.kab.records[i],rec); else S.kab.records.push(rec);
+  if(aPend.x&&aPend.side) aMark(aPend.x,'ok',{sn:rec.sn,['s'+aPend.side]:rec.sn,txt:routeTxt(rec),why:'S/N przypisany przy sprawdzaniu'},[aPend.side],aPart());
+  aShow('ok','➕ Zapisano w liście: '+esc(routeTxt(rec))+' · S/N '+esc(rec.sn)+(rec.len?' · '+esc(rec.len)+' m':'')+(rec.side?' · strona '+esc(rec.side):'')+(was?'<br><small>poprzednio: '+esc(was)+'</small>':''));
+  aPend=null; save(); aRender(); beep(1500,.1); vib(60); };
+$('aReset').onclick=()=>ask('Wyczyścić wyniki sprawdzania (✅/❌)?',()=>{ S.audit={}; save(); $('aRes').innerHTML=''; aRender(); });
+// --- raport sprawdzania do Excela (lista w trybie Sprawdzanie)
+const AHEAD=['Raum','von','Panel','Ports','nach','Panel','Ports','Kabeltyp','Länge [m]','Status','SN (gelesen)','Etikett (gelesen)','Problem','Datum','Ende von','Ende nach','Kabeletikett'];
+function arows(){ const T=q=>q==='ok'?'OK':(q==='bad'?'FEHLER':''); return PROJ.filter(x=>!S.kRoom||x.r===S.kRoom).map(x=>{ const a=aEntry(x);
+  return [x.r,x.va?`${x.v} (${x.va})`:x.v,x.vp,x.vo,x.na?`${x.n} (${x.na})`:x.n,x.np,x.no,x.t,x.l,a.st==='ok'?'OK':a.st==='bad'?'FEHLER':a.st==='part'?'teilweise':'nicht geprüft',a.sn||'',a.txt||'',a.why||'',locTime(a.at),T(a.a),T(a.b),T(a.c)]; }); }
+{ const _sl=showList; showList=function(){ if(!(S.mode==='kab'&&S.kMode==='audit')) return _sl();
+    $('vScan').classList.add('hide'); $('vList').classList.remove('hide'); stopCam(); applyMode(); $('bXlsx').textContent='Zapisz raport sprawdzania (Excel)';
+    const R=arows(), ok=R.filter(r=>r[9]==='OK').length, bad=R.filter(r=>r[9]==='FEHLER').length;
+    $('tbl').innerHTML=`<tr><th colspan="4">${esc(S.kRoom)}: ✅ ${ok} · ❌ ${bad} · ○ ${R.length-ok-bad}</th></tr><tr><th></th><th>v.</th><th>n.</th><th>problem</th></tr>`+
+      R.filter(r=>r[9]!=='nicht geprüft').map(r=>`<tr><td>${r[9]==='OK'?'✅':'❌'}</td><td>${esc(r[1]+' '+r[2]+' '+r[3])}</td><td>${esc(r[4]+' '+r[5]+' '+r[6])}</td><td>${esc(r[12])}</td></tr>`).join(''); };
+  const oX=$('bXlsx').onclick; $('bXlsx').onclick=()=>{ if(!(S.mode==='kab'&&S.kMode==='audit')) return oX();
+    const d=new Date(),p=n=>String(n).padStart(2,'0');
+    saveFile(`Pruefung_Kabel_${S.kRoom||'DC'}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.xlsx`,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xlsx(AHEAD,arows(),[8,12,7,8,12,7,8,9,9,12,22,30,40,17,10,10,12],'Prüfung')); }; }
+
+/* ---------- aparat i dekodowanie ---------- */
+let stream=null, running=false, timer=null, detector=null, zx=null, torchOn=false, wantCam=true;
+const canvas=document.createElement('canvas'), cctx=canvas.getContext('2d',{willReadFrequently:true});
+async function initDecoders(){
+  if('BarcodeDetector' in window){
+    try{ const f=await BarcodeDetector.getSupportedFormats(); if(f.includes('qr_code')) detector=new BarcodeDetector({formats:['qr_code','code_128','code_39','data_matrix'].filter(x=>f.includes(x))}); }catch(e){}
+  }
+  if(window.ZXing){
+    const h=new Map();
+    h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.QR_CODE,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.CODE_39,ZXing.BarcodeFormat.DATA_MATRIX]);
+    h.set(ZXing.DecodeHintType.TRY_HARDER,true);
+    zx=new ZXing.MultiFormatReader(); zx.setHints(h);
+  }
+}
+async function startCam(){
+  wantCam=true; if(running) return;
+  $('camMsg').textContent='Uruchamiam aparat…';
+  try{
+    const res={width:{ideal:1920},height:{ideal:1080}};
+    try{ stream=await navigator.mediaDevices.getUserMedia({audio:false,video:S.camId?Object.assign({deviceId:{exact:S.camId}},res):Object.assign({facingMode:{ideal:'environment'}},res)}); }
+    catch(e){ if(!S.camId) throw e; S.camId=''; save(); stream=await navigator.mediaDevices.getUserMedia({audio:false,video:Object.assign({facingMode:{ideal:'environment'}},res)}); }
+    const v=$('vid'); v.srcObject=stream; await v.play();
+    const tr=stream.getVideoTracks()[0];
+    try{ const cap=tr.getCapabilities?tr.getCapabilities():{}; 
+      if(cap.focusMode&&cap.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});
+      camCap=cap; const fd=cap.focusDistance; $('bFocus').classList.toggle('hide',!(fd&&cap.focusMode&&cap.focusMode.includes('manual')));
+      if(fd){ const r=$('fDist'); r.min=fd.min; r.max=fd.max; r.step=fd.step||((fd.max-fd.min)/100); } }catch(e){}
+    running=true; $('bCam').textContent='⏸'; $('camMsg').textContent='Celuj w ramkę (czytam tylko to, co w niej) · dotknij obraz, żeby ustawić ostrość';
+    loop(); if(typeof autoOcr==='function') autoOcr();
+    if(S.torch) setTimeout(async()=>{ if(await setTorch(true)){ torchOn=true; $('bTorch').style.background='#f9c80e'; $('bTorch').style.color='#000'; } },600);
+  }catch(e){ $('camMsg').textContent='Brak dostępu do aparatu ('+(e.name||e)+'). Zezwól w ustawieniach aplikacji.'; }
+}
+function stopCam(){
+  running=false; clearTimeout(timer);
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  torchOn=false; $('bTorch').style.background=''; $('bTorch').style.color=''; $('bCam').textContent='▶'; $('camMsg').textContent='Aparat wstrzymany – dotknij ▶';
+}
+async function loop(){
+  if(!running) return;
+  const v=$('vid');
+  try{
+    if(v.readyState>=2){
+      let found=[];
+      if(detector){
+        const res=await detector.detect(v);
+        found=res.map(r=>({t:r.rawValue,f:r.format}));
+      }
+      if(!found.length && zx){
+        // wycinek z ramki celownika (środek kadru), zmniejszony do ~1100 px
+        const vw=v.videoWidth, vh=v.videoHeight, el=v.getBoundingClientRect();
+        const sc=Math.max(el.width/vw, el.height/vh), ox=(vw*sc-el.width)/2, oy=(vh*sc-el.height)/2;
+        const a=$('aim').getBoundingClientRect();
+        let sx=(a.left-el.left+ox)/sc, sy=(a.top-el.top+oy)/sc, sw=a.width/sc, sh=a.height/sc;
+        sx=Math.max(0,sx); sy=Math.max(0,sy); sw=Math.min(vw-sx,sw); sh=Math.min(vh-sy,sh);
+        const k=Math.min(1,1100/Math.max(sw,sh));
+        canvas.width=Math.round(sw*k); canvas.height=Math.round(sh*k);
+        cctx.drawImage(v,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+        try{
+          const src=new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+          const r=zx.decodeWithState(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src)));
+          found=[{t:r.getText(),f:ZXing.BarcodeFormat[r.getBarcodeFormat()]}];
+        }catch(e){ /* brak kodu w kadrze */ }
+      }
+      for(const x of found) onScan(x.t,x.f);
+    }
+  }catch(e){}
+  timer=setTimeout(loop,90);
+}
+$('bCam').onclick=()=>{ if(running){ wantCam=false; stopCam(); } else startCam(); };
+// --- ostrość: dotknij obraz = ustaw ostrość w tym punkcie (jak w aparacie); 🎯 = suwak ręcznej ostrości
+let camCap={}, afTimer=null;
+async function focusAt(cx,cy){
+  if(!stream) return; const tr=stream.getVideoTracks()[0]; const v=$('vid'), el=v.getBoundingClientRect();
+  const ring=$('focusRing'); ring.style.left=(cx-el.left)+'px'; ring.style.top=(cy-el.top)+'px'; ring.classList.add('on'); setTimeout(()=>ring.classList.remove('on'),900);
+  // punkt w układzie klatki (obraz przycięty object-fit:cover)
+  const vw=v.videoWidth||1, vh=v.videoHeight||1, sc=Math.max(el.width/vw, el.height/vh), ox=(vw*sc-el.width)/2, oy=(vh*sc-el.height)/2;
+  const x=Math.min(1,Math.max(0,((cx-el.left)+ox)/sc/vw)), y=Math.min(1,Math.max(0,((cy-el.top)+oy)/sc/vh));
+  const modes=camCap.focusMode||[]; const c={};
+  c.pointsOfInterest=[{x,y}]; // Chrome/WebView na Androidzie: punkt ostrości i pomiaru
+  c.focusMode = modes.includes('single-shot') ? 'single-shot' : (modes.includes('continuous') ? 'continuous' : undefined);
+  if(!c.focusMode) delete c.focusMode;
+  try{ await tr.applyConstraints({advanced:[c]}); }catch(e){ try{ await tr.applyConstraints({advanced:[{pointsOfInterest:[{x,y}]}]}); }catch(e2){} }
+  $('focusBar').classList.add('hide');
+  clearTimeout(afTimer); afTimer=setTimeout(()=>{ if(stream&&modes.includes('continuous')) stream.getVideoTracks()[0].applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{}); },4000);
+}
+$('cam').addEventListener('click',e=>{ if(e.target.closest('#camBtns')||e.target.closest('#focusBar')) return; focusAt(e.clientX,e.clientY); });
+$('bFocus').onclick=()=>{ const b=$('focusBar'); b.classList.toggle('hide'); if(!b.classList.contains('hide')&&stream){ const st=stream.getVideoTracks()[0].getSettings(); if(st.focusDistance!=null) $('fDist').value=st.focusDistance; clearTimeout(afTimer); } };
+$('fDist').oninput=e=>{ if(!stream) return; stream.getVideoTracks()[0].applyConstraints({advanced:[{focusMode:'manual',focusDistance:+e.target.value}]}).catch(()=>{}); };
+$('bAF').onclick=()=>{ $('focusBar').classList.add('hide'); if(stream) stream.getVideoTracks()[0].applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{}); };
+// latarka: przycisk zawsze widoczny (część telefonów nie zgłasza „torch” w możliwościach, a i tak działa)
+async function setTorch(on){ if(!stream) return false; const tr=stream.getVideoTracks()[0];
+  try{ await tr.applyConstraints({advanced:[{torch:on}]}); }catch(e){ try{ await tr.applyConstraints({torch:on}); }catch(e2){ return false; } }
+  const st=tr.getSettings?tr.getSettings():{}; return st.torch===undefined?true:st.torch===on; }
+// tylne aparaty (obiektywy) – do szukania tego z lampą i do ręcznego przełączania
+async function backCams(){ try{ return (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'&&!/front|user|przed/i.test(d.label)); }catch(e){ return []; } }
+async function findTorchCam(){
+  const cur=stream&&stream.getVideoTracks()[0].getSettings().deviceId; stopCam(); wantCam=true;
+  for(const d of await backCams()){ if(d.deviceId===cur) continue; let s;
+    try{ s=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:d.deviceId}}}); }catch(e){ continue; }
+    const c=s.getVideoTracks()[0].getCapabilities?s.getVideoTracks()[0].getCapabilities():{}; s.getTracks().forEach(t=>t.stop());
+    if(c.torch) return d.deviceId; }
+  return null; }
+function torchUi(on){ $('bTorch').style.background=on?'#f9c80e':''; $('bTorch').style.color=on?'#000':''; }
+let nativeTorch=false;
+$('bSwap').onclick=async e=>{ e.stopPropagation(); const cams=await backCams(); if(cams.length<2){ log('Jeden tylny obiektyw – nie ma na co przełączyć'); return; }
+  const cur=stream&&stream.getVideoTracks()[0].getSettings().deviceId, i=cams.findIndex(d=>d.deviceId===cur), nx=cams[(i+1)%cams.length];
+  S.camId=nx.deviceId; save(); stopCam(); await startCam(); log('Obiektyw '+((i+1)%cams.length+1)+'/'+cams.length+(nx.label?' · '+nx.label:'')); };
+$('bTorch').onclick=async e=>{ e.stopPropagation(); if(!stream){ log('Najpierw włącz aparat ▶'); return; }
+  const want=!(torchOn||nativeTorch);
+  if(!want&&nativeTorch&&window.AndroidBridge&&AndroidBridge.torch){ AndroidBridge.torch(false); nativeTorch=false; S.torch=false; save(); torchUi(false); log('Latarka wyłączona'); return; }
+  let ok=await setTorch(want);
+  if(!ok&&want){ log('Szukam obiektywu z lampą…'); const id=await findTorchCam();
+    if(id){ S.camId=id; save(); await startCam(); ok=await setTorch(true); }
+    else await startCam(); }
+  if(!ok&&want&&window.AndroidBridge&&AndroidBridge.torch){ const r=AndroidBridge.torch(true); if(r==='ok'){ nativeTorch=true; S.torch=true; save(); torchUi(true); log('🔦 Latarka włączona (Android)'); return; } log('Latarka: '+r); }
+  if(ok){ torchOn=want; S.torch=want; save(); torchUi(want); log(want?'🔦 Latarka włączona':'Latarka wyłączona'); }
+  else if(want) log('Nie udało się włączyć latarki na tym telefonie – napisz model, poszukam innej drogi'); };
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ const w=wantCam; stopCam(); wantCam=w; } else if(wantCam && $('vList').classList.contains('hide')) startCam(); });
+
+render();
+initDecoders().then(startCam);
+// do testów: window.__scan('tekst','QR_CODE')
+window.__scan=onScan;
+</script>
+</body>
+</html>

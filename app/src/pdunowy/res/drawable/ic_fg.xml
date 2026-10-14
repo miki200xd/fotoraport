@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ikona „data center”: szafa rack z serwerami i listwą PDU (aplikacja dla DC Schwarz Digits) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- obudowa szafy -->
+    <path android:fillColor="#FFFFFF" android:pathData="M35,24 h38 q3,0 3,3 v54 q0,3 -3,3 h-38 q-3,0 -3,-3 v-54 q0,-3 3,-3 Z" />
+    <path android:fillColor="#0B1F3A" android:pathData="M36,28 h36 v52 h-36 Z" />
+    <!-- serwery (jednostki U) -->
+    <path android:fillColor="#E8EEF6" android:pathData="M39,31 h26 v7 h-26 Z M39,41 h26 v7 h-26 Z M39,51 h26 v7 h-26 Z M39,61 h26 v7 h-26 Z M39,71 h26 v6 h-26 Z" />
+    <path android:fillColor="#9FB3CC" android:pathData="M42,33.5 h12 v2 h-12 Z M42,43.5 h12 v2 h-12 Z M42,53.5 h12 v2 h-12 Z M42,63.5 h12 v2 h-12 Z M42,73 h12 v2 h-12 Z" />
+    <!-- diody -->
+    <path android:fillColor="#3DDC84" android:pathData="M60,33.5 a1.5,1.5 0 1,0 0.01,0 Z M60,43.5 a1.5,1.5 0 1,0 0.01,0 Z M60,63.5 a1.5,1.5 0 1,0 0.01,0 Z M60,73 a1.5,1.5 0 1,0 0.01,0 Z" />
+    <path android:fillColor="#E30613" android:pathData="M60,53.5 a1.5,1.5 0 1,0 0.01,0 Z" />
+    <!-- listwa PDU z boku -->
+    <path android:fillColor="#F9C80E" android:pathData="M67,31 h3 v46 h-3 Z" />
+    <path android:fillColor="#0B1F3A" android:pathData="M67.8,35 h1.4 v3 h-1.4 Z M67.8,45 h1.4 v3 h-1.4 Z M67.8,55 h1.4 v3 h-1.4 Z M67.8,65 h1.4 v3 h-1.4 Z" />
+</vector>
