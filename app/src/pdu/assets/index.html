@@ -969,12 +969,16 @@ function auditOcr(arr,auto){
       if(S.aRack&&!loc) probs.push(`ten kabel wg projektu łączy ${x.v} ${x.vp} – ${x.n} ${x.np}, nie szafę ${S.aRack}`);
       if(loc&&S.aPanel&&loc.p!==S.aPanel) probs.push(`ten kabel ma być w ${loc.p}, nie w ${S.aPanel}`);
       if(loc&&S.aPanel===loc.p&&S.aSlot&&!slotsOf(loc).includes(S.aSlot)&&!flip) probs.push(`ten kabel ma być w gnieździe ${slotsOf(loc).join('+')}, a jest w ${S.aSlot}`);
-      const old=S.audit[aKey(x)]||{};
+      const old=S.audit[aKey(x)]||{}; let recSaved=false;
       if(r.sn&&old.sn&&old.sn!==r.sn) probs.push(`inny S/N niż przy poprzednim sprawdzeniu (${old.sn})`);
       if(r.len&&Math.abs(+r.len-+x.l)>0.5) probs.push(`na naklejce ${r.len} m, w projekcie ${x.l} m`);
       const sdr=(loc&&S.aRack)?aSideIn(x,S.aRack):'';
       if(probs.length){ cls='bad'; const placeBad=probs.some(q=>/ma być w|nie szafę/.test(q)); aMark(x,'bad',{sn:r.sn||old.sn,txt:lbl,why:probs.join('; ')},placeBad&&sdr?[sdr,'c']:['c']); msg='❌ '+esc(lbl)+'<br>'+probs.map(esc).join('<br>'); }
-      else { cls='ok'; if(oldNr.length) flip=[flip,'stary numer panelu na naklejce: '+oldNr.join(', ')].filter(Boolean).join('; '); aMark(x,'ok',{sn:r.sn||old.sn,txt:lbl,why:flip},sdr?[sdr,'c']:['c']); if(loc&&S.aPanel===loc.p&&S.aSlot) aNextSlot(); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}${r.sn?'<br>S/N '+esc(r.sn):''}`; }
+      else { cls='ok'; if(oldNr.length) flip=[flip,'stary numer panelu na naklejce: '+oldNr.join(', ')].filter(Boolean).join('; '); aMark(x,'ok',{sn:r.sn||old.sn,txt:lbl,why:flip},sdr?[sdr,'c']:['c']);
+        if(r.sn){ const rec={vRoom:x.r,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,nRoom:x.r,nRack:c.nRack,nPanel:c.nPanel,nPorts:c.nPorts,
+            type:x.t==='CU'?'CU RJ45':'LWL',len:String(r.len||x.l),side:r.side||'',sn:r.sn,fa:r.fa||'',at:new Date().toISOString()};
+          const ri=S.kab.records.findIndex(q=>q.sn===rec.sn); if(ri>=0) S.kab.records[ri]=Object.assign({},S.kab.records[ri],rec); else S.kab.records.push(rec);
+          recSaved=true; } if(loc&&S.aPanel===loc.p&&S.aSlot) aNextSlot(); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}${r.sn?'<br>S/N '+esc(r.sn)+(r.side?' · strona '+esc(r.side):''):''}${recSaved?'<br><small>zapisano w liście S/N ('+S.kab.records.length+')</small>':''}`; }
     }
   } else if(PL.length){ // opisówka panelu
     const lab=PL[0]; key='P|'+lab.txt+'|'+S.aRack+S.aPanel; const labP0=lab.panel; lab.panel=canonP(S.kRoom,lab.rack,lab.panel);
