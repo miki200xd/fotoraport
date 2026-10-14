@@ -153,6 +153,7 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
     <div id="aCard" class="card hide" style="margin-top:8px">
       <div class="row"><div style="flex:1"><label class="f">Szafa</label><input id="aRack" class="big" placeholder="D07" autocapitalize="characters"></div>
         <div style="flex:1"><label class="f">Strona</label><div class="row seg"><button id="aFront">Przód</button><button id="aBack">Tył</button></div></div></div>
+      <div class="row" style="margin-top:6px;align-items:center"><span style="font-size:12px;color:var(--mut);flex:1">Strona kabla w tej szafie (do zapisu S/N):</span><div class="row seg" style="flex:1"><button id="aSideA">A</button><button id="aSideB">B</button><button id="aSideN">auto</button></div></div>
       <div id="aPanels" class="chips"></div>
       <div id="aSlots"></div>
       <div id="aRes"></div>
@@ -855,7 +856,7 @@ $('kAuto').onclick=()=>{ S.kAuto=!S.kAuto; save(); $('kAuto').textContent=S.kAut
 { const _s=$('kSave').onclick; $('kSave').onclick=()=>{ const c=S.kab.cur; lastSaved={sn:c.sn,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,at:Date.now()}; kPauseUntil=Date.now()+1500; _s(); }; }
 { const _a=applyMode; applyMode=function(){ _a(); $('aim').classList.toggle('txt',S.mode==='kab'); $('kAuto').textContent=S.kAuto?'Auto ✓':'Auto ✗'; if(S.mode==='kab'&&!autoT&&!ocrBusy) autoOcr(); }; }
 /* ---------- tryb Sprawdzanie: stare oznaczniki i S/N vs projekt, szafa po szafie ---------- */
-S.kMode=S.kMode||'assign'; S.audit=S.audit||{}; S.aRack=S.aRack||''; S.aPanel=S.aPanel||''; S.aSide=S.aSide||'back'; S.aSlot=S.aSlot||0;
+S.aCab=S.aCab||''; S.kMode=S.kMode||'assign'; S.audit=S.audit||{}; S.aRack=S.aRack||''; S.aPanel=S.aPanel||''; S.aSide=S.aSide||'back'; S.aSlot=S.aSlot||0;
 const aKey=x=>pRoute(x);
 const isR=(R,x,end)=>end==='v'?(x.v===R||x.va===R):(x.n===R||x.na===R);
 // końce kabli w szafie R: panel, porty tutaj i drugi koniec
@@ -897,6 +898,7 @@ function aRender(){
   $('aCard').classList.toggle('hide',!audit); $('kForm').classList.toggle('hide',audit); $('kSave').parentElement.classList.toggle('hide',audit);
   $('kmAssign').classList.toggle('on',!audit); $('kmAudit').classList.toggle('on',audit);
   $('aFront').classList.toggle('on',S.aSide==='front'); $('aBack').classList.toggle('on',S.aSide==='back');
+  $('aSideA').classList.toggle('on',S.aCab==='A'); $('aSideB').classList.toggle('on',S.aCab==='B'); $('aSideN').classList.toggle('on',!S.aCab);
   $('kLens').classList.toggle('hide',audit); $('kCand').classList.toggle('hide',audit);
   if(!audit) return;
   if(document.activeElement!==$('aRack')) $('aRack').value=S.aRack;
@@ -920,6 +922,9 @@ function aRender(){
 }
 $('kmAssign').onclick=()=>{ S.kMode='assign'; save(); render(); };
 $('kmAudit').onclick=()=>{ S.kMode='audit'; save(); render(); };
+$('aSideA').onclick=()=>{ S.aCab='A'; save(); aRender(); };
+$('aSideB').onclick=()=>{ S.aCab='B'; save(); aRender(); };
+$('aSideN').onclick=()=>{ S.aCab=''; save(); aRender(); };
 $('aFront').onclick=()=>{ S.aSide='front'; S.aSlot=0; save(); aRender(); };
 $('aBack').onclick=()=>{ S.aSide='back'; S.aSlot=0; save(); aRender(); };
 $('aRack').addEventListener('change',e=>{ const v=e.target.value.toUpperCase().replace(/\s+/g,''); const m=v.match(/^([A-H])0?(\d{1,2})$/); S.aRack=m?m[1]+m[2].padStart(2,'0'):v; S.aPanel=''; S.aSlot=0; $('aRes').innerHTML=''; save(); aRender(); });
@@ -951,7 +956,7 @@ function parsePanelLabels(texts){ const out=[];
     const lm=line.slice(0,m.index).match(/([1-4])\s*[-–—]?\s*$/), fm=line.slice(m.index+m[0].length).match(/^\s*[-–—]\s*([1-4])(?!\d)/);
     out.push({rack:m[2].toUpperCase()+String(+dig(m[3])).padStart(2,'0'),panel:'P'+String(+dig(m[4])).padStart(2,'0'),mod:lm?+lm[1]:0,fmod:fm?+fm[1]:0,txt:line.trim()}); }
   return out; }
-let aLastKey='', aLastAt=0, aPend=null;
+let aLastKey='', aLastAt=0, aPend=null, aLastCab=null;
 function auditOcr(arr,auto){
   const r=parseOcr(arr), PL=parsePanelLabels(arr), E=aEnds(S.aRack);
   let key='', cls='', msg='';
@@ -973,7 +978,7 @@ function auditOcr(arr,auto){
       msg=`❌ Oznacznik „${esc(lbl)}” – takiej trasy nie ma w projekcie`+(here.length?`<br>Wg projektu tu powinno być: ${here.map(e=>esc(`${e.p} ${e.o} → ${e.fr} ${e.fp} ${e.fo}`)).join('; ')}`:'');
       aPend=null;
       if(r.sn){ const ex=S.kab.records.find(q=>q.sn===r.sn);
-        aPend={rec:{vRoom:S.kRoom,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,nRoom:S.kRoom,nRack:c.nRack,nPanel:c.nPanel,nPorts:c.nPorts,type:r.tt||'',len:String(r.len||''),side:r.side||'',sn:r.sn,fa:r.fa||''}};
+        aPend={rec:{vRoom:S.kRoom,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,nRoom:S.kRoom,nRack:c.nRack,nPanel:c.nPanel,nPorts:c.nPorts,type:r.tt||'',len:String(r.len||''),side:r.side||S.aCab||'',sn:r.sn,fa:r.fa||''}};
         msg+=(ex&&cRoute(ex)!==cRoute(aPend.rec)?`<br>⚠ S/N ${esc(r.sn)} jest już przypisany do: ${esc(routeTxt(ex))}`:'')+
           `<br><button class="b g" data-padd="1" style="margin-top:6px">${ex?'🔁 Nadpisz kabel w liście':'➕ Dodaj kabel do listy'}</button>`; } }
     else {
@@ -982,19 +987,21 @@ function auditOcr(arr,auto){
       if(loc&&S.aPanel&&loc.p!==S.aPanel) probs.push(`ten kabel ma być w ${loc.p}, nie w ${S.aPanel}`);
       if(loc&&S.aPanel===loc.p&&S.aSlot&&!slotsOf(loc).includes(S.aSlot)&&!flip) probs.push(`ten kabel ma być w gnieździe ${slotsOf(loc).join('+')}, a jest w ${S.aSlot}`);
       const old=S.audit[aKey(x)]||{}; let recSaved=false, movedFrom='';
-      if(r.sn&&old.sn&&old.sn!==r.sn) probs.push(`inny S/N niż przy poprzednim sprawdzeniu (${old.sn})`);
+      const sdx=(loc&&S.aRack)?aSideIn(x,S.aRack):'', oth=sdx?(aEntry(x)['s'+(sdx==='a'?'b':'a')]||''):'';
+      if(r.sn&&oth&&oth!==r.sn) probs.push(`S/N po drugiej stronie (${sdx==='a'?x.n:x.v}) to ${oth}, tutaj ${r.sn} – to nie ten sam kabel (naklejka na innym kablu?)`);
+      else if(r.sn&&old.sn&&old.sn!==r.sn) probs.push(`inny S/N niż przy poprzednim sprawdzeniu (${old.sn})`);
       if(r.len&&Math.abs(+r.len-+x.l)>0.5) probs.push(`na naklejce ${r.len} m, w projekcie ${x.l} m`);
       const projT=x.t==='CU'?'CU RJ45':'LWL';
       if(r.tt&&r.tt!==projT) probs.push(`na naklejce typ ${r.tt}, w projekcie ${projT}`);
       const sdr=(loc&&S.aRack)?aSideIn(x,S.aRack):'';
       if(probs.length){ cls='bad'; const placeBad=probs.some(q=>/ma być w|nie szafę/.test(q)); aMark(x,'bad',{sn:r.sn||old.sn,txt:lbl,why:probs.join('; ')},placeBad&&sdr?[sdr,'c']:['c']); msg='❌ '+esc(lbl)+'<br>'+probs.map(esc).join('<br>'); }
-      else { cls='ok'; if(oldNr.length) flip=[flip,'stary numer panelu na naklejce: '+oldNr.join(', ')].filter(Boolean).join('; '); aMark(x,'ok',{sn:r.sn||old.sn,txt:lbl,why:flip},sdr?[sdr,'c']:['c']);
+      else { cls='ok'; if(oldNr.length) flip=[flip,'stary numer panelu na naklejce: '+oldNr.join(', ')].filter(Boolean).join('; '); aMark(x,'ok',Object.assign({sn:r.sn||old.sn,txt:lbl,why:flip},(sdr&&r.sn)?{['s'+sdr]:r.sn}:{}),sdr?[sdr,'c']:['c']);
         if(r.sn){ const rec={vRoom:x.r,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,nRoom:x.r,nRack:c.nRack,nPanel:c.nPanel,nPorts:c.nPorts,
-            type:r.tt||(x.t==='CU'?'CU RJ45':'LWL'),len:String(r.len||x.l),side:r.side||'',sn:r.sn,fa:r.fa||'',at:new Date().toISOString()};
+            type:r.tt||(x.t==='CU'?'CU RJ45':'LWL'),len:String(r.len||x.l),side:r.side||S.aCab||'',sn:r.sn,fa:r.fa||'',at:new Date().toISOString()};
           const ri=S.kab.records.findIndex(q=>q.sn===rec.sn);
           if(ri>=0&&cRoute(S.kab.records[ri])!==cRoute(rec)) movedFrom=routeTxt(S.kab.records[ri]);
           if(ri>=0) S.kab.records[ri]=Object.assign({},S.kab.records[ri],rec); else S.kab.records.push(rec);
-          recSaved=true; } if(loc&&S.aPanel===loc.p&&S.aSlot) aNextSlot(); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}<br><small>${esc(r.tt||projT)} · ${esc(String(r.len||x.l))} m${r.sn?' · S/N '+esc(r.sn):''}${r.side?' · strona '+esc(r.side):''}</small>${recSaved?'<br><small>zapisano w liście S/N ('+S.kab.records.length+')</small>':''}${movedFrom?'<br><small>⚠ ten S/N był przypisany do: '+esc(movedFrom)+' – przeniesiony</small>':''}`; }
+          recSaved=true; } aLastCab={x,at:Date.now()}; if(loc&&S.aPanel===loc.p&&S.aSlot) aNextSlot(); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}<br><small>${esc(r.tt||projT)} · ${esc(String(r.len||x.l))} m${r.sn?' · S/N '+esc(r.sn):''}${r.side?' · strona '+esc(r.side):''}</small>${recSaved?'<br><small>zapisano w liście S/N ('+S.kab.records.length+')</small>':''}${movedFrom?'<br><small>⚠ ten S/N był przypisany do: '+esc(movedFrom)+' – przeniesiony</small>':''}${r.sn?'':'<br><small>brak S/N – zeskanuj teraz S/N z naklejki kabla, a dopiszę go do tego kabla</small>'}`; }
     }
   } else if(PL.length){ // opisówka panelu
     const lab=PL[0]; key='P|'+lab.txt+'|'+S.aRack+S.aPanel; const labP0=lab.panel; lab.panel=canonP(S.kRoom,lab.rack,lab.panel);
@@ -1015,10 +1022,11 @@ function auditOcr(arr,auto){
   } else if(r.sn){ key='S|'+r.sn; const hit=PROJ.find(x=>(S.audit[aKey(x)]||{}).sn===r.sn);
     cls='w'; msg='S/N '+esc(r.sn)+(hit?` – sprawdzony wcześniej przy ${esc(pTxt(hit))}`:' – zeskanuj też oznacznik tego kabla');
     aPend=null;
-    const se=(S.aPanel&&S.aSlot)?E.find(e=>e.p===S.aPanel&&slotsOf(e).includes(S.aSlot)):null;
+    let se=(S.aPanel&&S.aSlot)?E.find(e=>e.p===S.aPanel&&slotsOf(e).includes(S.aSlot)):null, viaLast=false;
+    if(!se&&aLastCab&&Date.now()-aLastCab.at<120000){ const lx=aLastCab.x; se={x:lx,p:lx.vp,o:lx.vo,fr:lx.n,fp:lx.np,fo:lx.no}; viaLast=true; }
     if(se){ const x=se.x, ex=S.kab.records.find(q=>q.sn===r.sn);
-      aPend={rec:{vRoom:x.r,vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRoom:x.r,nRack:x.n,nPanel:x.np,nPorts:x.no,type:r.tt||(x.t==='CU'?'CU RJ45':'LWL'),len:String(r.len||x.l),side:r.side||'',sn:r.sn,fa:r.fa||''},x,side:aSideIn(x,S.aRack)};
-      msg+=`<br>Wybrane gniazdo: ${esc(se.p+' '+se.o)} → ${esc(se.fr+' '+se.fp+' '+se.fo)}`+
+      aPend={rec:{vRoom:x.r,vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRoom:x.r,nRack:x.n,nPanel:x.np,nPorts:x.no,type:r.tt||(x.t==='CU'?'CU RJ45':'LWL'),len:String(r.len||x.l),side:r.side||S.aCab||'',sn:r.sn,fa:r.fa||''},x,side:aSideIn(x,S.aRack)};
+      msg+=`<br>${viaLast?'Ostatnio sprawdzany kabel':'Wybrane gniazdo'}: ${esc(se.p+' '+se.o)} → ${esc(se.fr+' '+se.fp+' '+se.fo)}`+
         (ex&&cRoute(ex)!==cRoute(aPend.rec)?`<br>⚠ S/N jest już przypisany do: ${esc(routeTxt(ex))}`:'')+
         `<br><button class="b g" data-padd="1" style="margin-top:6px">${ex?'🔁 Przenieś S/N do tego kabla':'➕ Przypisz S/N do tego kabla'}</button>`; } }
   if(!key){ if(!auto){ aShow('w','Nie znalazłem oznacznika ani opisówki – podejdź bliżej i spróbuj jeszcze raz.'); beep(300,.2); } return; }
@@ -1044,7 +1052,7 @@ $('aRes').onclick=e=>{ const b=e.target.closest('[data-padd]'); if(!b||!aPend) r
   const rec=Object.assign({},aPend.rec,{at:new Date().toISOString()});
   const i=S.kab.records.findIndex(q=>q.sn===rec.sn); const was=i>=0?routeTxt(S.kab.records[i]):'';
   if(i>=0) S.kab.records[i]=Object.assign({},S.kab.records[i],rec); else S.kab.records.push(rec);
-  if(aPend.x&&aPend.side) aMark(aPend.x,'ok',{sn:rec.sn,txt:routeTxt(rec),why:'S/N przypisany przy sprawdzaniu'},[aPend.side]);
+  if(aPend.x&&aPend.side) aMark(aPend.x,'ok',{sn:rec.sn,['s'+aPend.side]:rec.sn,txt:routeTxt(rec),why:'S/N przypisany przy sprawdzaniu'},[aPend.side]);
   aShow('ok','➕ Zapisano w liście: '+esc(routeTxt(rec))+' · S/N '+esc(rec.sn)+(rec.len?' · '+esc(rec.len)+' m':'')+(rec.side?' · strona '+esc(rec.side):'')+(was?'<br><small>poprzednio: '+esc(was)+'</small>':''));
   aPend=null; save(); aRender(); beep(1500,.1); vib(60); };
 $('aReset').onclick=()=>ask('Wyczyścić wyniki sprawdzania (✅/❌)?',()=>{ S.audit={}; save(); $('aRes').innerHTML=''; aRender(); });
