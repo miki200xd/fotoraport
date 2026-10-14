@@ -868,9 +868,10 @@ function aRender(){
     :`<span style="font-size:12px;color:var(--mut)">${S.aRack?'Brak szafy '+esc(S.aRack)+' w projekcie '+esc(S.kRoom):'Wpisz szafę, np. D07'}</span>`;
   // panel z tyłu: od prawej 1, 2, 3, 4 (z przodu odwrotnie)
   const PE=E.filter(e=>e.p===S.aPanel);
-  if(S.aPanel){ const lwl=PE.length&&PE.every(e=>e.x.t==='LWL'), n=lwl?2:4, seq=[...Array(n)].map((_,i)=>i+1), order=S.aSide==='back'?seq.slice().reverse():seq;
-    $('aSlots').innerHTML=`<div style="font-size:12px;color:var(--mut);margin-top:8px">${S.aPanel} – widok z ${S.aSide==='back'?'tyłu (1 = skrajnie po prawej)':'przodu (1 = skrajnie po lewej)'} · dotknij gniazda, w które wpięty jest skanowany kabel</div><div class="slots" style="grid-template-columns:repeat(${n},1fr)">`+
+  if(S.aPanel){ const lwl=PE.length&&PE.every(e=>e.x.t==='LWL'), n=4, seq=[...Array(n)].map((_,i)=>i+1), order=S.aSide==='back'?seq.slice().reverse():seq;
+    $('aSlots').innerHTML=`<div style="font-size:12px;color:var(--mut);margin-top:8px">${S.aPanel} – widok z ${S.aSide==='back'?'tyłu (1 = skrajnie po prawej)':'przodu (1 = skrajnie po lewej)'} · dotknij gniazda, w które wpięty jest skanowany kabel</div><div class="slots">`+
       order.map(k=>{ const e=PE.find(e=>slotsOf(e).includes(k)); const st=e?aStatusOf(e.x):'';
+        if(lwl&&k>2) return `<div class="empty"><b>–</b>światłowód<br>tu nie idzie</div>`;   // trunk LWL: oba gniazda po prawej (1 = 1+2, 2 = 3+4)
         return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${lwl?`<small>${k===1?'1+2':'3+4'}</small><br>`:''}${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}`:'pusty'}</div>`; }).join('')+'</div>';
   } else $('aSlots').innerHTML='';
   const L=S.aPanel?PE:E;
