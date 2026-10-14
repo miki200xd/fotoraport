@@ -26,6 +26,8 @@ button.bad{background:var(--bad)}
 #cam video{width:100%;height:100%;object-fit:cover;display:block}
 #aim{position:absolute;left:10%;right:10%;top:18%;bottom:18%;border:3px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.25);pointer-events:none;transition:border-color .15s}
 #aim.hit{border-color:#3ddc84}
+#aim.txt{left:5%;right:5%;top:33%;bottom:33%}
+.amb{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;font-size:12px}.amb button{flex:1;min-width:90px}
 #camMsg{position:absolute;left:0;right:0;bottom:6px;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 3px #000}
 #camBtns{position:absolute;top:6px;right:6px;display:flex;gap:6px}
 /* ostrość: dotknięcie = punkt ostrości, suwak = ręcznie (gdy telefon pozwala) */
@@ -805,10 +807,16 @@ function autoOcr(){
     if(need&&!ocrBusy&&Date.now()>kPauseUntil&&$('vList').classList.contains('hide')) grabOcr(autoFlip++%2?'90,270':'0,180',1600,true);
     else autoOcr(); },650);
 }
+// wycinek obrazu dokładnie pod ramką celownika (wideo jest „cover”, więc część kadru jest poza ekranem)
+function aimCrop(v){ const vw=v.videoWidth, vh=v.videoHeight, el=v.getBoundingClientRect(), a=$('aim').getBoundingClientRect();
+  if(!el.width||!a.width) return [0,0,vw,vh];
+  const sc=Math.max(el.width/vw, el.height/vh), ox=(vw*sc-el.width)/2, oy=(vh*sc-el.height)/2;
+  let sx=(a.left-el.left+ox)/sc, sy=(a.top-el.top+oy)/sc, sw=a.width/sc, sh=a.height/sc;
+  sx=Math.max(0,sx); sy=Math.max(0,sy); sw=Math.min(vw-sx,sw); sh=Math.min(vh-sy,sh); return [sx,sy,sw,sh]; }
 function grabOcr(rots,maxSide,auto){
   const v=$('vid'); if(!stream||v.readyState<2) return false;
-  const k=Math.min(1,maxSide/Math.max(v.videoWidth,v.videoHeight));
-  const cv=document.createElement('canvas'); cv.width=Math.round(v.videoWidth*k); cv.height=Math.round(v.videoHeight*k); cv.getContext('2d').drawImage(v,0,0,cv.width,cv.height);
+  const [sx,sy,sw,sh]=aimCrop(v), k=Math.min(1.5,maxSide/Math.max(sw,sh));
+  const cv=document.createElement('canvas'); cv.width=Math.round(sw*k); cv.height=Math.round(sh*k); cv.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,cv.width,cv.height);
   ocrBusy=true; ocrAuto=auto;
   if(!auto){ $('kOcr').disabled=true; $('kOcr').textContent='⏳ Czytam…'; flash(); }
   AndroidBridge.recognizeTextR('k'+Date.now(),cv.toDataURL('image/jpeg',auto?0.85:0.92).split(',')[1],rots);
@@ -835,7 +843,7 @@ $('kAuto').onclick=()=>{ S.kAuto=!S.kAuto; save(); $('kAuto').textContent=S.kAut
     _n(id,json); pApply(); save(); render(); autoOcr(); };
 }
 { const _s=$('kSave').onclick; $('kSave').onclick=()=>{ const c=S.kab.cur; lastSaved={sn:c.sn,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,at:Date.now()}; kPauseUntil=Date.now()+1500; _s(); }; }
-{ const _a=applyMode; applyMode=function(){ _a(); $('kAuto').textContent=S.kAuto?'Auto ✓':'Auto ✗'; if(S.mode==='kab'&&!autoT&&!ocrBusy) autoOcr(); }; }
+{ const _a=applyMode; applyMode=function(){ _a(); $('aim').classList.toggle('txt',S.mode==='kab'); $('kAuto').textContent=S.kAuto?'Auto ✓':'Auto ✗'; if(S.mode==='kab'&&!autoT&&!ocrBusy) autoOcr(); }; }
 /* ---------- tryb Sprawdzanie: stare oznaczniki i S/N vs projekt, szafa po szafie ---------- */
 S.kMode=S.kMode||'assign'; S.audit=S.audit||{}; S.aRack=S.aRack||''; S.aPanel=S.aPanel||''; S.aSide=S.aSide||'back'; S.aSlot=S.aSlot||0;
 const aKey=x=>pRoute(x);
@@ -849,7 +857,7 @@ function aEnds(R){ const out=[]; if(!R) return out;
 // gniazdo 1–4 w panelu (4 miejsca): CU moduł k = porty 6k-5..6k, LWL 1+2 = 1,2 / 3+4 = 3,4
 function slotsOf(e){ const o=np(e.o); let m=o.match(/^(\d+)-(\d+)$/);
   if(m){ const a=+m[1], b=+m[2]; if(b-a>=20) return [1,2,3,4]; return [Math.ceil(a/6)]; }
-  m=o.match(/^(\d)\+(\d)$/); if(m) return [Math.ceil(+m[2]/2)];   // światłowód: gniazdo 1 = 1+2, gniazdo 2 = 3+4
+  m=o.match(/^(\d)\+(\d)$/); if(m) return S.aSide==='front'?[+m[1],+m[2]]:[Math.ceil(+m[2]/2)];   // światłowód: z przodu moduły 1,2,3,4; z tyłu gniazdo 1 = 1+2, gniazdo 2 = 3+4
   return []; }
 function aStatusOf(x){ return (S.audit[aKey(x)]||{}).st||''; }
 function aMark(x,st,info){ S.audit[aKey(x)]=Object.assign({},S.audit[aKey(x)]||{},{st,at:new Date().toISOString()},info||{}); }
@@ -871,19 +879,31 @@ function aRender(){
   if(S.aPanel){ const lwl=PE.length&&PE.every(e=>e.x.t==='LWL'), n=4, seq=[...Array(n)].map((_,i)=>i+1), order=S.aSide==='back'?seq.slice().reverse():seq;
     $('aSlots').innerHTML=`<div style="font-size:12px;color:var(--mut);margin-top:8px">${S.aPanel} – widok z ${S.aSide==='back'?'tyłu (1 = skrajnie po prawej)':'przodu (1 = skrajnie po lewej)'} · dotknij gniazda, w które wpięty jest skanowany kabel</div><div class="slots">`+
       order.map(k=>{ const e=PE.find(e=>slotsOf(e).includes(k)); const st=e?aStatusOf(e.x):'';
-        if(lwl&&k>2) return `<div class="empty"><b>–</b>światłowód<br>tu nie idzie</div>`;   // trunk LWL: oba gniazda po prawej (1 = 1+2, 2 = 3+4)
-        return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${lwl?`<small>${k===1?'1+2':'3+4'}</small><br>`:''}${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}`:'pusty'}</div>`; }).join('')+'</div>';
+        if(lwl&&k>2&&S.aSide==='back') return `<div class="empty"><b>–</b>światłowód<br>tu nie idzie</div>`;   // trunk LWL: oba gniazda po prawej (1 = 1+2, 2 = 3+4)
+        return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${lwl&&S.aSide==='back'?`<small>${k===1?'1+2':'3+4'}</small><br>`:''}${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}`:'pusty'}</div>`; }).join('')+'</div>';
+    const se=S.aSlot&&PE.find(e=>slotsOf(e).includes(S.aSlot));
+    if(se) $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Gniazdo ${S.aSlot}: <b>${esc(S.aPanel+' '+se.o)} → ${esc(se.fr+' '+se.fp+' '+se.fo)}</b> · ${se.x.l} m – zeskanuj oznacznik albo zaznacz ręcznie:</span><button class="b ok" data-am="ok">✅ Zgodny</button><button class="b bad" data-am="bad">❌ Niezgodny</button><button class="b g" data-am="clr">↺</button></div>`;
   } else $('aSlots').innerHTML='';
   const L=S.aPanel?PE:E;
   $('aList').innerHTML=L.map(e=>{ const a=S.audit[aKey(e.x)]||{}; return `<div class="arow"><span>${a.st==='ok'?'✅':a.st==='bad'?'❌':'○'}</span><b>${esc(e.p)} ${esc(e.o)}</b><span>→ ${esc(e.fr)} ${esc(e.fp)} ${esc(e.fo)}</span><span style="margin-left:auto;font-size:11px">${e.x.l} m ${e.x.t}${a.sn?'<br>'+esc(a.sn):''}</span></div>`; }).join('');
 }
 $('kmAssign').onclick=()=>{ S.kMode='assign'; save(); render(); };
 $('kmAudit').onclick=()=>{ S.kMode='audit'; save(); render(); };
-$('aFront').onclick=()=>{ S.aSide='front'; save(); aRender(); };
-$('aBack').onclick=()=>{ S.aSide='back'; save(); aRender(); };
+$('aFront').onclick=()=>{ S.aSide='front'; S.aSlot=0; save(); aRender(); };
+$('aBack').onclick=()=>{ S.aSide='back'; S.aSlot=0; save(); aRender(); };
 $('aRack').addEventListener('change',e=>{ const v=e.target.value.toUpperCase().replace(/\s+/g,''); const m=v.match(/^([A-H])0?(\d{1,2})$/); S.aRack=m?m[1]+m[2].padStart(2,'0'):v; S.aPanel=''; S.aSlot=0; $('aRes').innerHTML=''; save(); aRender(); });
 $('aPanels').onclick=e=>{ const b=e.target.closest('[data-ap]'); if(!b) return; S.aPanel=S.aPanel===b.dataset.ap?'':b.dataset.ap; S.aSlot=0; $('aRes').innerHTML=''; save(); aRender(); };
-$('aSlots').onclick=e=>{ const d=e.target.closest('[data-slot]'); if(!d) return; S.aSlot=S.aSlot===+d.dataset.slot?0:+d.dataset.slot; save(); aRender(); };
+// następne gniazdo w panelu, które nie jest jeszcze ✅
+function aNextSlot(){ const PE=aEnds(S.aRack).filter(e=>e.p===S.aPanel);
+  const ks=[1,2,3,4].filter(k=>PE.some(e=>slotsOf(e).includes(k)&&aStatusOf(e.x)!=='ok'));
+  S.aSlot=ks.find(k=>k>S.aSlot)||ks[0]||0; }
+$('aSlots').onclick=e=>{ const b=e.target.closest('[data-am]');
+  if(b){ const se=aEnds(S.aRack).find(e=>e.p===S.aPanel&&slotsOf(e).includes(S.aSlot)); if(!se) return; const lbl=`${se.p} ${se.o} → ${se.fr} ${se.fp} ${se.fo}`;
+    if(b.dataset.am==='clr'){ delete S.audit[aKey(se.x)]; aShow('w','Wyczyszczono: '+esc(lbl)); }
+    else { const ok=b.dataset.am==='ok'; aMark(se.x,ok?'ok':'bad',{txt:lbl,why:ok?'zaznaczone ręcznie':'zaznaczone ręcznie jako niezgodne'});
+      aShow(ok?'ok':'bad',(ok?'✅ Zaznaczono ręcznie: ':'❌ Zaznaczono ręcznie jako niezgodny: ')+esc(lbl)); if(ok){ beep(1500,.1); vib(60); aNextSlot(); } else { beep(250,.3); vib([80,60,80]); } }
+    save(); aRender(); return; }
+  const d=e.target.closest('[data-slot]'); if(!d) return; S.aSlot=S.aSlot===+d.dataset.slot?0:+d.dataset.slot; save(); aRender(); };
 // opisówka panelu: „zu RZ2B C08 P01 1-24”, „1 - zu RZ2B E07 - P07-1”
 function parsePanelLabels(texts){ const out=[];
   for(const t of texts) for(const line of String(t).split('\n')){
@@ -918,7 +938,7 @@ function auditOcr(arr,auto){
       if(r.sn&&old.sn&&old.sn!==r.sn) probs.push(`inny S/N niż przy poprzednim sprawdzeniu (${old.sn})`);
       if(r.len&&Math.abs(+r.len-+x.l)>0.5) probs.push(`na naklejce ${r.len} m, w projekcie ${x.l} m`);
       if(probs.length){ cls='bad'; aMark(x,'bad',{sn:r.sn||old.sn,txt:lbl,why:probs.join('; ')}); msg='❌ '+esc(lbl)+'<br>'+probs.map(esc).join('<br>'); }
-      else { cls='ok'; aMark(x,'ok',{sn:r.sn||old.sn,txt:lbl,why:flip}); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}${r.sn?'<br>S/N '+esc(r.sn):''}`; }
+      else { cls='ok'; aMark(x,'ok',{sn:r.sn||old.sn,txt:lbl,why:flip}); if(loc&&S.aPanel===loc.p&&S.aSlot) aNextSlot(); msg=`✅ Zgodny z projektem: ${esc(lbl)} · ${x.l} m${flip?'<br><small>'+esc(flip)+'</small>':''}${r.sn?'<br>S/N '+esc(r.sn):''}`; }
     }
   } else if(PL.length){ // opisówka panelu
     const lab=PL[0]; key='P|'+lab.txt+'|'+S.aRack+S.aPanel;
@@ -1003,7 +1023,7 @@ async function startCam(){
       if(cap.focusMode&&cap.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});
       camCap=cap; const fd=cap.focusDistance; $('bFocus').classList.toggle('hide',!(fd&&cap.focusMode&&cap.focusMode.includes('manual')));
       if(fd){ const r=$('fDist'); r.min=fd.min; r.max=fd.max; r.step=fd.step||((fd.max-fd.min)/100); } }catch(e){}
-    running=true; $('bCam').textContent='⏸'; $('camMsg').textContent='Celuj kodem w ramkę · dotknij obraz, żeby ustawić ostrość';
+    running=true; $('bCam').textContent='⏸'; $('camMsg').textContent='Celuj w ramkę (czytam tylko to, co w niej) · dotknij obraz, żeby ustawić ostrość';
     loop(); if(typeof autoOcr==='function') autoOcr();
     if(S.torch) setTimeout(async()=>{ if(await setTorch(true)){ torchOn=true; $('bTorch').style.background='#f9c80e'; $('bTorch').style.color='#000'; } },600);
   }catch(e){ $('camMsg').textContent='Brak dostępu do aparatu ('+(e.name||e)+'). Zezwól w ustawieniach aplikacji.'; }
