@@ -370,7 +370,7 @@ public class MainActivity extends Activity {
     }
 
     private boolean isPduApp() {
-        return "pl.wac.pduskaner".equals(getPackageName());
+        return getPackageName().startsWith("pl.wac.pduskaner"); // Data Center i Data Center TEST
     }
 
     private boolean hasLocationPermission() {
