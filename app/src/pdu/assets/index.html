@@ -916,7 +916,9 @@ $('aSlots').onclick=e=>{ const b=e.target.closest('[data-am]');
 function parsePanelLabels(texts){ const out=[];
   for(const t of texts) for(const line of String(t).split('\n')){
     const m=line.match(/zu\s*(R\s*Z\s*[0-9OIlZ]\s*[AB8])?\s*([A-H])\s*([0-9OIl]{1,2})\s*[-–—]?\s*P\s*([0-9OIl]{1,2})/i); if(!m) continue;
-    out.push({rack:m[2].toUpperCase()+String(+dig(m[3])).padStart(2,'0'),panel:'P'+String(+dig(m[4])).padStart(2,'0'),txt:line.trim()}); }
+    // „1 - zu RZ3B F08 - P03-3”: moduł tutaj (1) i moduł po drugiej stronie (3)
+    const lm=line.slice(0,m.index).match(/([1-4])\s*[-–—]?\s*$/), fm=line.slice(m.index+m[0].length).match(/^\s*[-–—]\s*([1-4])(?!\d)/);
+    out.push({rack:m[2].toUpperCase()+String(+dig(m[3])).padStart(2,'0'),panel:'P'+String(+dig(m[4])).padStart(2,'0'),mod:lm?+lm[1]:0,fmod:fm?+fm[1]:0,txt:line.trim()}); }
   return out; }
 let aLastKey='', aLastAt=0;
 function auditOcr(arr,auto){
@@ -952,8 +954,13 @@ function auditOcr(arr,auto){
   } else if(PL.length){ // opisówka panelu
     const lab=PL[0]; key='P|'+lab.txt+'|'+S.aRack+S.aPanel; const labP0=lab.panel; lab.panel=canonP(S.kRoom,lab.rack,lab.panel);
     if(!S.aPanel){ cls='w'; msg='Opisówka: '+esc(lab.txt)+'<br>Wybierz panel, na którym jest ta opisówka, żeby sprawdzić.'; }
-    else { const exp=E.filter(e=>e.p===S.aPanel), ok=exp.some(e=>e.fr===lab.rack&&e.fp===lab.panel);
-      const want=[...new Set(exp.map(e=>`zu ${e.fr} ${e.fp}`))].join(', ')||'– (panel bez kabli w projekcie)';
+    else { const exp=E.filter(e=>e.p===S.aPanel);
+      // pary modułów kabla LWL: 1+2 ↔ 3+4 => [[1,3],[2,4]]
+      const mods=e=>{ const a=np(e.o).match(/^(\d)\+(\d)$/), b=np(e.fo).match(/^(\d)\+(\d)$/); return a&&b?[[+a[1],+b[1]],[+a[2],+b[2]]]:null; };
+      const em=lab.mod&&exp.find(e=>(mods(e)||[]).some(q=>q[0]===lab.mod)), fmod=em&&mods(em).find(q=>q[0]===lab.mod)[1];
+      let ok, want;
+      if(em){ ok=em.fr===lab.rack&&em.fp===lab.panel&&(!lab.fmod||lab.fmod===fmod); want=`${lab.mod} - zu ${em.fr} ${em.fp}${em.fpa?' (stary nr '+em.fpa+')':''}-${fmod}`; }
+      else { ok=exp.some(e=>e.fr===lab.rack&&e.fp===lab.panel); want=[...new Set(exp.map(e=>`zu ${e.fr} ${e.fp}`))].join(', ')||'– (panel bez kabli w projekcie)'; }
       cls=ok?'ok':'bad'; msg=(ok?'✅ Opisówka panelu zgodna: ':'❌ Opisówka panelu NIEZGODNA: ')+esc(lab.txt)+(ok&&labP0!==lab.panel?`<br><small>${esc(lab.rack)} ${labP0} to stary numer = ${lab.panel} w projekcie</small>`:'')+(ok?'':'<br>Wg projektu: '+esc(want));
       S.audit['PANEL|'+S.kRoom+'|'+S.aRack+'|'+S.aPanel]={st:cls,txt:lab.txt,at:new Date().toISOString()}; }
   } else if(r.sn){ key='S|'+r.sn; const hit=PROJ.find(x=>(S.audit[aKey(x)]||{}).sn===r.sn);
