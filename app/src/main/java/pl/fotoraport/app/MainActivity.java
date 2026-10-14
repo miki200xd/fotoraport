@@ -215,7 +215,11 @@ public class MainActivity extends Activity {
     }
 
     private void checkForUpdate() {
-        final String apkName = "pl.plusdoc.zdjecia".equals(getPackageName()) ? "CellnexNokia.apk"
+        // każdy wariant pobiera własny APK (TEST/NOWY mają inne applicationId niż PDU Skaner)
+        final String pkg = getPackageName();
+        final String apkName = "pl.plusdoc.zdjecia".equals(pkg) ? "CellnexNokia.apk"
+                : pkg.endsWith(".nowy") ? "PduSkanerNOWY.apk"
+                : pkg.endsWith(".test") ? "PduSkanerTEST.apk"
                 : isPduApp() ? "PduSkaner.apk" : "FotoRaport.apk";
         new Thread(() -> {
             try {
