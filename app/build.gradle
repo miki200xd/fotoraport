@@ -38,8 +38,24 @@ android {
             dimension "app"
             applicationId "pl.wac.pduskaner"
             versionName "1.8"
-            resValue "string", "app_name", "PDU Skaner"
+            resValue "string", "app_name", "Data Center"
             resValue "string", "media_dir", "PduSkaner"
+        }
+        // PDU Skaner TEST: ten sam kod co pdu, osobna aplikacja (instaluje się obok –
+        // wersja do pracy zostaje jako zapas, nowe funkcje najpierw tu)
+        pdutest {
+            dimension "app"
+            applicationId "pl.wac.pduskaner.test"
+            versionName "1.8"
+            resValue "string", "app_name", "Data Center TEST"
+            resValue "string", "media_dir", "PduSkanerTest"
+        }
+    }
+
+    sourceSets {
+        pdutest {
+            assets.srcDirs = ['src/pdu/assets']
+            manifest.srcFile 'src/pdu/AndroidManifest.xml'
         }
     }
 

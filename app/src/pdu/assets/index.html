@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PDU Skaner</title>
+<title>Data Center</title>
 <style>
 :root{--bg:#f2f4f7;--card:#fff;--tx:#1d2733;--mut:#6b7785;--ac:#1565c0;--ok:#1b8a3a;--warn:#c77700;--bad:#c62828;--ln:#dde2e8}
 @media (prefers-color-scheme:dark){:root{--bg:#12171d;--card:#1c232c;--tx:#e8edf2;--mut:#93a0ad;--ln:#2c3540}}
@@ -103,14 +103,14 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
 </style>
 </head>
 <body>
-<div id="splash" role="img" aria-label="PDU Skaner – aplikacja firmy WAC">
+<div id="splash" role="img" aria-label="Data Center – aplikacja firmy WAC">
   <picture>
     <source srcset="wac_logo_dark.png" media="(prefers-color-scheme: dark)">
     <img src="wac_logo.png" alt="WAC – Wireless Advance Connect">
   </picture>
   <div class="line"></div>
-  <div class="app">PDU Skaner</div>
-  <div class="sub">Inwentaryzacja listew PDU</div>
+  <div class="app">Data Center</div>
+  <div class="sub">Listwy PDU · kable · sprawdzanie</div>
   <div class="by">powered by WAC</div>
 </div>
 <script>
@@ -120,7 +120,7 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
 </script>
 
 <header>
-  <h1 id="title">PDU Skaner</h1>
+  <h1 id="title">Data Center</h1>
   <button id="bMode">Kable ›</button>
   <button id="bList">Lista (<span id="cnt">0</span>)</button>
 </header>
@@ -650,7 +650,7 @@ function krows(){
 function applyMode(){
   const k=S.mode==='kab';
   $('kabPane').classList.toggle('hide',!k); $('pduPane').classList.toggle('hide',k); $('pduTop').classList.toggle('hide',k);
-  $('bMode').textContent=k?'Listwy ›':'Kable ›'; $('title').textContent=k?'Kable S/N':'PDU Skaner';
+  $('bMode').textContent=k?'Listwy ›':'Kable ›'; $('title').textContent=k?'Data Center · Kable':'Data Center · PDU';
   $('bXlsx').textContent=k?'Zapisz Excel (lista kabli)':'Zapisz Excel (jak „PDUs DC110”)';
   $('bCsv').classList.toggle('hide',k);
   $('cnt').textContent=k?S.kab.records.length:S.records.length;
