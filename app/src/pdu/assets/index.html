@@ -872,25 +872,28 @@ function slotsOf(e){ const o=np(e.o); let m=o.match(/^(\d+)-(\d+)$/);
   return []; }
 // każdy kabel ma 3 osobne testy: a = koniec „von”, b = koniec „nach”, c = etykieta kabla; zielony dopiero gdy wszystkie 3 są OK
 function aSideIn(x,R){ return (x.v===R||x.va===R)?'a':((x.n===R||x.na===R)?'b':''); }
-function aCalc(e){ const v=[e.a,e.b,e.c]; e.st=v.includes('bad')?'bad':(v.every(q=>q==='ok')?'ok':(v.includes('ok')?'part':'')); return e; }
+function aCalc(e){
+  // koniec w szafie = przód (f: opisówka/moduł) + tył (k: oznacznik/kabel); zielony koniec dopiero gdy oba OK
+  const end=(f,k)=>(f==='bad'||k==='bad')?'bad':((f==='ok'&&k==='ok')?'ok':((f==='ok'||k==='ok')?'part':''));
+  if(e.fa!==undefined||e.ka!==undefined||e.fb!==undefined||e.kb!==undefined){ e.a=end(e.fa,e.ka); e.b=end(e.fb,e.kb); }
+  const v=[e.a,e.b,e.c]; e.st=v.includes('bad')?'bad':(v.every(q=>q==='ok')?'ok':(v.includes('ok')?'part':'')); return e; }
 function aEntry(x){ const e=S.audit[aKey(x)]||{};
-  if(e.a===undefined&&e.b===undefined&&e.c===undefined&&e.st){ const q=e.st==='ok'?'ok':(e.st==='bad'?'bad':''); return Object.assign({},e,{a:q,b:q,c:q}); }
-  return Object.assign({},e); }
+  if(e.a===undefined&&e.b===undefined&&e.c===undefined&&e.st){ const q=e.st==='ok'?'ok':(e.st==='bad'?'bad':''); return Object.assign({},e,{a:q,b:q,c:q,fa:q,ka:q,fb:q,kb:q}); }
+  const o=Object.assign({},e);
+  if(o.fa===undefined&&o.ka===undefined&&o.a) { o.fa=o.a; o.ka=o.a; }
+  if(o.fb===undefined&&o.kb===undefined&&o.b) { o.fb=o.b; o.kb=o.b; }
+  return o; }
 function aStatusOf(x){ return aEntry(x).st||''; }
-// widok z bieżącej szafy: zielone, gdy koniec w TEJ szafie jest OK (drugi koniec i etykieta mogą czekać)
-function aLocal(x){ const e=aEntry(x), sd=aSideIn(x,S.aRack); if(e.st==='bad'||e.st==='ok') return e.st; return (sd&&e[sd]==='ok')?'ok':(e.st||''); }
-function aWait(x){ const e=aEntry(x), sd=aSideIn(x,S.aRack), o=sd==='a'?'b':'a', w=[];
-  if(e[o]!=='ok') w.push(o==='a'?x.v:x.n); if(e.c!=='ok') w.push('etykieta'); return w; }
-function aMark(x,st,info,sides){ sides=sides&&sides.length?sides:['a','b','c'];
-  const e=aEntry(x); sides.forEach(k=>{ if(k) e[k]=st==='clr'?'':st; });
+const aPart=()=>S.aSide==='front'?'f':'k';
+// widok z bieżącej szafy i bieżącej strony (przód/tył): zielone tylko to, co sprawdzone właśnie tu
+function aLocal(x){ const e=aEntry(x), sd=aSideIn(x,S.aRack); if(e.st==='bad') return 'bad'; const v=sd?e[aPart()+sd]:''; return v==='ok'?'ok':(v==='bad'?'bad':''); }
+function aWait(x){ const e=aEntry(x), sd=aSideIn(x,S.aRack), o=sd==='a'?'b':'a', ov=aPart()==='f'?'k':'f', w=[];
+  if(sd&&e[ov+sd]!=='ok') w.push(ov==='f'?'przód':'tył'); if(e[o]!=='ok') w.push(o==='a'?x.v:x.n); if(e.c!=='ok') w.push('etykieta'); return w; }
+function aMark(x,st,info,sides,part){ sides=sides&&sides.length?sides:['a','b','c'];
+  const e=aEntry(x); const val=st==='clr'?'':st;
+  sides.forEach(k=>{ if(!k) return; if(k==='c') e.c=val; else (part?[part]:['f','k']).forEach(pp=>{ e[pp+k]=val; }); });
   Object.assign(e,{at:new Date().toISOString()},info||{}); aCalc(e);
-  if(!e.st&&!e.a&&!e.b&&!e.c&&st==='clr') delete S.audit[aKey(x)]; else S.audit[aKey(x)]=e;
-  // cały panel idzie do całego panelu (np. 1–24 = 4 moduły, światłowód 1+2 i 3+4): jedno zaliczenie zalicza wszystkie moduły
-  if(st==='ok'){ for(const y of PROJ){ if(y===x||y.r!==x.r) continue;
-      const fwd=y.v===x.v&&y.vp===x.vp&&y.n===x.n&&y.np===x.np, rev=y.v===x.n&&y.vp===x.np&&y.n===x.v&&y.np===x.vp;
-      if(!fwd&&!rev) continue;
-      const ey=aEntry(y); sides.forEach(k=>{ const kk=(rev&&k!=='c')?(k==='a'?'b':'a'):k; if(ey[kk]!=='bad') ey[kk]='ok'; });
-      ey.at=new Date().toISOString(); ey.why=ey.why||('cały panel → cały panel (razem z '+x.vo+')'); aCalc(ey); S.audit[aKey(y)]=ey; } } }
+  if(!e.st&&!e.a&&!e.b&&!e.c&&st==='clr') delete S.audit[aKey(x)]; else S.audit[aKey(x)]=e; }
 function aShow(cls,txt){ $('aRes').innerHTML=`<div class="ares ${cls}">${txt}</div>`; }
 const ic=q=>q==='ok'?'✓':(q==='bad'?'✗':'·');
 function aRender(){
@@ -914,11 +917,11 @@ function aRender(){
         if(lwl&&k>2&&S.aSide==='back') return `<div class="empty"><b>–</b>światłowód<br>tu nie idzie</div>`;   // trunk LWL: oba gniazda po prawej (1 = 1+2, 2 = 3+4)
         return `<div data-slot="${k}" class="${e?st:'empty'} ${S.aSlot===k?'sel':''}"><b>${k}</b>${lwl&&S.aSide==='back'?`<small>${k===1?'1+2':'3+4'}</small><br>`:''}${e?`${esc(e.o)}<br>→ ${esc(e.fr)} ${esc(e.fp)}${wt.length?`<br><small style="color:#7a4d00">czeka: ${esc(wt.join(', '))}</small>`:''}`:'pusty'}</div>`; }).join('')+'</div>';
     const se=S.aSlot&&PE.find(e=>slotsOf(e).includes(S.aSlot));
-    if(se) $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Gniazdo ${S.aSlot}: <b>${esc(S.aPanel+' '+se.o)} → ${esc(se.fr+' '+se.fp+' '+se.fo)}</b> · ${se.x.l} m – zeskanuj oznacznik albo zaznacz ręcznie.<br><small>Testy: ${esc(se.x.v)} ${ic(aEntry(se.x).a)} · ${esc(se.x.n)} ${ic(aEntry(se.x).b)} · etykieta kabla ${ic(aEntry(se.x).c)} (zielony = wszystkie 3)</small></span><button class="b ok" data-am="ok">✅ Panel w ${esc(S.aRack)} zgodny</button><button class="b g" data-am="lbl">🏷 Etykieta kabla OK</button><button class="b bad" data-am="bad">❌ Niezgodny</button><button class="b g" data-am="clr">↺</button></div>`;
+    if(se) $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Gniazdo ${S.aSlot}: <b>${esc(S.aPanel+' '+se.o)} → ${esc(se.fr+' '+se.fp+' '+se.fo)}</b> · ${se.x.l} m – zeskanuj ${S.aSide==='front'?'opisówkę modułu':'oznacznik kabla'}.<br><small>${S.aSide==='front'?'PRZÓD':'TYŁ'} · ${esc(se.x.v)} ${ic(aEntry(se.x).a)} · ${esc(se.x.n)} ${ic(aEntry(se.x).b)} · etykieta ${ic(aEntry(se.x).c)}${(aEntry(se.x).sn||S.kab.records.some(q=>cRoute(q)===pRoute(se.x)||cRoute(q)===pRoute(se.x,1)))?'':' · <b>brak S/N</b>'}</small></span><button class="b g" data-am="sn">🔢 Numer seryjny</button><button class="b bad" data-am="bad">❌ Niezgodny</button><button class="b g" data-am="clr">↺</button></div>`;
     $('aSlots').innerHTML+=`<div class="amb"><span style="flex-basis:100%">Cały panel ${esc(S.aPanel)} (${PE.length} kabli):</span><button class="b ok" data-pall="ok">✅ Cały panel zgodny</button><button class="b g" data-pall="clr">↺ Wyczyść panel</button></div>`;
   } else $('aSlots').innerHTML='';
   const L=S.aPanel?PE:E;
-  $('aList').innerHTML=L.map(e=>{ const a=aEntry(e.x); return `<div class="arow"><span>${a.st==='ok'?'✅':a.st==='bad'?'❌':aLocal(e.x)==='ok'?'☑️':a.st==='part'?'◐':'○'}</span><b>${esc(e.p)} ${esc(e.o)}</b><span>→ ${esc(e.fr)} ${esc(e.fp)} ${esc(e.fo)}</span><span style="margin-left:auto;font-size:11px">${e.x.l} m ${e.x.t}<br>${esc(e.x.v)}${ic(a.a)} ${esc(e.x.n)}${ic(a.b)} etykieta${ic(a.c)}${a.sn?'<br>'+esc(a.sn):''}</span></div>`; }).join('');
+  $('aList').innerHTML=L.map(e=>{ const a=aEntry(e.x); return `<div class="arow"><span>${a.st==='ok'?'✅':a.st==='bad'?'❌':aLocal(e.x)==='ok'?'☑️':a.st==='part'?'◐':'○'}</span><b>${esc(e.p)} ${esc(e.o)}</b><span>→ ${esc(e.fr)} ${esc(e.fp)} ${esc(e.fo)}</span><span style="margin-left:auto;font-size:11px">${e.x.l} m ${e.x.t}<br>${esc(e.x.v)}${ic(a.a)} ${esc(e.x.n)}${ic(a.b)} etykieta${ic(a.c)}<br>${(a.sn||S.kab.records.some(q=>cRoute(q)===pRoute(e.x)||cRoute(q)===pRoute(e.x,1)))?esc(a.sn||''):`<button class="b g" data-snadd="${PROJ.indexOf(e.x)}" style="padding:2px 8px;font-size:11px;opacity:.7">S/N +</button>`}</span></div>`; }).join('');
 }
 $('kmAssign').onclick=()=>{ S.kMode='assign'; save(); render(); };
 $('kmAudit').onclick=()=>{ S.kMode='audit'; save(); render(); };
@@ -935,17 +938,17 @@ function aNextSlot(){ const PE=aEnds(S.aRack).filter(e=>e.p===S.aPanel);
   S.aSlot=ks.find(k=>k>S.aSlot)||ks[0]||0; }
 $('aSlots').onclick=e=>{ const pb=e.target.closest('[data-pall]');
   if(pb){ const L=aEnds(S.aRack).filter(x=>x.p===S.aPanel); if(!L.length) return;
-    if(pb.dataset.pall==='clr'){ L.forEach(x=>{ aMark(x.x,'clr',{},[aSideIn(x.x,S.aRack)]); }); aShow('w','Wyczyszczono panel '+esc(S.aPanel)); }
-    else { L.forEach(x=>{ if(aStatusOf(x.x)!=='ok') aMark(x.x,'ok',{txt:`${x.p} ${x.o} → ${x.fr} ${x.fp} ${x.fo}`,why:'cały panel zaznaczony ręcznie'},[aSideIn(x.x,S.aRack)]); });
+    if(pb.dataset.pall==='clr'){ L.forEach(x=>{ aMark(x.x,'clr',{},[aSideIn(x.x,S.aRack)],aPart()); }); aShow('w','Wyczyszczono panel '+esc(S.aPanel)); }
+    else { L.forEach(x=>{ if(aStatusOf(x.x)!=='ok') aMark(x.x,'ok',{txt:`${x.p} ${x.o} → ${x.fr} ${x.fp} ${x.fo}`,why:'cały panel zaznaczony ręcznie'},[aSideIn(x.x,S.aRack)],aPart()); });
       aShow('ok','✅ Panel '+esc(S.aPanel)+' zaznaczony jako zgodny ('+L.length+' kabli)'); beep(1500,.1); vib(60); S.aSlot=0; }
     save(); aRender(); return; }
   const b=e.target.closest('[data-am]');
   if(b){ const se=aEnds(S.aRack).find(e=>e.p===S.aPanel&&slotsOf(e).includes(S.aSlot)); if(!se) return; const lbl=`${se.p} ${se.o} → ${se.fr} ${se.fp} ${se.fo}`;
     const sd=aSideIn(se.x,S.aRack)||'a';
-    if(b.dataset.am==='clr'){ aMark(se.x,'clr',{},[sd]); aShow('w','Wyczyszczono test szafy '+esc(S.aRack)+': '+esc(lbl)); }
-    else if(b.dataset.am==='lbl'){ aMark(se.x,'ok',{txt:lbl,why:'etykieta kabla zaznaczona ręcznie'},['c']); aShow('ok','🏷 Etykieta kabla OK: '+esc(lbl)); }
-    else { const ok=b.dataset.am==='ok'; aMark(se.x,ok?'ok':'bad',{txt:lbl,why:ok?'zaznaczone ręcznie':'zaznaczone ręcznie jako niezgodne'},[sd]);
-      aShow(ok?'ok':'bad',(ok?'✅ Zaznaczono ręcznie (panel w '+esc(S.aRack)+'): ':'❌ Zaznaczono ręcznie jako niezgodny: ')+esc(lbl)); if(ok){ beep(1500,.1); vib(60); aNextSlot(); } else { beep(250,.3); vib([80,60,80]); } }
+    if(b.dataset.am==='clr'){ aMark(se.x,'clr',{},[sd],aPart()); aShow('w','Wyczyszczono ('+(S.aSide==='front'?'przód':'tył')+', '+esc(S.aRack)+'): '+esc(lbl)); }
+    else if(b.dataset.am==='sn'){ aSnForm(se.x); return; }
+    else { aMark(se.x,'bad',{txt:lbl,why:'zaznaczone ręcznie jako niezgodne ('+(S.aSide==='front'?'przód':'tył')+')'},[sd],aPart());
+      aShow('bad','❌ Zaznaczono jako niezgodny: '+esc(lbl)); beep(250,.3); vib([80,60,80]); }
     save(); aRender(); return; }
   const d=e.target.closest('[data-slot]'); if(!d) return; S.aSlot=S.aSlot===+d.dataset.slot?0:+d.dataset.slot; save(); aRender(); };
 // opisówka panelu: „zu RZ2B C08 P01 1-24”, „1 - zu RZ2B E07 - P07-1”
@@ -994,8 +997,8 @@ function auditOcr(arr,auto){
       const projT=x.t==='CU'?'CU RJ45':'LWL';
       if(r.tt&&r.tt!==projT) probs.push(`na naklejce typ ${r.tt}, w projekcie ${projT}`);
       const sdr=(loc&&S.aRack)?aSideIn(x,S.aRack):'';
-      if(probs.length){ cls='bad'; const placeBad=probs.some(q=>/ma być w|nie szafę/.test(q)); aMark(x,'bad',{sn:r.sn||old.sn,txt:lbl,why:probs.join('; ')},placeBad&&sdr?[sdr,'c']:['c']); msg='❌ '+esc(lbl)+'<br>'+probs.map(esc).join('<br>'); }
-      else { cls='ok'; if(oldNr.length) flip=[flip,'stary numer panelu na naklejce: '+oldNr.join(', ')].filter(Boolean).join('; '); aMark(x,'ok',Object.assign({sn:r.sn||old.sn,txt:lbl,why:flip},(sdr&&r.sn)?{['s'+sdr]:r.sn}:{}),sdr?[sdr,'c']:['c']);
+      if(probs.length){ cls='bad'; const placeBad=probs.some(q=>/ma być w|nie szafę/.test(q)); aMark(x,'bad',{sn:r.sn||old.sn,txt:lbl,why:probs.join('; ')},placeBad&&sdr?[sdr,'c']:['c'],aPart()); msg='❌ '+esc(lbl)+'<br>'+probs.map(esc).join('<br>'); }
+      else { cls='ok'; if(oldNr.length) flip=[flip,'stary numer panelu na naklejce: '+oldNr.join(', ')].filter(Boolean).join('; '); aMark(x,'ok',Object.assign({sn:r.sn||old.sn,txt:lbl,why:flip},(sdr&&r.sn)?{['s'+sdr]:r.sn}:{}),sdr?[sdr,'c']:['c'],aPart());
         if(r.sn){ const rec={vRoom:x.r,vRack:c.vRack,vPanel:c.vPanel,vPorts:c.vPorts,nRoom:x.r,nRack:c.nRack,nPanel:c.nPanel,nPorts:c.nPorts,
             type:r.tt||(x.t==='CU'?'CU RJ45':'LWL'),len:String(r.len||x.l),side:r.side||S.aCab||'',sn:r.sn,fa:r.fa||'',at:new Date().toISOString()};
           const ri=S.kab.records.findIndex(q=>q.sn===rec.sn);
@@ -1017,7 +1020,7 @@ function auditOcr(arr,auto){
       S.audit['PANEL|'+S.kRoom+'|'+S.aRack+'|'+S.aPanel]={st:cls,txt:lab.txt,at:new Date().toISOString()};
       // zgodna opisówka sama zalicza kable: z numerem modułu – ten jeden kabel, bez numeru – wszystkie kable panelu idące do tej szafy/panelu
       if(ok){ const hit=em?[em]:exp.filter(e=>e.fr===lab.rack&&e.fp===lab.panel); let n=0;
-        for(const e of hit){ if(aStatusOf(e.x)==='bad') continue; aMark(e.x,'ok',{txt:lab.txt,why:'opisówka panelu zgodna'},[aSideIn(e.x,S.aRack)]); n++; }
+        for(const e of hit){ if(aStatusOf(e.x)==='bad') continue; aMark(e.x,'ok',{txt:lab.txt,why:'opisówka panelu zgodna'},[aSideIn(e.x,S.aRack)],aPart()); n++; }
         if(n){ msg+=`<br><small>zaliczono kable: ${n}</small>`; if(S.aSlot) aNextSlot(); } } }
   } else if(r.sn){ key='S|'+r.sn; const hit=PROJ.find(x=>(S.audit[aKey(x)]||{}).sn===r.sn);
     cls='w'; msg='S/N '+esc(r.sn)+(hit?` – sprawdzony wcześniej przy ${esc(pTxt(hit))}`:' – zeskanuj też oznacznik tego kabla');
@@ -1048,11 +1051,25 @@ function auditOcr(arr,auto){
 // kod kreskowy w trybie sprawdzania (np. S/N z naklejki) – jak OCR z samym S/N
 { const _k=kabScan; kabScan=function(t,f){ if(S.kMode!=='audit') return _k(t,f); const v=String(t).trim(); if(v.length<8||/^https?:/i.test(v)) return; auditOcr(['SN: '+v],true); }; }
 { const _r=render; render=function(){ _r(); aRender(); }; }
-$('aRes').onclick=e=>{ const b=e.target.closest('[data-padd]'); if(!b||!aPend) return;
+function aSnForm(x){ aSnX=x; aShow('w',`🔢 S/N dla ${esc(routeTxt({vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRack:x.n,nPanel:x.np,nPorts:x.no}))}<br><small>strona kabla w ${esc(S.aRack||'tej szafie')}: ${S.aCab||'auto (A/B z naklejki)'}</small><div class="row" style="margin-top:6px"><input id="aSnIn" class="big" placeholder="S/N" autocapitalize="characters"><button class="b ok" data-snsave="1">Zapisz</button></div>`); setTimeout(()=>{ const i=$('aSnIn'); if(i) i.focus(); },50); }
+let aSnX=null;
+$('aList').onclick=e=>{ const b=e.target.closest('[data-snadd]'); if(!b) return; const x=PROJ[+b.dataset.snadd]; if(x) aSnForm(x); };
+$('aRes').onclick=e=>{ const sv=e.target.closest('[data-snsave]');
+  if(sv&&aSnX){ const v=String(($('aSnIn')||{}).value||'').toUpperCase().replace(/\s+/g,''); if(v.length<6){ warn('S/N za krótki'); return; }
+    const x=aSnX, ex=S.kab.records.find(q=>q.sn===v);
+    const rec={vRoom:x.r,vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRoom:x.r,nRack:x.n,nPanel:x.np,nPorts:x.no,type:x.t==='CU'?'CU RJ45':'LWL',len:String(x.l),side:S.aCab||'',sn:v,fa:'',at:new Date().toISOString()};
+    const i=S.kab.records.findIndex(q=>cRoute(q)===cRoute(rec)); const sdn=aSideIn(x,S.aRack);
+    const prev=ex&&cRoute(ex)!==cRoute(rec)?routeTxt(ex):'';
+    if(ex) S.kab.records.splice(S.kab.records.indexOf(ex),1);
+    if(i>=0&&S.kab.records[i]) S.kab.records[i]=Object.assign({},S.kab.records[i],rec); else S.kab.records.push(rec);
+    S.audit[aKey(x)]=Object.assign({},aEntry(x),{sn:v},sdn?{['s'+sdn]:v}:{});
+    aShow('ok','🔢 S/N '+esc(v)+' zapisany: '+esc(routeTxt(rec))+(S.aCab?' · strona '+S.aCab:'')+(prev?'<br><small>⚠ był przypisany do: '+esc(prev)+' – przeniesiony</small>':''));
+    aSnX=null; save(); aRender(); return; }
+  const b=e.target.closest('[data-padd]'); if(!b||!aPend) return;
   const rec=Object.assign({},aPend.rec,{at:new Date().toISOString()});
   const i=S.kab.records.findIndex(q=>q.sn===rec.sn); const was=i>=0?routeTxt(S.kab.records[i]):'';
   if(i>=0) S.kab.records[i]=Object.assign({},S.kab.records[i],rec); else S.kab.records.push(rec);
-  if(aPend.x&&aPend.side) aMark(aPend.x,'ok',{sn:rec.sn,['s'+aPend.side]:rec.sn,txt:routeTxt(rec),why:'S/N przypisany przy sprawdzaniu'},[aPend.side]);
+  if(aPend.x&&aPend.side) aMark(aPend.x,'ok',{sn:rec.sn,['s'+aPend.side]:rec.sn,txt:routeTxt(rec),why:'S/N przypisany przy sprawdzaniu'},[aPend.side],aPart());
   aShow('ok','➕ Zapisano w liście: '+esc(routeTxt(rec))+' · S/N '+esc(rec.sn)+(rec.len?' · '+esc(rec.len)+' m':'')+(rec.side?' · strona '+esc(rec.side):'')+(was?'<br><small>poprzednio: '+esc(was)+'</small>':''));
   aPend=null; save(); aRender(); beep(1500,.1); vib(60); };
 $('aReset').onclick=()=>ask('Wyczyścić wyniki sprawdzania (✅/❌)?',()=>{ S.audit={}; save(); $('aRes').innerHTML=''; aRender(); });
