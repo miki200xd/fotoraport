@@ -867,7 +867,11 @@ function slotsOf(e){ const o=np(e.o); let m=o.match(/^(\d+)-(\d+)$/);
   m=o.match(/^(\d)\+(\d)$/); if(m) return S.aSide==='front'?[+m[1],+m[2]]:[Math.ceil(+m[2]/2)];   // światłowód: z przodu moduły 1,2,3,4; z tyłu gniazdo 1 = 1+2, gniazdo 2 = 3+4
   return []; }
 function aStatusOf(x){ return (S.audit[aKey(x)]||{}).st||''; }
-function aMark(x,st,info){ S.audit[aKey(x)]=Object.assign({},S.audit[aKey(x)]||{},{st,at:new Date().toISOString()},info||{}); }
+function aMark(x,st,info){ S.audit[aKey(x)]=Object.assign({},S.audit[aKey(x)]||{},{st,at:new Date().toISOString()},info||{});
+  // cały panel idzie do całego panelu (np. 1–24 = 4 moduły, światłowód 1+2 i 3+4): jedno zaliczenie zalicza wszystkie moduły
+  if(st==='ok'){ for(const y of PROJ){ if(y===x||y.r!==x.r) continue;
+      const same=(y.v===x.v&&y.vp===x.vp&&y.n===x.n&&y.np===x.np)||(y.v===x.n&&y.vp===x.np&&y.n===x.v&&y.np===x.vp);
+      const cur=aStatusOf(y); if(same&&cur!=='ok'&&cur!=='bad') S.audit[aKey(y)]={st:'ok',at:new Date().toISOString(),why:'cały panel → cały panel (razem z '+x.vo+')'}; } } }
 function aShow(cls,txt){ $('aRes').innerHTML=`<div class="ares ${cls}">${txt}</div>`; }
 function aRender(){
   const audit=S.kMode==='audit';
