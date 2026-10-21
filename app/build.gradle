@@ -54,7 +54,7 @@ android {
         pdunowy {
             dimension "app"
             applicationId "pl.wac.pduskaner.nowy"
-            versionName "3.4"
+            versionName "3.5"
             resValue "string", "app_name", "Data Center NOWY"
             resValue "string", "media_dir", "PduSkanerNowy"
         }

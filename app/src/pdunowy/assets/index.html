@@ -563,7 +563,8 @@ function parseOcr(texts){
   else if((m=all.match(/S\s*N\s*[:;.]?\s*(FA\s*[0-9OIl]{2}\s*-\s*[0-9OIl]{5})\s*[\/|I1l]\s*([0-9OIl]{1,4})(?:\s*[-–]\s*([AB8])\b)?/i))){
     r.sn=dig(m[1].replace(/\s/g,'')).replace(/^.{2}/,'FA')+'/'+dig(m[2]).padStart(3,'0');
     if(m[3]) r.side=m[3]==='8'?'B':m[3].toUpperCase(); }
-  else { m=all.match(/S\s*N\s*[:;.]\s*([A-Z0-9][A-Z0-9\-]{6,24})/i); if(m) r.sn=m[1].toUpperCase(); }
+  // samo „FA26-28696” (pudełko) to partia wspólna dla kilku kabli – nie S/N
+  else { m=all.match(/S\s*N\s*[:;.]\s*([A-Z0-9][A-Z0-9\-]{6,24})/i); if(m&&!/^FA\d{2}-\d{5}$/i.test(m[1])) r.sn=m[1].toUpperCase(); }
   m=all.match(/FA\s*[0-9OIl]{2}\s*-\s*[0-9OIl]{5}/); if(m) r.fa=dig(m[0].replace(/\s/g,'')).replace(/^FA|^F4/,'FA').replace(/^.{2}/,'FA');
   m=all.match(/\bL\s*[:;.]\s*([0-9OIl]{1,3}(?:[.,][0-9]{1,2})?)\s*m\b/i); if(m) r.len=dig(m[1]).replace(',','.').replace(/\.0+$/,'');
   m=all.match(/Trunk[^\n]{0,30}?MPE\s*\/\s*MPE/i) || all.match(/COPPER\s*TOR-?\s*G2/i);
