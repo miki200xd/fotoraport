@@ -735,8 +735,8 @@ function kProj(){
   $('kLens').innerHTML=`<span style="font-size:12px;color:var(--mut);align-self:center">${done}/${P.length} kabli · długość:</span>`+lens.map(l=>{ const all=P.filter(x=>+x.l===l), left=all.filter(x=>!pDone(x)).length;
     return `<button data-len="${l}" class="${l===L?'on':''} ${left?'':'done'}">${l} m <small>${left}/${all.length}</small></button>`; }).join('');
   if(L==null){ $('kCand').innerHTML=''; return; }
-  // typ z naklejki (COPPER/CU → CU, MPE/LWL → LWL): pasujące na górze; ±1 m na wypadek zaokrągleń, dokładna długość wyżej
-  const T=kTyp(c), C=P.filter(x=>Math.abs(+x.l-L)<=1).sort((a,b)=>
+  // typ z naklejki (COPPER/CU → CU, MPE/LWL → LWL): pasujące na górze; ±1 m tylko gdy dokładnej długości nie ma w projekcie
+  const T=kTyp(c), ex=P.some(x=>+x.l===L), C=P.filter(x=>ex?+x.l===L:Math.abs(+x.l-L)<=1).sort((a,b)=>
     ((T&&a.t!==T)-(T&&b.t!==T))||(Math.abs(+a.l-L)-Math.abs(+b.l-L))||(pDone(a)-pDone(b)));
   $('kCand').innerHTML=`<div style="font-size:12px;color:var(--mut);margin:8px 0 2px">Kable ${L} m${T?' · z naklejki: <b>'+T+'</b> na górze':''} – dotknij, żeby wpisać trasę:</div>`+
     C.map((x,i)=>`<div class="cand ${pDone(x)||(T&&x.t!==T)?'done':''}" data-pi="${PROJ.indexOf(x)}"><span>${pDone(x)?'✓':'○'}</span><b>${esc(pTxt(x))}</b><span style="margin-left:auto">${+x.l!==L?x.l+' m ':''}${x.t}</span></div>`).join('');
