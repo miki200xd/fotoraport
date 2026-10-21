@@ -569,7 +569,7 @@ function parseOcr(texts){
   m=all.match(/\bL\s*[:;.]\s*([0-9OIl]{1,3}(?:[.,][0-9]{1,2})?)\s*m\b/i); if(m) r.len=dig(m[1]).replace(',','.').replace(/\.0+$/,'');
   m=all.match(/Trunk[^\n]{0,30}?MPE\s*\/\s*MPE/i) || all.match(/COPPER\s*TOR-?\s*G2/i);
   if(m) r.type=m[0].replace(/\s+/g,' ').trim();
-  m=all.match(/MPE\s*\/\s*MPE\s+([AB])\b/); if(m) r.side=m[1];
+  m=all.match(/MPE\s*\/\s*MPE\s+([AB])\b/)||(/MPE\s*\/\s*MPE/.test(all)&&all.match(/^\s*([AB])\s*$/m)); if(m&&!r.side) r.side=m[1];
   // typ kabla z napisów: miedź (COPPER, CU, RJ45) lub światłowód (MPE/MPE, LWL, FIBER, SM)
   if(/COPPER|\bCU\b|\bRJ\s*-?\s*45\b|TOR-?\s*G2/i.test(all)) r.tt='CU RJ45';
   else if(/MPE\s*\/\s*MPE|\bLWL\b|\bFIBER\b|\bFIBRE\b|\bSM\b|OS[12]/i.test(all)) r.tt='LWL';
