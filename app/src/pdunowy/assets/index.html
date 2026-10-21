@@ -559,6 +559,10 @@ function parseOcr(texts){
   let m=all.match(/S\s*N\s*[:;.]?\s*([0-9OQDIlS]{3}\s*[O0][S5][I1l]\s*[0-9OQDIlSBZ ]{12,15})/i)
       || all.match(/\b([0O]2[0O]\s*[O0][S5][I1l]\s*[0-9OQDIlSBZ]{12})\b/);
   if(m) r.sn=snFix(m[1]).slice(0,18);
+  // miedź: „SN: FA26-28696 / 001 - B” – numer kabla po „/” też jest ważny, litera to strona
+  else if((m=all.match(/S\s*N\s*[:;.]?\s*(FA\s*[0-9OIl]{2}\s*-\s*[0-9OIl]{5})\s*[\/|I1l]\s*([0-9OIl]{1,4})(?:\s*[-–]\s*([AB8])\b)?/i))){
+    r.sn=dig(m[1].replace(/\s/g,'')).replace(/^.{2}/,'FA')+'/'+dig(m[2]).padStart(3,'0');
+    if(m[3]) r.side=m[3]==='8'?'B':m[3].toUpperCase(); }
   else { m=all.match(/S\s*N\s*[:;.]\s*([A-Z0-9][A-Z0-9\-]{6,24})/i); if(m) r.sn=m[1].toUpperCase(); }
   m=all.match(/FA\s*[0-9OIl]{2}\s*-\s*[0-9OIl]{5}/); if(m) r.fa=dig(m[0].replace(/\s/g,'')).replace(/^FA|^F4/,'FA').replace(/^.{2}/,'FA');
   m=all.match(/\bL\s*[:;.]\s*([0-9OIl]{1,3}(?:[.,][0-9]{1,2})?)\s*m\b/i); if(m) r.len=dig(m[1]).replace(',','.').replace(/\.0+$/,'');
