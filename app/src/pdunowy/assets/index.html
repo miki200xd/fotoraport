@@ -735,10 +735,16 @@ function kProj(){
   $('kLens').innerHTML=`<span style="font-size:12px;color:var(--mut);align-self:center">${done}/${P.length} kabli · długość:</span>`+lens.map(l=>{ const all=P.filter(x=>+x.l===l), left=all.filter(x=>!pDone(x)).length;
     return `<button data-len="${l}" class="${l===L?'on':''} ${left?'':'done'}">${l} m <small>${left}/${all.length}</small></button>`; }).join('');
   if(L==null){ $('kCand').innerHTML=''; return; }
-  const C=P.filter(x=>+x.l===L).sort((a,b)=>pDone(a)-pDone(b));
-  $('kCand').innerHTML=`<div style="font-size:12px;color:var(--mut);margin:8px 0 2px">Kable ${L} m – dotknij, żeby wpisać trasę:</div>`+
-    C.map((x,i)=>`<div class="cand ${pDone(x)?'done':''}" data-pi="${PROJ.indexOf(x)}"><span>${pDone(x)?'✓':'○'}</span><b>${esc(pTxt(x))}</b><span style="margin-left:auto">${x.t}</span></div>`).join('');
+  // typ z naklejki (COPPER/CU → CU, MPE/LWL → LWL): pasujące na górze; ±1 m na wypadek zaokrągleń, dokładna długość wyżej
+  const T=kTyp(c), C=P.filter(x=>Math.abs(+x.l-L)<=1).sort((a,b)=>
+    ((T&&a.t!==T)-(T&&b.t!==T))||(Math.abs(+a.l-L)-Math.abs(+b.l-L))||(pDone(a)-pDone(b)));
+  $('kCand').innerHTML=`<div style="font-size:12px;color:var(--mut);margin:8px 0 2px">Kable ${L} m${T?' · z naklejki: <b>'+T+'</b> na górze':''} – dotknij, żeby wpisać trasę:</div>`+
+    C.map((x,i)=>`<div class="cand ${pDone(x)||(T&&x.t!==T)?'done':''}" data-pi="${PROJ.indexOf(x)}"><span>${pDone(x)?'✓':'○'}</span><b>${esc(pTxt(x))}</b><span style="margin-left:auto">${+x.l!==L?x.l+' m ':''}${x.t}</span></div>`).join('');
 }
+function kTyp(c){ const s=[c.type,c.ocr].join(' ');
+  if(/COPPER|\bCU\b|RJ\s*-?\s*45|TOR-?\s*G2|047A0352/i.test(s)) return 'CU';
+  if(/MPE|LWL|FIBER|FIBRE|Trunk|\bOS[12]\b|020OSI/i.test(s)||/^0?20OSI/i.test(c.sn||'')) return 'LWL';
+  return ''; }
 $('kLens').onclick=e=>{ const b=e.target.closest('button[data-len]'); if(!b) return; const l=+b.dataset.len; selLen=selLen===l?null:l; kProj(); };
 $('kCand').onclick=e=>{ const d=e.target.closest('[data-pi]'); if(!d) return; const x=PROJ[+d.dataset.pi]; const c=S.kab.cur;
   Object.assign(c,{vRoom:x.r,vRack:x.v,vPanel:x.vp,vPorts:x.vo,nRoom:x.r,nRack:x.n,nPanel:x.np,nPorts:x.no});
