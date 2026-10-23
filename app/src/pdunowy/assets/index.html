@@ -180,7 +180,7 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
     <details class="lst card" style="margin-top:8px"><summary>⚙ Projekt i ustawienia</summary>
       <div class="row" style="margin-top:6px"><select id="kRoom" style="flex:1"></select><button class="b g" id="kImp" style="flex:1">📂 Wczytaj listę</button><input type="file" id="kFile" accept=".xlsx,.csv,.txt" class="hide"></div>
     </details>
-    <div class="foot">Sprawdzanie: wpisz szafę, wybierz panel i gniazdo, celuj w oznacznik (tył) lub opisówkę modułu (przód).<br>Nowe kable: odczytaj naklejkę S/N → wybierz trasę → zapisz.<br>powered by WAC</div>
+    <div class="foot">Sprawdzanie: wpisz szafę, wybierz panel i gniazdo, celuj w oznacznik (tył) lub opisówkę modułu (przód).<br>Nowe kable: odczytaj naklejkę S/N → wybierz trasę → zapisz. Z wczytaną listą z S/N trasa wpisuje się sama po odczycie S/N.<br>powered by WAC</div>
     <div class="stk row" style="flex-wrap:wrap">
       <div id="aBar" class="hide" style="flex-basis:100%"></div>
       <button class="b" id="kOcr" style="flex:2">📷 Odczytaj napisy</button>
@@ -617,7 +617,7 @@ function kRender(){
   }
 }
 document.addEventListener('change',e=>{ const k=e.target.dataset&&e.target.dataset.kk; if(!k) return;
-  let v=e.target.value.trim(); if(k!=='type') v=v.toUpperCase(); S.kab.cur[k]=v; save(); kRender(); });
+  let v=e.target.value.trim(); if(k!=='type') v=v.toUpperCase(); S.kab.cur[k]=v; if(k==='sn') pApply(); save(); kRender(); });
 function kabScan(text,format){
   const t=String(text).trim(), now=Date.now();
   if(t===kLast && now-kLastAt<3000) return; kLast=t; kLastAt=now;
@@ -626,7 +626,7 @@ function kabScan(text,format){
   else if(/^CU\d{5,7}$/i.test(t)||/^https?:/i.test(t)) return; // numer pozycji z pudełka / linki – pomijamy
   else if(t.length>=8 && !c.sn){ c.sn=t.toUpperCase(); log('✓ S/N z kodu: '+c.sn); }
   else return;
-  flash(); beep(1200,.08); vib(40); save(); kRender();
+  pApply(); flash(); beep(1200,.08); vib(40); save(); kRender();
 }
 let kLast='', kLastAt=0, ocrBusy=false;
 window.__ocrNative=(id,json)=>{
@@ -723,6 +723,14 @@ const cRoute=c=>[c.vRoom,c.vRack,canonP(c.vRoom,c.vRack,c.vPanel),np(c.vPorts),c
 function pFind(c){ if(!c.vRack||!c.nRack) return null; const k=cRoute(c); return PROJ.find(x=>pRoute(x)===k||pRoute(x,1)===k)||null; }
 function pDone(x){ return S.kab.records.some(r=>{ const k=cRoute(r); return k===pRoute(x)||k===pRoute(x,1); }); }
 const pTxt=x=>`${x.v} ${x.vp} ${x.vo} → ${x.n} ${x.np} ${x.no}`;
+// S/N z wczytanej listy: „FA26-28687/1” = „FA26-28687/001” (jak z naklejki), światłowód 020OSI… bez zmian
+const snKey=s=>{ const x=String(s||'').toUpperCase().replace(/\s/g,''), m=x.match(/^(FA\d{2}-\d{5})\/0*(\d{1,4})$/); return m?m[1]+'/'+m[2].padStart(3,'0'):x; };
+const pBySn=sn=>{ const k=snKey(sn); return k?PROJ.find(x=>x.sn&&snKey(x.sn)===k)||null:null; };
+// S/N odczytany, trasy jeszcze nie ma → trasa z listy
+function snApply(c){ if(!c.sn||c.vRack) return; const p=pBySn(c.sn); if(!p) return;
+  Object.assign(c,{vRoom:p.r,vRack:p.v,vPanel:p.vp,vPorts:p.vo,nRoom:p.r,nRack:p.n,nPanel:p.np,nPorts:p.no});
+  if(!c.len) c.len=String(p.l); if(!c.type) c.type=p.t==='CU'?'CU RJ45':'LWL'; if(S.kRoom!==p.r) S.kRoom=p.r;
+  log('Trasa z listy wg S/N: '+pTxt(p)); }
 let selLen=null;
 function kProj(){
   const rooms=[...new Set(PROJ.map(x=>x.r))];
@@ -739,7 +747,7 @@ function kProj(){
   const T=kTyp(c), ex=P.some(x=>+x.l===L), C=P.filter(x=>ex?+x.l===L:Math.abs(+x.l-L)<=1).sort((a,b)=>
     ((T&&a.t!==T)-(T&&b.t!==T))||(Math.abs(+a.l-L)-Math.abs(+b.l-L))||(pDone(a)-pDone(b)));
   $('kCand').innerHTML=`<div style="font-size:12px;color:var(--mut);margin:8px 0 2px">Kable ${L} m${T?' · z naklejki: <b>'+T+'</b> na górze':''} – dotknij, żeby wpisać trasę:</div>`+
-    C.map((x,i)=>`<div class="cand ${pDone(x)||(T&&x.t!==T)?'done':''}" data-pi="${PROJ.indexOf(x)}"><span>${pDone(x)?'✓':'○'}</span><b>${esc(pTxt(x))}</b><span style="margin-left:auto">${+x.l!==L?x.l+' m ':''}${x.t}</span></div>`).join('');
+    C.map((x,i)=>`<div class="cand ${pDone(x)||(T&&x.t!==T)?'done':''}" data-pi="${PROJ.indexOf(x)}"><span>${pDone(x)?'✓':'○'}</span><b>${esc(pTxt(x))}</b>${x.sn?`<small class="mono" style="color:var(--mut)">${esc(x.sn)}</small>`:''}<span style="margin-left:auto">${+x.l!==L?x.l+' m ':''}${x.t}</span></div>`).join('');
 }
 function kTyp(c){ const s=[c.type,c.ocr].join(' ');
   if(/COPPER|\bCU\b|RJ\s*-?\s*45|TOR-?\s*G2|047A0352/i.test(s)) return 'CU';
@@ -753,16 +761,25 @@ $('kCand').onclick=e=>{ const d=e.target.closest('[data-pi]'); if(!d) return; co
 $('kRoom').onchange=e=>{ if(e.target.value==='__def'){ ask('Wrócić do projektu DC110 (RZ2B, RZ3B, RZ5B) zamiast wczytanej listy?',()=>{ S.proj=null; PROJ=PROJ_DC110; save(); render(); }); kProj(); return; }
   S.kRoom=e.target.value; selLen=null; save(); kProj(); };
 // po odczycie trasy: długość i typ z projektu, kontrola długości z naklejki
-function pApply(){ const c=S.kab.cur, x=pFind(c); if(!x) return;
+function pApply(){ const c=S.kab.cur; snApply(c); const x=pFind(c); if(!x) return;
   if(!c.len) c.len=String(x.l); if(!c.type) c.type=x.t==='CU'?'CU RJ45':'LWL'; if(x.r&&S.kRoom!==x.r) S.kRoom=x.r; }
-const _kCheck=kCheck; kCheck=function(c){ const out=_kCheck(c); if(!c.vRack||!c.nRack) return out;
+const _kCheck=kCheck; kCheck=function(c){ const out=_kCheck(c), ps=c.sn?pBySn(c.sn):null;
+  if(!c.vRack||!c.nRack){
+    if(ps) out.push(['o','wg listy ten S/N to: '+pTxt(ps)]);
+    else if(c.sn&&PROJ.some(x=>x.sn)) out.push(['w','Tego S/N nie ma na wczytanej liście']);
+    return out; }
   const x=pFind(c);
   if(!x) out.push(['w','Tej trasy nie ma w projekcie – sprawdź oznacznik']);
-  else { out.push(['o',`w projekcie: ${x.l} m ${x.t}`]); if(c.len&&Math.abs(+c.len-+x.l)>0.5) out.push(['w',`Na naklejce ${c.len} m, w projekcie ${x.l} m`]); }
+  else { out.push(['o',`w projekcie: ${x.l} m ${x.t}`]); if(c.len&&Math.abs(+c.len-+x.l)>0.5) out.push(['w',`Na naklejce ${c.len} m, w projekcie ${x.l} m`]);
+    if(x.sn&&c.sn){ if(snKey(x.sn)===snKey(c.sn)) out.push(['o','S/N zgodny z listą ✓']);
+      else out.push(['x',`S/N NIEZGODNY z listą – na tej trasie ma być ${x.sn}`+(ps?`, a ${c.sn} wg listy to ${pTxt(ps)}`:'')]); }
+    else if(x.sn) out.push(['o','wg listy S/N: '+x.sn]);
+    else if(ps) out.push(['x','Ten S/N wg listy należy do '+pTxt(ps)]); }
   return out; };
 const _kRender=kRender; kRender=function(){ _kRender(); kProj(); };
 
-/* ---------- wczytanie listy/projektu z Excela (.xlsx) albo CSV: kolumny von | Panel | Ports | nach | Panel | Ports | Typ | Länge ---------- */
+/* ---------- wczytanie listy/projektu z Excela (.xlsx) albo CSV: kolumny von | Panel | Ports | nach | Panel | Ports | Typ | Länge (+ Raum, SN)
+   standard pliku: G:\Mój dysk\Claude\DC110\APP_DataCenter_STANDARD_IMPORTU.md ---------- */
 async function readXlsx(buf){
   const u=new Uint8Array(buf), dv=new DataView(buf), td=new TextDecoder();
   let e=u.length-22; while(e>=0&&dv.getUint32(e,true)!==0x06054b50) e--;
@@ -796,6 +813,7 @@ function rowsToProj(rows){
   const it=h.findIndex(x=>/kabeltyp|trunkart|^typ/i.test(x));
   let il=h.findIndex(x=>/gesamt/i.test(x)); if(il<0) il=h.findIndex(x=>/l(ä|a)nge|długo/i.test(x));
   const ir=h.findIndex(x=>/^(raum|sala)$/i.test(x));
+  const is=h.findIndex(x=>/^(sn|s\/n|seriennummer|sn komplett|numer seryjny)$/i.test(x));
   let room0=''; for(const r of rows){ if(r&&H(r[0])==='Raum:'){ room0=H(r[3]).toUpperCase(); break; } }
   const one=x=>{ const m=String(x).trim().match(/^(RZ\d[A-Z])?\s*([A-H])\s*0?(\d{1,2})$/); return m?{room:m[1]||'',rack:m[2]+m[3].padStart(2,'0')}:null; };
   const sp=x=>{ const parts=H(x).toUpperCase().split('/'), a=one(parts.pop()); if(!a) return null; const o=parts.length?one(parts[0]):null; if(o) a.alt=o.rack; return a; };
@@ -810,8 +828,8 @@ function rowsToProj(rows){
     const room=a.room||(ir>=0?H(r[ir]).toUpperCase():'')||room0||'LISTA';
     const kv=H(r[ivp+1]), kn=H(r[inp+1]);
     const vp2=pa(r[ivp])||vp, np2=pa(r[inp])||np;   // „(P02) P05” -> P02 (jak na rysunku szafy)
-    const push=(vo,no)=>out.push({r:room,v:a.rack,va:a.alt||'',vp:vp2,vo,n:b.rack,na:b.alt||'',np:np2,no,t,l:L});
-    if(/^ports$/i.test(h[ivp+1]||'')) { push(kv,kn); continue; }   // nasz format – porty wprost
+    const push=(vo,no,sn)=>out.push({r:room,v:a.rack,va:a.alt||'',vp:vp2,vo,n:b.rack,na:b.alt||'',np:np2,no,t,l:L,sn:sn||''});
+    if(/^ports$/i.test(h[ivp+1]||'')) { push(kv,kn,is>=0?snKey(H(r[is])):''); continue; }   // nasz format – porty wprost, S/N na kabel
     if(cu){
       if((kv.match(/\+/g)||[]).length===3) for(let k=0;k<4;k++) push(`${6*k+1}-${6*k+6}`,`${6*k+1}-${6*k+6}`);
       else { const k=parseInt(kv)||1; push(`${6*k-5}-${6*k}`,'1-6'); }
@@ -828,7 +846,7 @@ $('kFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
     let sheets;
     if(/\.xlsx$/i.test(f.name)) sheets=await readXlsx(await f.arrayBuffer());
     else sheets=[(await f.text()).split(/\r?\n/).map(l=>l.split(l.includes('\t')?'\t':';'))];
-    const P=sheets.flatMap(rowsToProj); if(!P.length) throw new Error('brak wierszy z trasami (szukam kolumn „von” i „nach”)'); S.proj=P; PROJ=P; S.kRoom=P[0].r; save(); render(); log(`Wczytano ${P.length} kabli z „${f.name}”`);
+    const P=sheets.flatMap(rowsToProj); if(!P.length) throw new Error('brak wierszy z trasami (szukam kolumn „von” i „nach”)'); S.proj=P; PROJ=P; S.kRoom=P[0].r; save(); render(); const ns=P.filter(x=>x.sn).length; log(`Wczytano ${P.length} kabli z „${f.name}”${ns?`, w tym ${ns} z S/N`:''}`);
   }catch(err){ warn('Nie udało się wczytać listy: '+(err.message||err)); }
   e.target.value=''; };
 
