@@ -19,6 +19,7 @@ label.f{display:block;font-size:12px;color:var(--mut);margin:0 0 2px}
 input,select{width:100%;font:inherit;padding:8px 9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--tx)}
 input.big{font-size:20px;font-weight:600}
 button.b{font:inherit;border:0;border-radius:9px;padding:10px 12px;background:var(--ac);color:#fff;font-weight:600}
+button.rkb{padding:8px 10px;font-size:20px;line-height:1;flex:0 0 auto}
 button.g{background:var(--ln);color:var(--tx);font-weight:500}
 button.ok{background:var(--ok)}
 button.bad{background:var(--bad)}
@@ -141,7 +142,7 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
   <div class="card" id="pduTop">
     <div class="row">
       <div style="flex:1"><label class="f">Sala</label><input id="room" placeholder="RZ2B" autocapitalize="characters"></div>
-      <div style="flex:1.2"><label class="f">Szafa</label><input id="rack" class="big" placeholder="F7" autocapitalize="characters"></div>
+      <div style="flex:1.6"><label class="f">Szafa</label><div class="row" style="gap:4px"><button class="b g rkb" id="rackPrev">‹</button><input id="rack" class="big" placeholder="F7" autocapitalize="characters" style="flex:1;min-width:0"><button class="b g rkb" id="rackNext">›</button></div></div>
       <div style="flex:1"><label class="f">Stara nazwa / uwagi</label><input id="note" placeholder="B5"></div>
     </div>
   </div>
@@ -160,7 +161,7 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
     <div class="row seg" style="margin-top:8px"><button id="kmAudit">✔ Sprawdzanie</button><button id="kmAssign">🏷 Nowe kable</button></div>
     <div id="aCard" class="card hide" style="margin-top:8px">
       <div class="row" style="align-items:flex-end">
-        <div style="flex:1"><label class="f">Szafa</label><input id="aRack" class="big" placeholder="D07" autocapitalize="characters"></div>
+        <div style="flex:1.4"><label class="f">Szafa</label><div class="row" style="gap:4px"><button class="b g rkb" id="aRackPrev">‹</button><input id="aRack" class="big" placeholder="D07" autocapitalize="characters" style="flex:1;min-width:0"><button class="b g rkb" id="aRackNext">›</button></div></div>
         <div style="flex:1.3"><label class="f">Widok</label><div class="row seg"><button id="aFront">Przód</button><button id="aBack">Tył</button></div></div>
       </div>
       <div id="aPanels" class="chips" style="margin-top:8px"></div>
@@ -199,7 +200,7 @@ details.ocr pre{white-space:pre-wrap;max-height:160px;overflow:auto}
     <button class="b g" id="bClear" style="flex:1">Wyczyść</button>
     <button class="b ok" id="bSave" style="flex:2">Zapisz szafę i dalej ›</button>
   </div>
-  <div class="foot">Skanuj po kolei: QR zasilania (góra), kod kreskowy S/N, QR ETH1 i ETH2.<br>Kolejność nie ma znaczenia – aplikacja sama rozpoznaje kody. Pola można poprawić ręcznie.<br>powered by WAC</div>
+  <div class="foot">Skanuj po kolei: QR zasilania (góra), kod kreskowy S/N, QR ETH1 i ETH2.<br>‹ › i „Zapisz szafę i dalej” przechodzą tylko po szafach z projektu sali (np. C09 → C11).<br>Kolejność nie ma znaczenia – aplikacja sama rozpoznaje kody. Pola można poprawić ręcznie.<br>powered by WAC</div>
   </div>
 </div>
 
@@ -343,7 +344,8 @@ function rackCheck(){
   if(ra[0]&&ra[0]===ra[1]) return ['w',`Obie listwy to ${ra[0]}`];
   return null;
 }
-const sameRack=(x,c)=>norm(x.room)===norm(c.room)&&norm(x.rack)===norm(c.rack);
+const rackId=s=>norm(s).replace(/([A-H])0+(\d)$/,'$1$2');   // C08 = C8
+const sameRack=(x,c)=>norm(x.room)===norm(c.room)&&rackId(x.rack)===rackId(c.rack);
 const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
 
 /* ---------- widok ---------- */
@@ -396,6 +398,39 @@ function ask(text,yes){ $('dlgTx').innerHTML=text; $('dlg').classList.add('on');
 
 /* ---------- zapis szafy ---------- */
 function nextRack(r){ const m=String(r).match(/^(.*?)(\d+)$/); return m? m[1]+(+m[2]+1) : r; }
+// szafy z projektu danej sali (wczytana lista kabli + lista PDU): następna/poprzednia szafa przeskakuje tylko po nich, np. C09 → C11, C20 → D07
+// szafy całej celi z listy importu (app_import.py → app_racks.json), żeby ‹ › działało także bez wczytanej listy
+const RACKS_DC110={"RZ2B":["C07","C08","C09","C11","C12","C13","C14","C15","C16","C18","C19","C20","D07","D08","D09","D11","D12","D13","D14","D15","D16","D18","D19","D20","E07","E08","E09","E11","E12","E13","E14","E15","E16","E18","E19","E20","F07","F08","F09","F11","F12","F13","F14","F15","F16","F18","F19","F20"],"RZ3A":["C07","C08","C10","C11","C12","C13","C14","C15","C16","C18","C19","C20","D07","D08","D10","D11","D12","D13","D14","D15","D16","D18","D19","D20","E07","E08","E10","E11","E12","E13","E14","E15","E16","E18","E19","E20","F07","F08","F10","F11","F12","F13","F14","F15","F16","F18","F19","F20"],"RZ3B":["C07","C08","C09","C11","C12","C13","C14","C15","C16","C18","C19","C20","D07","D08","D09","D11","D12","D13","D14","D15","D16","D18","D19","D20","E07","E08","E09","E11","E12","E13","E14","E15","E16","E18","E19","E20","F07","F08","F09","F11","F12","F13","F14","F15","F16","F18","F19","F20"],"RZ5B":["A11","A12","A13","A14","A15","A16","A17","A18","A19","A20","B11","B12","B13","B15","B16","B17","B18","B19","B20","C11","C12","C13","C14","C15","C16","C17","C18","C19","C20","D11","D12","D13","D15","D16","D17","D18","D19","D20","E11","E12","E13","E15","E16","E17","E18","E19","E20","F11","F12","F13","F14","F15","F16","F17","F18","F19","F20"]};
+const rkSplit=s=>{ const m=norm(s).match(/^(RZ\d[A-Z])?([A-H])0*(\d{1,2})$/); return m?{room:m[1]||'',l:m[2],n:+m[3]}:null; };
+function projRacks(room){ room=norm(room); const M=new Map(); if(!room) return [];
+  for(const x of PROJ) if(x.r===room) for(const [R,A] of [[x.v,x.va],[x.n,x.na]]){ const k=rkSplit(R); if(k&&!M.has(k.l+k.n)) M.set(k.l+k.n,{l:k.l,n:k.n,alt:A||''}); }
+  for(const R of (RACKS_DC110[room]||[])){ const k=rkSplit(R); if(k&&!M.has(k.l+k.n)) M.set(k.l+k.n,{l:k.l,n:k.n,alt:''}); }
+  for(const p of PDU_LIST){ const k=rkSplit(p.rack); if(k&&k.room===room&&!M.has(k.l+k.n)) M.set(k.l+k.n,{l:k.l,n:k.n,alt:''}); }
+  return [...M.values()].sort((a,b)=>a.l<b.l?-1:a.l>b.l?1:a.n-b.n); }
+function stepRack(room,r,d){ const L=projRacks(room), k=rkSplit(r); if(!L.length||!k) return null;
+  const i=L.findIndex(x=>x.l===k.l&&x.n===k.n); if(i>=0) return L[i+d]||null;
+  const c=x=>x.l<k.l?-1:x.l>k.l?1:x.n-k.n;      // szafy nie ma w projekcie → najbliższa w tę stronę
+  return d>0?L.find(x=>c(x)>0)||null:L.slice().reverse().find(x=>c(x)<0)||null; }
+// numer w tym samym zapisie, co wpisany: C7 → C8, C07 → C08; przy C20 → D07 zero wg sali (lista PDU RZ2A/RZ3A pisze bez zera)
+const rackFmt=(x,like,room)=>{ const L=norm(like), pad=/[A-H]0\d$/.test(L)?true:(/[A-H]\d$/.test(L)?false:!PDU_LIST.some(p=>(rkSplit(p.rack)||{}).room===norm(room)));
+  return x.l+(pad?String(x.n).padStart(2,'0'):x.n); };
+// listwy PDU: następna szafa (z projektu, a bez projektu jak dawniej +1) i stara nazwa / uwagi
+function pduNext(c,d){ const k=rkSplit(c.rack), L=projRacks(c.room);
+  if(!k&&!norm(c.rack)&&L.length) return d>0?{rack:rackFmt(L[0],'',c.room),note:L[0].alt}:null;   // puste pole → pierwsza szafa sali
+  if(!L.length) return d>0?{rack:nextRack(c.rack),note:/^\D*\d+$/.test(c.note||'')?nextRack(c.note):''}:null;   // sala bez projektu: jak dawniej +1
+  if(!k) return null;                                            // nierozpoznana szafa – nie zgadujemy
+  const nx=stepRack(c.room,c.rack,d); if(!nx) return null;      // koniec szaf w projekcie
+  const plain=nx.l===k.l&&nx.n===k.n+d;
+  return {rack:rackFmt(nx,c.rack,c.room),note:nx.alt||(plain&&d>0&&/^\D*\d+$/.test(c.note||'')?nextRack(c.note):'')}; }
+function pduStep(d){ const c=S.cur, sv=S.records.find(x=>sameRack(x,c));
+  // niezapisane skany blokują przejście; otwarta zapisana szafa bez zmian – nie
+  if(c.rails.some(r=>r.sn||r.eth1||r.eth2||r.feed)&&!(sv&&JSON.stringify(sv.rails)===JSON.stringify(c.rails))){ warn('Najpierw zapisz albo wyczyść listwy tej szafy.'); return; }
+  const nx=pduNext(c,d); if(!nx){ warn(norm(c.rack)&&!rkSplit(c.rack)?'Nie rozpoznaję szafy '+c.rack+' (np. C07)':(d>0?'To ostatnia szafa w projekcie ':'To pierwsza szafa w projekcie ')+c.room); return; }
+  if(sv) c.rails=[emptyRail(c.rails[0].side),emptyRail(c.rails[1].side)];
+  c.rack=nx.rack; c.note=nx.note;
+  const ex=S.records.find(x=>sameRack(x,c)); if(ex){ S.cur=JSON.parse(JSON.stringify(ex)); delete S.cur.at; log('Otwarto zapisaną szafę '+ex.rack); }
+  save(); render(); }
+$('rackPrev').onclick=()=>pduStep(-1); $('rackNext').onclick=()=>pduStep(1);
 $('bSave').onclick=()=>{
   const c=S.cur;
   if(!c.rack){ warn('Wpisz numer szafy.'); $('rack').focus(); return; }
@@ -405,8 +440,9 @@ $('bSave').onclick=()=>{
     const rec=JSON.parse(JSON.stringify(c)); rec.at=new Date().toISOString();
     const i=S.records.findIndex(x=>sameRack(x,c));
     if(i>=0) S.records[i]=rec; else S.records.push(rec);
-    S.cur={room:c.room,rack:nextRack(c.rack),note:/^\D*\d+$/.test(c.note||'')?nextRack(c.note):'',rails:[emptyRail(c.rails[0].side),emptyRail(c.rails[1].side)]};
-    S.act=0; save(); render(); beep(1500,.15); log(`Zapisano ${rec.room} ${rec.rack}. Następna: ${S.cur.rack}`);
+    const nx=pduNext(c,1)||{rack:'',note:''};
+    S.cur={room:c.room,rack:nx.rack,note:nx.note,rails:[emptyRail(c.rails[0].side),emptyRail(c.rails[1].side)]};
+    S.act=0; save(); render(); beep(1500,.15); log(`Zapisano ${rec.room} ${rec.rack}. `+(nx.rack?`Następna: ${S.cur.rack}`:`To była ostatnia szafa w projekcie ${rec.room}.`));
   };
   const exists=S.records.some(x=>sameRack(x,c));
   if(missing.length||exists) ask((missing.length?`Brakuje: <b>${missing.join(', ')}</b>.<br>`:'')+(exists?`Szafa <b>${esc(c.room)} ${esc(c.rack)}</b> jest już zapisana – nadpisać?<br>`:'')+'Zapisać mimo to?',doSave);
@@ -986,6 +1022,11 @@ $('aSideN').onclick=()=>{ S.aCab=''; save(); aRender(); };
 $('aFront').onclick=()=>{ S.aSide='front'; S.aSlot=0; save(); aRender(); };
 $('aBack').onclick=()=>{ S.aSide='back'; S.aSlot=0; save(); aRender(); };
 $('aRack').addEventListener('change',e=>{ const v=e.target.value.toUpperCase().replace(/\s+/g,''); const m=v.match(/^([A-H])0?(\d{1,2})$/); S.aRack=m?m[1]+m[2].padStart(2,'0'):v; S.aPanel=''; S.aSlot=0; aLastCab=null; aPend=null; $('aRes').innerHTML=''; save(); aRender(); });
+// ‹ › w Sprawdzaniu: tylko szafy z projektu bieżącej sali
+function aStep(d){ const nx=stepRack(S.kRoom,S.aRack,d)||(!S.aRack&&d>0?projRacks(S.kRoom)[0]:null);
+  if(!nx){ warn(projRacks(S.kRoom).length?(d>0?'To ostatnia szafa w projekcie ':'To pierwsza szafa w projekcie ')+S.kRoom:'Brak szaf w projekcie '+S.kRoom); return; }
+  S.aRack=nx.l+String(nx.n).padStart(2,'0');S.aPanel=''; S.aSlot=0; aLastCab=null; aPend=null; $('aRes').innerHTML=''; $('aRack').value=S.aRack; save(); aRender(); }
+$('aRackPrev').onclick=()=>aStep(-1); $('aRackNext').onclick=()=>aStep(1);
 $('aPanels').onclick=e=>{ const b=e.target.closest('[data-ap]'); if(!b) return; aPickAt=Date.now(); S.aPanel=S.aPanel===b.dataset.ap?'':b.dataset.ap; S.aSlot=0; $('aRes').innerHTML=''; save(); aRender(); };
 // wynik tego końca kabla w bieżącej szafie i widoku (przód/tył): 'ok', 'bad' albo '' (jeszcze nie sprawdzony tutaj)
 function aHere(x){ const e=aEntry(x), sd=aSideIn(x,S.aRack); return sd?(e[aPart()+sd]||''):''; }
