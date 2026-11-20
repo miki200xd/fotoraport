@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pl">
 <head>
 <meta charset="utf-8">
@@ -164,6 +164,7 @@ select.secsel{font:inherit;font-size:15px;min-height:44px;padding:8px;border:1px
 <input id="gal" class="hidden-input" type="file" accept="image/*" multiple aria-label="Galeria">
 <input id="zipfile" class="hidden-input" type="file" accept=".zip,application/zip,application/x-zip-compressed" aria-label="Plik ZIP ze zdjęciami">
 <input id="g5file" class="hidden-input" type="file" accept="application/pdf,.pdf" aria-label="Plik G5 PDF">
+<input id="g5add" class="hidden-input" type="file" accept="application/pdf,.pdf" aria-label="Dołóż drugi plik G5 PDF">
 <div id="toast" class="toast" hidden></div>
 <div id="busy" class="busy" hidden><div id="busyText">Zapisywanie…</div></div>
 
@@ -404,9 +405,45 @@ function parseG5(rawLines){
   }
   // radia do montażu z tabeli 2. EQUIPMENT
   r.radiosNew = equipment.install.filter(e=>/RRH|RRU|AAU|AQQ|AEQ|AHQ|Radio Module|RFM|\b\d+T\d+R\b/i.test(e.name)).reduce((s,e)=>s+e.qty,0);
+  r.tasks=[{id:r.taskId,task:r.task}];
   return r;
 }
-
+/*G5MERGE-START*/
+// Scala drugie (kolejne) G5 tej samej stacji z już wczytanym. Nie modyfikuje argumentów.
+function mergeG5(a,b){
+  const ACT=e=>e.action==='No change'?0:1;
+  const mergeEq=(x,y)=>{ const m=new Map();
+    for(const e of [...x,...y]){ const k=`${e.ant}|${e.name}|${e.cls}`; const o=m.get(k);
+      if(!o||(ACT(e)&&!ACT(o))) m.set(k,{...e}); }
+    return [...m.values()]; };
+  const mergeList=(x,y)=>{ const m=new Map();
+    for(const e of [...x,...y]){ const o=m.get(e.name); if(o) o.qty+=e.qty; else m.set(e.name,{...e}); }
+    return [...m.values()]; };
+  const sectors=a.sectors.map(s=>({...s,bands:[...s.bands],rruNames:[...(s.rruNames||[])],eq:[...s.eq]}));
+  for(const sb of b.sectors){
+    const sa=sectors.find(s=>s.no===sb.no);
+    if(!sa){ sectors.push({...sb,bands:[...sb.bands],rruNames:[...(sb.rruNames||[])],eq:[...sb.eq]}); continue; }
+    sa.eq=mergeEq(sa.eq,sb.eq);
+    const bm=new Map(); for(const x of [...sa.bands,...sb.bands]){ const o=bm.get(x.band); if(!o||(!o.change&&x.change)) bm.set(x.band,{...x}); }
+    sa.bands=[...bm.values()];
+    sa.rruNames=[...new Set([...sa.rruNames,...(sb.rruNames||[])])]; sa.rru=sa.rruNames.length||Math.max(sa.rru||0,sb.rru||0);
+    const byAnt={}; for(const e of sa.eq){ (byAnt[e.ant]=byAnt[e.ant]||[]).push(e); }
+    const ants=Object.values(byAnt);
+    const keptN=ants.filter(l=>{ const mn=l.filter(e=>e.cls!=='ANTENNAS AUX'); return !(mn.length&&mn.every(e=>e.action==='DEINSTALLATION')); }).length;
+    sa.antAll=Math.max(sa.antAll||0,sb.antAll||0,ants.length);
+    sa.ant=Math.max(sa.ant||0,sb.ant||0,keptN);
+    sa.work=sa.eq.some(e=>e.action!=='No change');
+    sa.removed=!!(sa.removed&&sb.removed);
+    sa.height=sa.height||sb.height; sa.az=sa.az||sb.az; sa.type=sa.type||sb.type;
+  }
+  sectors.sort((p,q)=>p.no-q.no);
+  const equipment={install:mergeList(a.equipment.install,b.equipment.install),deinstall:mergeList(a.equipment.deinstall,b.equipment.deinstall)};
+  const tasks=[...(a.tasks||[])]; for(const t of (b.tasks||[])) if(!tasks.some(x=>x.id===t.id)) tasks.push(t);
+  const r={...a,sectors,equipment,tasks,bbu:a.bbu.length?a.bbu:b.bbu};
+  r.radiosNew=equipment.install.filter(e=>/RRH|RRU|AAU|AQQ|AEQ|AHQ|Radio Module|RFM|\b\d+T\d+R\b/i.test(e.name)).reduce((s,e)=>s+e.qty,0);
+  return r;
+}
+/*G5MERGE-END*/
 
 /* ======================= Stan ======================= */
 const S = {
@@ -574,8 +611,10 @@ function vForm(){
   <div class="topbar spread"><button class="btn-ghost" data-act="${S.p?'back-station':'home'}">← Wróć</button><span class="eyebrow">${S.p?'Edycja stacji':'Nowa stacja'}</span><span style="width:60px"></span></div>
   <form id="pform" class="stack" autocomplete="off">
     <div class="card stack g5card">
-      <div class="spread"><div><h3>Dokumentacja G5</h3><p class="muted small">${g?`Wczytano: <b>${esc(g.nr)} ${esc(g.nName)}</b> · ${g.sectors.length} sekt. · ${esc(g.task||'')}`:'Wczytaj PDF z G5, a numer, nazwy, zakres i sektory uzupełnią się same.'}</p></div></div>
-      <label for="g5file" class="btn ${g?'':'btn-primary'}" role="button" tabindex="0">${g?'Wczytaj inne G5':'Wczytaj G5 (PDF)'}</label>
+      <div class="spread"><div><h3>Dokumentacja G5</h3><p class="muted small">${g?`Wczytano ${(g.tasks&&g.tasks.length)||1} G5: <b>${esc(g.nr)} ${esc(g.nName)}</b> · ${g.sectors.length} sekt.<br>${esc((g.tasks&&g.tasks.length?g.tasks.map(t=>t.task||t.id):[g.task||'']).join(' + '))}`:'Wczytaj PDF z G5, a numer, nazwy, zakres i sektory uzupełnią się same.'}</p></div></div>
+      ${g?`<label for="g5add" class="btn btn-primary" role="button" tabindex="0">Dołóż drugi G5 (ta sama stacja)</label>
+      <label for="g5file" class="btn" role="button" tabindex="0">Wczytaj inne G5 (zastąp)</label>
+      <button type="button" class="btn" data-act="g5clear">Wyczyść G5</button>`:`<label for="g5file" class="btn btn-primary" role="button" tabindex="0">Wczytaj G5 (PDF)</label>`}
       <p class="notice" id="g5Err" hidden></p>
     </div>
     <div class="card stack">
@@ -1036,7 +1075,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='1.4';
+const APP_VERSION='2.4';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -1078,6 +1117,7 @@ document.addEventListener('click',async ev=>{
       S.p=null; S.draft={nr:'',nazwa:'',nazwaOp:'',data:today(),firma:ls.get('firma',''),zakres:'',zam:'',reports:['BTS','System Antenowy','Azymuty',...MORE],cfg:normCfg({...ls.get('cfg',{}),map:null}),g5:null,tpl:ls.get('tpl','v3')};
       S.view='form'; render(); if(d.g5) document.getElementById('g5file').click(); break;
     case 'edit': S.draft=JSON.parse(JSON.stringify({nr:S.p.nr,nazwa:S.p.nazwa,nazwaOp:S.p.nazwaOp||'',data:S.p.data,firma:S.p.firma,zakres:S.p.zakres,zam:S.p.zam,reports:S.p.reports,cfg:normCfg(S.p.cfg),g5:S.p.g5||null,tpl:S.p.tpl||'v1'})); S.view='form'; render(); break;
+    case 'g5clear': syncDraft(); S.draft.g5=null; S.draft.cfg=normCfg({...S.draft.cfg,map:null}); keepScroll(render); toast('G5 wyczyszczone'); break;
     case 'rep': { syncDraft(); const r=S.draft.reports; const i=r.indexOf(d.f); if(i>=0) r.splice(i,1); else r.push(d.f); S.draft.reports=REPORTS.map(x=>x.f).filter(x=>r.includes(x)); keepScroll(render); break; }
     case 'cfg': syncDraft(); S.draft.cfg[d.k]=+d.v; keepScroll(render); break;
     case 'tpl': syncDraft(); S.draft.tpl=d.v; ls.set('tpl',d.v); keepScroll(render); break;
@@ -1174,7 +1214,8 @@ async function pdfLines(file){
   }
   return lines;
 }
-document.getElementById('g5file').addEventListener('change',async ev=>{
+function g5Import(inputId,add){
+document.getElementById(inputId).addEventListener('change',async ev=>{
   const file=ev.target.files[0]; ev.target.value=''; if(!file||!S.draft) return;
   if(S.view==='form') syncDraft();
   busy(true,'Czytam G5…');
@@ -1182,9 +1223,17 @@ document.getElementById('g5file').addEventListener('change',async ev=>{
   try{ r=parseG5(await pdfLines(file)); if(!r) err='W tym PDF nie ma pola „N Code”. Czy to na pewno G5 N! Radio?'; }
   catch(e){ err= e&&e.message==='script' ? 'Nie udało się pobrać czytnika PDF. Sprawdź internet i spróbuj ponownie.' : 'Nie udało się odczytać tego PDF-a.'; }
   busy(false);
-  if(r){ applyG5(S.draft,r); S.view='form'; render(); toast(`G5: ${r.nr} · ${r.sectors.length} sektorów`); }
+  if(r&&add&&S.draft.g5){
+    const old=S.draft.g5;
+    if(r.nr!==old.nr){ err=`To G5 innej stacji (${r.nr}, wczytana jest ${old.nr}). Nie scalam różnych stacji. Użyj „Wczytaj inne G5 (zastąp)”.`; r=null; }
+    else if((old.tasks||[]).some(t=>t.id&&t.id===r.taskId)){ err='To zadanie G5 (TaskObjId '+r.taskId+') jest już wczytane.'; r=null; }
+    else r=mergeG5(old,r);
+  }
+  if(r){ applyG5(S.draft,r); S.view='form'; render(); toast(`G5: ${r.nr} · ${r.sectors.length} sektorów${(r.tasks||[]).length>1?' · '+r.tasks.length+' zadania':''}`); }
   else { S.view='form'; render(); const e=document.getElementById('g5Err'); if(e){e.hidden=false;e.textContent=err;} }
 });
+}
+g5Import('g5file',false); g5Import('g5add',true);
 
 /* ======================= Wczytywanie ZIP (kopia / zdjęcia z innego telefonu) ======================= */
 const FOLDERS=REPORTS.map(r=>r.f);
