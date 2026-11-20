@@ -200,7 +200,7 @@ public class MainActivity extends Activity {
     }
 
     private void checkForUpdate() {
-        final String apkName = "pl.plusdoc.zdjecia".equals(getPackageName()) ? "CellnexNokia.apk" : "FotoRaport.apk";
+        final String apkName = "pl.plusdoc.zdjecia".equals(getPackageName()) ? "CellnexNokia.apk" : getPackageName().endsWith(".strefy") ? "FotoRaportStrefy.apk" : "FotoRaport.apk";
         new Thread(() -> {
             try {
                 final long installed = getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();

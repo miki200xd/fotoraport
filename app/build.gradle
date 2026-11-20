@@ -26,6 +26,13 @@ android {
             resValue "string", "app_name", "Networks!"
             resValue "string", "media_dir", "FotoRaport"
         }
+        strefy {
+            // TESTOWA kopia Networks! (osobna aplikacja obok głównej): wybór Sektor / GÓRA / DÓŁ / OGÓLNE
+            dimension "app"
+            applicationId "pl.fotoraport.app.strefy"
+            resValue "string", "app_name", "Networks! TEST"
+            resValue "string", "media_dir", "FotoRaportTest"
+        }
         plusdoc {
             dimension "app"
             applicationId "pl.plusdoc.zdjecia"
