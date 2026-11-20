@@ -175,7 +175,7 @@ public class MainActivity extends Activity {
     }
 
     // --- sprawdzanie aktualizacji: najnowsze wydanie na GitHubie (tag „wersja-N”, N = versionCode) ---
-    private static final String UPDATE_API = "https://api.github.com/repos/miki200xd/fotoraport/releases/latest";
+    private static final String UPDATE_API = "https://api.github.com/repos/miki200xd/fotoraport/releases?per_page=100";
     // przy uruchomieniu i przy powrocie do aplikacji, ale nie częściej niż co 4 godziny
     private static final long UPDATE_INTERVAL_MS = 4L * 60 * 60 * 1000;
     private static long lastUpdateCheck = 0;
@@ -214,7 +214,19 @@ public class MainActivity extends Activity {
                     String line;
                     while ((line = r.readLine()) != null) sb.append(line);
                 }
-                JSONObject rel = new JSONObject(sb.toString());
+                // buildy z gałęzi testowych to pre-release (nie „latest”), więc bierzemy najwyższy numer wersja-N z APK tego wariantu
+                JSONObject rel = null;
+                JSONArray all = new JSONArray(sb.toString());
+                long best = -1;
+                for (int i = 0; i < all.length(); i++) {
+                    JSONObject o = all.getJSONObject(i);
+                    String d = o.optString("tag_name").replaceAll("[^0-9]", "");
+                    JSONArray as = o.optJSONArray("assets");
+                    boolean has = false;
+                    if (as != null) for (int k = 0; k < as.length(); k++) if (apkName.equals(as.getJSONObject(k).optString("name"))) has = true;
+                    if (!d.isEmpty() && has && Long.parseLong(d) > best) { best = Long.parseLong(d); rel = o; }
+                }
+                if (rel == null) return;
                 String digits = rel.optString("tag_name").replaceAll("[^0-9]", "");
                 if (digits.isEmpty()) return;
                 final long latest = Long.parseLong(digits);
