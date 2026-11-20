@@ -200,6 +200,50 @@ function shortV3(s,phase){
   return b;
 }
 const norm=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').replace(/[\s.]+$/,'').trim();
+/*
+ * TABELA ZASAD STREF (zoneOf(f, it) -> 'gora' | 'dol' | 'ogolne'):
+ * +----------+-------------------------------------------------------------------------+----------------------------------------+
+ * | Strefa   | Raporty / Zakładki                                                      | Słowa kluczowe (nazwa / opis pozycji)  |
+ * +----------+-------------------------------------------------------------------------+----------------------------------------+
+ * | OGÓLNE   | Inne, Zdjęcia Starego Sprzętu (Demontaż), Odbiór materiału,             | widok ogólny obiektu, kontener,        |
+ * |          | Poprawki, Dokumenty                                                     | zdeinstalowany sprzęt, droga kablowa   |
+ * |          |                                                                         | ogólna (bez roxtec), nieznane pozycje  |
+ * +----------+-------------------------------------------------------------------------+----------------------------------------+
+ * | GÓRA     | Azymuty (cała zakładka),                                                | antena (bez widoków z dołu), RRU/RRH,  |
+ * |          | wybrane z: BTS, System Antenowy, Radiolinia                             | AAU, moduł radiowy, jumper/feeder,     |
+ * |          |                                                                         | diplekser/TMA, RET/SmartBias/tilt,     |
+ * |          |                                                                         | ODU, antena MW (bez / dół), coupler,   |
+ * |          |                                                                         | GPS, uziemienie S1..S4                 |
+ * +----------+-------------------------------------------------------------------------+----------------------------------------+
+ * | DÓŁ      | System zasilania-szafa sprzet (oprócz obiektu przed/po i kontenera),    | szafa, rack, BBU/AirScale/FSMF,        |
+ * |          | Wezel TRM (oprócz obiektu przed/po i kontenera),                        | moduł zasilający DCDU/FPF*, dystrybucja|
+ * |          | wybrane z: BTS, System Antenowy, Radiolinia                             | zasilania ODM/OCB, siłownia, baterie,  |
+ * |          |                                                                         | rozdzielnica, INU, TRM/Coriant,        |
+ * |          |                                                                         | roxtec/przepust, ODF, DDF, koryto/     |
+ * |          |                                                                         | peszel, zapas kabli FO przy BTS,       |
+ * |          |                                                                         | bezpiecznik, nadruk kabla DC/FO,       |
+ * |          |                                                                         | prąd poboru, widok anten / dół (z dołu)|
+ * +----------+-------------------------------------------------------------------------+----------------------------------------+
+ */
+const ZONES=[['all','WSZYSTKO'],['gora','GÓRA'],['dol','DÓŁ'],['ogolne','OGÓLNE']];
+const ZONE_LBL={gora:'GÓRA',dol:'DÓŁ',ogolne:'OGÓLNE'};
+function zoneOf(f,it){
+  const s=`${it&&it.title||''} ${it&&it.desc||''}`;
+  if(f==='Azymuty') return 'gora';
+  if(f==='Inne'||MORE.includes(f)) return 'ogolne';
+  if(/widok ogólny obiektu|\bkontener/i.test(s)) return 'ogolne';
+  if(/zdeinstalowany sprzęt/i.test(s)) return 'ogolne';
+  if(/szafa|rack|bbu|airscale|fsmf|dcd|fpfc|fpfh|fpfd|moduł zasilający|dystrybucj[ia]\s+zasi|odm,\s*ocb|siłowni|zasilacz|prostownik|sterownik|bateri|rozdzielnic|gniazdo zasilania|\binu\b|węzeł|coriant|\btrm\b|roxtec|przepust|\bodf\b|\bddf\b|bezpiecznik|nadprądow|nadruk kabla|prądu poboru|zapas kabli fo przy bts|koryto grzebieniowe|peszel/i.test(s)) return 'dol';
+  if(f==='System zasilania-szafa sprzet'||f==='Wezel TRM') return 'dol';
+  if(/\/\s*dół\b|wykonane z dołu/i.test(s)) return 'dol'; // ZAPYTAĆ: Widok ogólny S1..S4 / dół oraz antena MW / dół (zdjęcie robione z ziemi/dołu)
+  if(/rru|rrh|aau|moduł radiowy|\bodu\b|antena mw|coupler|azymut anteny mw|\bgps\b|konektory|aisg|pochyladło|poziomica|alignment tool|etykieta anteny|uziemienie anteny|widok ogólny sektor|feeder\s*\/?\s*jumper|jumper\/feeder|diplekser|triplekser|\btma\b|\bret\b|smartbias|tiltu|\bantena\b/i.test(s)) return 'gora';
+  if(/^uziemienie s[1-4]\b/i.test(s)) return 'gora'; // ZAPYTAĆ: Uziemienie S1..S4 / listwa / kowadełko (/ urządzenie) w BTS
+  if(/droga kablowa/i.test(s)) return 'ogolne';
+  if(/instalacja kabei if\s*\/\s*fo na drodze kablowej/i.test(s)) return 'ogolne'; // ZAPYTAĆ: Instalacja kabli IF / FO na drodze kablowej (uziemienia / zapas kabla) w Radiolinii
+  if(/miejsce uziemień urządzeń z dwóch stron/i.test(s)) return 'ogolne'; // ZAPYTAĆ: Miejsce uziemień urządzeń z dwóch stron (BTS / Radiolinia V3.1)
+  if(/^dodatkowe zdj/i.test(s)) return 'ogolne'; // ZAPYTAĆ: Dodatkowe zdjęcia nie ujęte w spisie - opcja (BTS / Radiolinia)
+  return 'ogolne'; // ZAPYTAĆ
+}
 function buildCatalog(raw,ver){
   const cat={};
   for(const r of REPORTS){
@@ -228,7 +272,9 @@ function buildCatalog(raw,ver){
       }
       const m=(re)=>{const x=title.match(re); return x?+x[1]:0};
       const tags={ sec:m(/\bS([1-4])\b/)||m(/Sektor\s*([1-4])/i), rru:m(/RRU\/RRH\s*(\d)/), ant:m(/ant(?:ena|\.)\s*(\d)/i), odu:m(/ODU\s*(\d)/), bat:m(/baterii\s*(\d)/i) };
-      return {n,title,desc,extra,opt,phase,deinst,share,tags};
+      const it={n,title,desc,extra,opt,phase,deinst,share,tags};
+      it.zone=zoneOf(r.f,it);
+      return it;
     });
     const a=cat[r.f]; let i=0;
     while(i<a.length){ let j=i; while(j+1<a.length && !a[i].extra && a[j+1].title===a[i].title && a[j+1].n===a[j].n+1) j++;
@@ -241,7 +287,7 @@ const CATALOGS={v1:buildCatalog(RAW.v1,'v1'), v3:buildCatalog(RAW.v3,'v3')};
 // ramka z antenami (spod ramki w górę, a gdy się nie da – 2 inne widoki) + miernik na każdej antenie z horyzontem
 const AZ_MAXA=3;
 function azCatalog(){
-  const a=[]; const add=o=>a.push({desc:'',extra:false,opt:false,phase:'',deinst:false,share:null,...o,n:a.length+1});
+  const a=[]; const add=o=>{ const it={desc:'',extra:false,opt:false,phase:'',deinst:false,share:null,...o,n:a.length+1}; it.zone=zoneOf('Azymuty',it); a.push(it); };
   for(let s=1;s<=4;s++){
     add({title:`S${s} – ramka z antenami (od dołu)`,desc:'Spod ramki pionowo w górę albo znad ramki w dół: ramka i wszystkie anteny na niej.',tags:{sec:s},az:{kind:'ramka',k:1}});
     add({title:`S${s} – ramka, widok prostopadły`,desc:'Tylko gdy nie da się zrobić zdjęcia spod / znad ramki: widok prostopadły do płaszczyzny ramki.',opt:true,tags:{sec:s},az:{kind:'ramka',k:2}});
@@ -253,7 +299,8 @@ function azCatalog(){
 for(const v in CATALOGS) CATALOGS[v].Azymuty=azCatalog();
 // Dodatkowe zakładki jak foldery stacji (12.10.2026): demontaż, odbiór materiału, poprawki, dokumenty – wszystko opcjonalne
 function extraCatalog(kind){
-  const a=[]; const add=(title,desc,k=1,o={})=>{ for(let i=1;i<=k;i++) a.push({desc,extra:false,opt:true,phase:'',deinst:false,share:null,tags:{},...o,title:k>1?title+' '+i:title,n:a.length+1}); };
+  const f=(REPORTS.find(r=>r.more===kind)||{}).f||kind;
+  const a=[]; const add=(title,desc,k=1,o={})=>{ for(let i=1;i<=k;i++){ const it={desc,extra:false,opt:true,phase:'',deinst:false,share:null,tags:{},...o,title:k>1?title+' '+i:title,n:a.length+1}; it.zone=zoneOf(f,it); a.push(it); } };
   if(kind==='dem'){ // stary sprzęt odstawiony na paletach w magazynie klienta
     add('Stary sprzęt na palecie – całość','Paleta w magazynie klienta, cały sprzęt widoczny – z kilku stron.',3);
     add('Opis palety (stacja, klient, data)','Kartka / etykieta na palecie: numer i nazwa stacji, klient, data – czytelna.',2);
@@ -448,7 +495,7 @@ function mergeG5(a,b){
 /* ======================= Stan ======================= */
 const S = {
   view:'home', projects:[], p:null, photos:new Map(), urls:new Map(),
-  tab:null, filter:'all', showExtra:false, cur:null, confirm:null, dbError:null,
+  tab:null, filter:'all', zone:ls.get('zone','all'), showExtra:false, cur:null, confirm:null, dbError:null,
   quality: ls.get('quality',2400), includeAlt:false, exporting:false,
   autoNext: ls.get('autoNext',false), backupQ: ls.get('backupQ',0)
 };
@@ -479,7 +526,8 @@ function itemsFor(p,f,{all=false}={}){
   let list;
   if(f==='Inne'){
     list=[{n:1,title:'Widok ogólny obiektu',desc:'',extra:false,opt:false,tags:{}}]
-      .concat((p.inne||[]).map(x=>({n:x.n,title:x.opis||'Zdjęcie dodatkowe',desc:'Własny opis – wpisz go nad zdjęciem w raporcie „Inne”.',extra:false,opt:false,custom:true,tags:{}})));
+      .concat((p.inne||[]).map(x=>({n:x.n,title:x.opis||'Zdjęcie dodatkowe',desc:'Własny opis – wpisz go nad zdjęciem w raporcie „Inne”.',extra:false,opt:false,custom:true,tags:{}})))
+      .map(it=>({...it,zone:zoneOf('Inne',it)}));
   } else list=CATALOGS[tplOf(p)][f]||[];
   return list.filter(it=>{
     if(all) return true;
@@ -495,6 +543,13 @@ function stats(p,f){
   const done = req.filter(it=>isDone(p,f,it.n)||isSkip(p,f,it.n)).length;
   return {done,total:req.length};
 }
+function zoneStats(p,f,z){
+  const all = itemsFor(p,f).filter(it=>z==='all'||(it.zone||zoneOf(f,it))===z);
+  const req = all.filter(it=>!isOpt(p,it));
+  const base = req.length ? req : all;
+  const done = base.filter(it=>isDone(p,f,it.n)||isSkip(p,f,it.n)).length;
+  return {done,total:base.length};
+}
 function totalStats(p){
   const seen=new Set(); let done=0,total=0;
   for(const f of p.reports) for(const it of itemsFor(p,f)){ if(isOpt(p,it)) continue; const k=slotKey(f,it.n,p); if(seen.has(k)) continue; seen.add(k); total++; if(isDone(p,f,it.n)||isSkip(p,f,it.n)) done++; }
@@ -502,7 +557,11 @@ function totalStats(p){
 }
 function sequence(p){
   const seen=new Set(), out=[];
-  for(const f of p.reports) for(const it of itemsFor(p,f)){ if(S.mode==='przed' && it.phase!=='przed') continue; const k=slotKey(f,it.n,p); if(seen.has(k)) continue; seen.add(k); out.push({f,n:it.n}); }
+  for(const f of p.reports) for(const it of itemsFor(p,f)){
+    if(S.zone && S.zone!=='all' && (it.zone||zoneOf(f,it))!==S.zone) continue;
+    if(S.mode==='przed' && it.phase!=='przed') continue;
+    const k=slotKey(f,it.n,p); if(seen.has(k)) continue; seen.add(k); out.push({f,n:it.n});
+  }
   return out;
 }
 function findItem(p,f,n){ return itemsFor(p,f,{all:true}).find(it=>it.n===n); }
@@ -661,6 +720,7 @@ function vStation(){
   const p=S.p; if(!S.tab||!p.reports.includes(S.tab)) S.tab=p.reports[0];
   const f=S.tab; const s=totalStats(p); const pct=s.total?Math.round(100*s.done/s.total):0;
   let items=itemsFor(p,f);
+  if(S.zone&&S.zone!=='all') items=items.filter(it=>(it.zone||zoneOf(f,it))===S.zone);
   if(S.filter==='todo') items=items.filter(it=>!isDone(p,f,it.n)&&!isSkip(p,f,it.n));
   if(S.filter==='done') items=items.filter(it=>isDone(p,f,it.n));
   if(S.filter==='przed') items=items.filter(it=>it.phase==='przed');
@@ -689,6 +749,7 @@ function vStation(){
       <button data-act="export">Pobierz ZIP</button>
     </div>
     <div class="row" style="justify-content:space-between"><span class="muted small">Masz zdjęcia z innego telefonu albo kopię?</span><button class="btn-ghost" data-act="import">Wczytaj ZIP</button></div>
+    <div class="chips" role="group" aria-label="Strefa">${ZONES.map(([k,l])=>{const zs=zoneStats(p,f,k);return `<button class="chip" data-act="zone" data-v="${k}" aria-pressed="${S.zone===k}">${l} <span class="num">${zs.done}/${zs.total}</span></button>`;}).join('')}</div>
     <div class="spread">
       <div class="chips">${[['all','Wszystkie'],['todo','Brakujące'],['przed','Przed pracami'],['done','Zrobione']].map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
       <label class="row small muted" style="gap:6px"><input type="checkbox" id="extra" ${S.showExtra?'checked':''} style="width:20px;height:20px"> Dodatkowe</label>
@@ -734,7 +795,7 @@ function vShoot(){
     <div class="marker ${sl.chosen||pend.length?'done':''}">
       <div class="big">${n}</div>
       <div style="min-width:0;gap:4px" class="stack">
-        <div class="eyebrow">Zdjęcie ${n} · ${esc(it&&it.share&&p.reports.length>1?'wszystkie raporty':RMAP[f].name)}</div>
+        <div class="eyebrow">Zdjęcie ${n} · <span class="tag">${esc(ZONE_LBL[it&&it.zone||zoneOf(f,it)])}</span> · ${esc(it&&it.share&&p.reports.length>1?'wszystkie raporty':RMAP[f].name)}</div>
         <h2>${esc(it?it.title:'')}</h2>
       </div>
     </div>
@@ -1075,7 +1136,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='2.5';
+const APP_VERSION='2.5-TEST strefy';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -1132,6 +1193,7 @@ document.addEventListener('click',async ev=>{
     case 'back-station': S.mode=null; S.view='station'; render(); break;
     case 'tab': S.tab=d.f; keepScroll(render); break;
     case 'filter': S.filter=d.v; keepScroll(render); break;
+    case 'zone': S.zone=d.v; ls.set('zone',d.v); keepScroll(render); break;
     case 'shoot': go(d.f,+d.n); break;
     case 'go-next': { S.mode=null; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)&&!isOpt(S.p,findItem(S.p,x.f,x.n))); if(nx){S.tab=nx.f; go(nx.f,nx.n);} break; }
     case 'go-przed': { S.mode='przed'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
