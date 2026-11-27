@@ -61,6 +61,7 @@ button:disabled{opacity:.45;cursor:default}
 .btn-ghost.tb-btn{min-height:36px;min-width:36px;padding:0 6px;font-size:19px;flex:0 0 auto}
 .tabs-sm .tab{min-height:34px;padding:3px 10px;font-size:14px;border-radius:8px}
 .tabs-sm .tab .cnt{font-size:13px}
+.btn-ghost.mini{min-height:34px;padding:0 6px;font-size:14px;flex:0 0 auto}
 label.field{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
 label.field span.hint{font-weight:400;color:var(--muted)}
 input[type=text],input[type=date],textarea{font:inherit;font-size:17px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);width:100%;min-height:48px}
@@ -744,20 +745,22 @@ function vStation(){
     <div class="tabs tabs-sm" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.total?st.done+"/"+st.total:itemsFor(p,r,{all:true}).filter(it=>isDone(p,r,it.n)).length}</span></button>`}).join('')}</div>
   </div>
   <div class="stack">
-    ${p.g5?`<details class="card"><summary style="cursor:pointer;font-weight:600">Dane z G5 · ${esc(p.g5.task||'')} · ${esc(p.g5.klass||'')} ${p.g5.height?esc(p.g5.height)+' m':''}</summary>
-      <dl class="facts" style="margin-top:10px">
+    <div class="row" style="gap:6px;flex-wrap:nowrap">
+      <button class="btn-primary" style="flex:1;min-height:42px" data-act="go-next" ${next?'':'disabled'}>${next?`Rób po kolei · od nr ${next.n}${next.f!==f?' ('+esc(RMAP[next.f].short)+')':''}`:'Wszystkie wymagane zrobione'}</button>
+      ${przedLeft.length?`<button class="btn-primary" style="min-height:42px;background:var(--warn);border-color:var(--warn);white-space:nowrap" data-act="go-przed" title="Zanim zaczniesz prace: widok obiektu, szafy, jumpery, droga kablowa, sprzęt do demontażu. Później nie da się ich zrobić.">Przed · ${przedLeft.length}</button>`:poLeft.length?`<button class="btn-primary" style="min-height:42px;background:var(--ok);border-color:var(--ok);white-space:nowrap" data-act="go-po" title="Po zakończeniu prac: te same miejsca co przed pracami, w tym samym kadrze.">Po · ${poLeft.length}</button>`:''}
+    </div>
+    <div class="row small" style="gap:2px;flex-wrap:nowrap;margin-top:-4px">
+      ${p.g5?`<button class="btn-ghost mini" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-act="g5" aria-expanded="${!!S.g5open}">${S.g5open?'▾':'▸'} G5 · ${esc(p.g5.task||'')} · ${esc(p.g5.klass||'')} ${p.g5.height?esc(p.g5.height)+' m':''}</button>`:''}
+      <span style="flex:1"></span>
+      <button class="btn-ghost mini" data-act="export" title="Pobierz ZIP">⬇ ZIP</button>
+      <button class="btn-ghost mini" data-act="import" title="Wczytaj ZIP z innego telefonu albo kopię">⬆ Wczytaj</button>
+    </div>
+    ${p.g5&&S.g5open?`<div class="card"><dl class="facts">
         ${Array.from({length:p.cfg.sectors},(_,i)=>{const s=g5Sector(p,i);return `<dt>S${i+1}</dt><dd>${s?esc(secLabel(s))+'<br><span class="muted" style="font-weight:400">'+esc(secEquip(s))+'</span>':'—'}</dd>`}).join('')}
         ${(p.g5.equipment&&p.g5.equipment.install.length)?`<dt>Montaż</dt><dd>${p.g5.equipment.install.map(e=>esc(e.name)+' ×'+e.qty).join('<br>')}</dd>`:''}
         ${(p.g5.equipment&&p.g5.equipment.deinstall.length)?`<dt>Demontaż</dt><dd style="font-weight:400">${p.g5.equipment.deinstall.map(e=>esc(e.name)+' ×'+e.qty).join('<br>')}</dd>`:''}
         ${(p.g5.bbu||[]).map(b=>`<dt>${esc(b.name)}</dt><dd>${esc(b.type)}: ${b.slots.map(s=>`slot ${s.slot} ${esc(s.card)}${s.action==='No action'?'':' ('+esc(s.action.toLowerCase())+')'}`).join(', ')}</dd>`).join('')}
-      </dl></details>`:''}
-    ${przedLeft.length?`<div class="card stack" style="border-color:var(--warn);gap:8px"><b>Zanim zaczniesz prace: ${przedLeft.length} zdjęć PRZED</b><p class="muted small">Widok obiektu, szafy, przebieg jumperów i drogi kablowej, sprzęt do demontażu. Później nie da się ich zrobić.</p><button class="btn-primary" data-act="go-przed">Rób zdjęcia przed pracami</button></div>`:''}
-    ${!przedLeft.length&&poLeft.length?`<div class="card stack" style="border-color:var(--ok);gap:8px"><b>Po zakończeniu prac: ${poLeft.length} zdjęć PO</b><p class="muted small">Te same miejsca co przed pracami, najlepiej w tym samym kadrze: obiekt, szafa, jumpery, droga kablowa, zdeinstalowany sprzęt.</p><button class="btn-primary" data-act="go-po">Rób zdjęcia po pracach</button></div>`:''}
-    <div class="row">
-      <button class="btn-primary" style="flex:1" data-act="go-next" ${next?'':'disabled'}>${next?`Rób po kolei · od nr ${next.n}${next.f!==f?' ('+esc(RMAP[next.f].short)+')':''}`:'Wszystkie wymagane zdjęcia są zrobione'}</button>
-      <button data-act="export">Pobierz ZIP</button>
-    </div>
-    <div class="row" style="justify-content:space-between"><span class="muted small">Masz zdjęcia z innego telefonu albo kopię?</span><button class="btn-ghost" data-act="import">Wczytaj ZIP</button></div>
+      </dl></div>`:''}
     <div class="chips" role="group" aria-label="Strefa">${ZONES.map(([k,l])=>{const zs=zoneStats(p,f,k);return `<button class="chip" data-act="zone" data-v="${k}" aria-pressed="${S.zone===k}">${l} <span class="num">${zs.done}/${zs.total}</span></button>`;}).join('')}</div>
     <div class="spread">
       <div class="chips">${[['all','Wszystkie'],['todo','Brakujące'],['przed','Przed pracami'],['po','Po pracach'],['done','Zrobione']].map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
@@ -1206,6 +1209,7 @@ document.addEventListener('click',async ev=>{
     case 'shoot': go(d.f,+d.n); break;
     case 'go-next': { S.mode=null; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)&&!isOpt(S.p,findItem(S.p,x.f,x.n))); if(nx){S.tab=nx.f; go(nx.f,nx.n);} break; }
     case 'go-po': { S.mode='po'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
+    case 'g5': S.g5open=!S.g5open; keepScroll(render); break;
     case 'go-przed': { S.mode='przed'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
     case 'choose': { const sl=slot(S.p,slotKey(S.cur.f,S.cur.n)); sl.chosen=d.id; await saveP(); keepScroll(render); break; }
     case 'deltake': {
