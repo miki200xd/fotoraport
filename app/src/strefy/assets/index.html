@@ -55,6 +55,12 @@ button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible
 .btn-big{min-height:64px;font-size:18px;line-height:1.1;font-family:var(--display);letter-spacing:.03em;text-transform:uppercase}
 button:disabled{opacity:.45;cursor:default}
 .topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.tb-row{display:flex;align-items:center;gap:6px}
+.tb-title{font-family:var(--display);font-weight:700;font-size:17px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-sub{font-size:12px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn-ghost.tb-btn{min-height:36px;min-width:36px;padding:0 6px;font-size:19px;flex:0 0 auto}
+.tabs-sm .tab{min-height:34px;padding:3px 10px;font-size:14px;border-radius:8px}
+.tabs-sm .tab .cnt{font-size:13px}
 label.field{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
 label.field span.hint{font-weight:400;color:var(--muted)}
 input[type=text],input[type=date],textarea{font:inherit;font-size:17px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);width:100%;min-height:48px}
@@ -559,7 +565,7 @@ function sequence(p){
   const seen=new Set(), out=[];
   for(const f of p.reports) for(const it of itemsFor(p,f)){
     if(S.zone && S.zone!=='all' && (it.zone||zoneOf(f,it))!==S.zone) continue;
-    if(S.mode==='przed' && it.phase!=='przed') continue;
+    if((S.mode==='przed'||S.mode==='po') && it.phase!==S.mode) continue;
     const k=slotKey(f,it.n,p); if(seen.has(k)) continue; seen.add(k); out.push({f,n:it.n});
   }
   return out;
@@ -724,16 +730,18 @@ function vStation(){
   if(S.filter==='todo') items=items.filter(it=>!isDone(p,f,it.n)&&!isSkip(p,f,it.n));
   if(S.filter==='done') items=items.filter(it=>isDone(p,f,it.n));
   if(S.filter==='przed') items=items.filter(it=>it.phase==='przed');
+  if(S.filter==='po') items=items.filter(it=>it.phase==='po');
   S.mode=null; const next = sequence(p).find(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n)));
-  const przedLeft = tplOf(p)==='v3' ? (()=>{S.mode='przed'; const l=sequence(p).filter(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n))); S.mode=null; return l;})() : [];
+  const phaseLeft = ph => tplOf(p)==='v3' ? (()=>{S.mode=ph; const l=sequence(p).filter(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n))); S.mode=null; return l;})() : [];
+  const przedLeft = phaseLeft('przed'), poLeft = phaseLeft('po');
   return `
-  <div class="topbar stack" style="gap:8px">
-    <div class="spread"><button class="btn-ghost" data-act="home">← Stacje</button>
-      <button class="btn-ghost" data-act="edit">Edytuj dane</button></div>
-    <div class="spread"><div style="min-width:0"><h2>${esc(p.nr)} ${esc(p.nazwa||'')}</h2><div class="muted small">${esc(p.data)} · ${esc(p.firma||'')} ${p.zakres?'· '+esc(p.zakres):''} · szablon ${TPL[tplOf(p)].name}</div></div>
-      <div class="num" style="font-size:24px;white-space:nowrap">${s.done}/${s.total}</div></div>
-    <div class="progress"><i style="width:${pct}%"></i></div>
-    <div class="tabs" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.total?st.done+"/"+st.total:itemsFor(p,r,{all:true}).filter(it=>isDone(p,r,it.n)).length}</span></button>`}).join('')}</div>
+  <div class="topbar stack" style="gap:6px">
+    <div class="tb-row"><button class="btn-ghost tb-btn" data-act="home" aria-label="Stacje" title="Stacje">←</button>
+      <div style="min-width:0;flex:1"><div class="tb-title">${esc(p.nr)} ${esc(p.nazwa||'')}</div><div class="muted tb-sub">${esc(p.data)}${p.firma?' · '+esc(p.firma):''}${p.zakres?' · '+esc(p.zakres):''} · ${TPL[tplOf(p)].name}</div></div>
+      <div class="num" style="font-size:18px;white-space:nowrap">${s.done}/${s.total}</div>
+      <button class="btn-ghost tb-btn" data-act="edit" aria-label="Edytuj dane" title="Edytuj dane">✎</button></div>
+    <div class="progress" style="height:5px"><i style="width:${pct}%"></i></div>
+    <div class="tabs tabs-sm" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.total?st.done+"/"+st.total:itemsFor(p,r,{all:true}).filter(it=>isDone(p,r,it.n)).length}</span></button>`}).join('')}</div>
   </div>
   <div class="stack">
     ${p.g5?`<details class="card"><summary style="cursor:pointer;font-weight:600">Dane z G5 · ${esc(p.g5.task||'')} · ${esc(p.g5.klass||'')} ${p.g5.height?esc(p.g5.height)+' m':''}</summary>
@@ -744,6 +752,7 @@ function vStation(){
         ${(p.g5.bbu||[]).map(b=>`<dt>${esc(b.name)}</dt><dd>${esc(b.type)}: ${b.slots.map(s=>`slot ${s.slot} ${esc(s.card)}${s.action==='No action'?'':' ('+esc(s.action.toLowerCase())+')'}`).join(', ')}</dd>`).join('')}
       </dl></details>`:''}
     ${przedLeft.length?`<div class="card stack" style="border-color:var(--warn);gap:8px"><b>Zanim zaczniesz prace: ${przedLeft.length} zdjęć PRZED</b><p class="muted small">Widok obiektu, szafy, przebieg jumperów i drogi kablowej, sprzęt do demontażu. Później nie da się ich zrobić.</p><button class="btn-primary" data-act="go-przed">Rób zdjęcia przed pracami</button></div>`:''}
+    ${!przedLeft.length&&poLeft.length?`<div class="card stack" style="border-color:var(--ok);gap:8px"><b>Po zakończeniu prac: ${poLeft.length} zdjęć PO</b><p class="muted small">Te same miejsca co przed pracami, najlepiej w tym samym kadrze: obiekt, szafa, jumpery, droga kablowa, zdeinstalowany sprzęt.</p><button class="btn-primary" data-act="go-po">Rób zdjęcia po pracach</button></div>`:''}
     <div class="row">
       <button class="btn-primary" style="flex:1" data-act="go-next" ${next?'':'disabled'}>${next?`Rób po kolei · od nr ${next.n}${next.f!==f?' ('+esc(RMAP[next.f].short)+')':''}`:'Wszystkie wymagane zdjęcia są zrobione'}</button>
       <button data-act="export">Pobierz ZIP</button>
@@ -751,7 +760,7 @@ function vStation(){
     <div class="row" style="justify-content:space-between"><span class="muted small">Masz zdjęcia z innego telefonu albo kopię?</span><button class="btn-ghost" data-act="import">Wczytaj ZIP</button></div>
     <div class="chips" role="group" aria-label="Strefa">${ZONES.map(([k,l])=>{const zs=zoneStats(p,f,k);return `<button class="chip" data-act="zone" data-v="${k}" aria-pressed="${S.zone===k}">${l} <span class="num">${zs.done}/${zs.total}</span></button>`;}).join('')}</div>
     <div class="spread">
-      <div class="chips">${[['all','Wszystkie'],['todo','Brakujące'],['przed','Przed pracami'],['done','Zrobione']].map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
+      <div class="chips">${[['all','Wszystkie'],['todo','Brakujące'],['przed','Przed pracami'],['po','Po pracach'],['done','Zrobione']].map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
       <label class="row small muted" style="gap:6px"><input type="checkbox" id="extra" ${S.showExtra?'checked':''} style="width:20px;height:20px"> Dodatkowe</label>
     </div>
     <div class="items">
@@ -790,7 +799,7 @@ function vShoot(){
   const conf = S.confirm;
   return `
   <div class="topbar spread"><button class="btn-ghost" data-act="back-station">← Lista</button>
-    <span class="eyebrow">${S.mode==='przed'?'Przed pracami':esc(RMAP[f].short)} · ${idx+1} z ${seq.length}</span><span style="width:60px"></span></div>
+    <span class="eyebrow">${S.mode==='przed'?'Przed pracami':S.mode==='po'?'Po pracach':esc(RMAP[f].short)} · ${idx+1} z ${seq.length}</span><span style="width:60px"></span></div>
   <div class="stack">
     <div class="marker ${sl.chosen||pend.length?'done':''}">
       <div class="big">${n}</div>
@@ -1164,7 +1173,7 @@ function go(f,n){ S.cur={f,n}; S.confirm=null; S.lastError=null; S.view='shoot';
 function step(dir){
   const seq=sequence(S.p); const k=slotKey(S.cur.f,S.cur.n);
   const i=seq.findIndex(x=>slotKey(x.f,x.n)===k)+dir;
-  if(i<0) return; if(i>=seq.length){ const was=S.mode; S.mode=null; S.view='station'; render(); toast(was==='przed'?'Zdjęcia PRZED zrobione. Dla bezpieczeństwa pobierz teraz ZIP jako kopię.':'Koniec listy'); return; }
+  if(i<0) return; if(i>=seq.length){ const was=S.mode; S.mode=null; S.view='station'; render(); toast(was==='przed'?'Zdjęcia PRZED zrobione. Dla bezpieczeństwa pobierz teraz ZIP jako kopię.':was==='po'?'Zdjęcia PO zrobione. Pobierz ZIP.':'Koniec listy'); return; }
   S.tab=seq[i].f; go(seq[i].f,seq[i].n);
 }
 
@@ -1196,6 +1205,7 @@ document.addEventListener('click',async ev=>{
     case 'zone': S.zone=d.v; ls.set('zone',d.v); keepScroll(render); break;
     case 'shoot': go(d.f,+d.n); break;
     case 'go-next': { S.mode=null; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)&&!isOpt(S.p,findItem(S.p,x.f,x.n))); if(nx){S.tab=nx.f; go(nx.f,nx.n);} break; }
+    case 'go-po': { S.mode='po'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
     case 'go-przed': { S.mode='przed'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
     case 'choose': { const sl=slot(S.p,slotKey(S.cur.f,S.cur.n)); sl.chosen=d.id; await saveP(); keepScroll(render); break; }
     case 'deltake': {
