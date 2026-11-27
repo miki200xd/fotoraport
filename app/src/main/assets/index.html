@@ -502,7 +502,7 @@ function totalStats(p){
 }
 function sequence(p){
   const seen=new Set(), out=[];
-  for(const f of p.reports) for(const it of itemsFor(p,f)){ if(S.mode==='przed' && it.phase!=='przed') continue; const k=slotKey(f,it.n,p); if(seen.has(k)) continue; seen.add(k); out.push({f,n:it.n}); }
+  for(const f of p.reports) for(const it of itemsFor(p,f)){ if((S.mode==='przed'||S.mode==='po') && it.phase!==S.mode) continue; const k=slotKey(f,it.n,p); if(seen.has(k)) continue; seen.add(k); out.push({f,n:it.n}); }
   return out;
 }
 function findItem(p,f,n){ return itemsFor(p,f,{all:true}).find(it=>it.n===n); }
@@ -664,8 +664,10 @@ function vStation(){
   if(S.filter==='todo') items=items.filter(it=>!isDone(p,f,it.n)&&!isSkip(p,f,it.n));
   if(S.filter==='done') items=items.filter(it=>isDone(p,f,it.n));
   if(S.filter==='przed') items=items.filter(it=>it.phase==='przed');
+  if(S.filter==='po') items=items.filter(it=>it.phase==='po');
   S.mode=null; const next = sequence(p).find(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n)));
-  const przedLeft = tplOf(p)==='v3' ? (()=>{S.mode='przed'; const l=sequence(p).filter(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n))); S.mode=null; return l;})() : [];
+  const phaseLeft = ph => tplOf(p)==='v3' ? (()=>{S.mode=ph; const l=sequence(p).filter(x=>!isDone(p,x.f,x.n)&&!isSkip(p,x.f,x.n)&&!isOpt(p,findItem(p,x.f,x.n))); S.mode=null; return l;})() : [];
+  const przedLeft = phaseLeft('przed'), poLeft = phaseLeft('po');
   return `
   <div class="topbar stack" style="gap:8px">
     <div class="spread"><button class="btn-ghost" data-act="home">← Stacje</button>
@@ -684,13 +686,14 @@ function vStation(){
         ${(p.g5.bbu||[]).map(b=>`<dt>${esc(b.name)}</dt><dd>${esc(b.type)}: ${b.slots.map(s=>`slot ${s.slot} ${esc(s.card)}${s.action==='No action'?'':' ('+esc(s.action.toLowerCase())+')'}`).join(', ')}</dd>`).join('')}
       </dl></details>`:''}
     ${przedLeft.length?`<div class="card stack" style="border-color:var(--warn);gap:8px"><b>Zanim zaczniesz prace: ${przedLeft.length} zdjęć PRZED</b><p class="muted small">Widok obiektu, szafy, przebieg jumperów i drogi kablowej, sprzęt do demontażu. Później nie da się ich zrobić.</p><button class="btn-primary" data-act="go-przed">Rób zdjęcia przed pracami</button></div>`:''}
+    ${!przedLeft.length&&poLeft.length?`<div class="card stack" style="border-color:var(--ok);gap:8px"><b>Po zakończeniu prac: ${poLeft.length} zdjęć PO</b><p class="muted small">Te same miejsca co przed pracami, najlepiej w tym samym kadrze: obiekt, szafa, jumpery, droga kablowa, zdeinstalowany sprzęt.</p><button class="btn-primary" data-act="go-po">Rób zdjęcia po pracach</button></div>`:''}
     <div class="row">
       <button class="btn-primary" style="flex:1" data-act="go-next" ${next?'':'disabled'}>${next?`Rób po kolei · od nr ${next.n}${next.f!==f?' ('+esc(RMAP[next.f].short)+')':''}`:'Wszystkie wymagane zdjęcia są zrobione'}</button>
       <button data-act="export">Pobierz ZIP</button>
     </div>
     <div class="row" style="justify-content:space-between"><span class="muted small">Masz zdjęcia z innego telefonu albo kopię?</span><button class="btn-ghost" data-act="import">Wczytaj ZIP</button></div>
     <div class="spread">
-      <div class="chips">${[['all','Wszystkie'],['todo','Brakujące'],['przed','Przed pracami'],['done','Zrobione']].map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
+      <div class="chips">${[['all','Wszystkie'],['todo','Brakujące'],['przed','Przed pracami'],['po','Po pracach'],['done','Zrobione']].map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
       <label class="row small muted" style="gap:6px"><input type="checkbox" id="extra" ${S.showExtra?'checked':''} style="width:20px;height:20px"> Dodatkowe</label>
     </div>
     <div class="items">
@@ -729,7 +732,7 @@ function vShoot(){
   const conf = S.confirm;
   return `
   <div class="topbar spread"><button class="btn-ghost" data-act="back-station">← Lista</button>
-    <span class="eyebrow">${S.mode==='przed'?'Przed pracami':esc(RMAP[f].short)} · ${idx+1} z ${seq.length}</span><span style="width:60px"></span></div>
+    <span class="eyebrow">${S.mode==='przed'?'Przed pracami':S.mode==='po'?'Po pracach':esc(RMAP[f].short)} · ${idx+1} z ${seq.length}</span><span style="width:60px"></span></div>
   <div class="stack">
     <div class="marker ${sl.chosen||pend.length?'done':''}">
       <div class="big">${n}</div>
@@ -1075,7 +1078,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='2.5';
+const APP_VERSION='2.6';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -1103,7 +1106,7 @@ function go(f,n){ S.cur={f,n}; S.confirm=null; S.lastError=null; S.view='shoot';
 function step(dir){
   const seq=sequence(S.p); const k=slotKey(S.cur.f,S.cur.n);
   const i=seq.findIndex(x=>slotKey(x.f,x.n)===k)+dir;
-  if(i<0) return; if(i>=seq.length){ const was=S.mode; S.mode=null; S.view='station'; render(); toast(was==='przed'?'Zdjęcia PRZED zrobione. Dla bezpieczeństwa pobierz teraz ZIP jako kopię.':'Koniec listy'); return; }
+  if(i<0) return; if(i>=seq.length){ const was=S.mode; S.mode=null; S.view='station'; render(); toast(was==='przed'?'Zdjęcia PRZED zrobione. Dla bezpieczeństwa pobierz teraz ZIP jako kopię.':was==='po'?'Zdjęcia PO zrobione. Pobierz ZIP.':'Koniec listy'); return; }
   S.tab=seq[i].f; go(seq[i].f,seq[i].n);
 }
 
@@ -1134,6 +1137,7 @@ document.addEventListener('click',async ev=>{
     case 'filter': S.filter=d.v; keepScroll(render); break;
     case 'shoot': go(d.f,+d.n); break;
     case 'go-next': { S.mode=null; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)&&!isOpt(S.p,findItem(S.p,x.f,x.n))); if(nx){S.tab=nx.f; go(nx.f,nx.n);} break; }
+    case 'go-po': { S.mode='po'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
     case 'go-przed': { S.mode='przed'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
     case 'choose': { const sl=slot(S.p,slotKey(S.cur.f,S.cur.n)); sl.chosen=d.id; await saveP(); keepScroll(render); break; }
     case 'deltake': {
