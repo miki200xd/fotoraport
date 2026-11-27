@@ -552,12 +552,14 @@ const S = {
   view:'home', projects:[], p:null, photos:new Map(), urls:new Map(),
   tab:null, filter:'all', zone:ls.get('zone','all'), showExtra:false, cur:null, confirm:null, dbError:null,
   quality: ls.get('quality',2400), includeAlt:false, exporting:false,
-  autoNext: ls.get('autoNext',false), backupQ: ls.get('backupQ',0)
+  autoNext: ls.get('autoNext',false), backupQ: ls.get('backupQ',0), txt: ls.get('txt',1)
 };
 const $app = document.getElementById('app');
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const today = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const TXT=[[1,'Mała'],[1.15,'Średnia'],[1.3,'Duża']];
+function applyTxt(){ const z=+S.txt||1; document.documentElement.style.zoom = z===1?'':String(z); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2600); }
 function busy(on,txt){ const b=document.getElementById('busy'); b.hidden=!on; if(txt) document.getElementById('busyText').textContent=txt; }
 
@@ -644,6 +646,7 @@ function releaseFullURLs(){ for(const [k,u] of S.urls) if(k.endsWith('f')){ URL.
 
 /* ======================= Widoki ======================= */
 function render(){
+  if(!render._txt){ render._txt=1; applyTxt(); }
   if(S.view!=='shoot') releaseFullURLs();
   const v = S.view;
   $app.innerHTML = v==='home'?vHome(): v==='form'?vForm(): v==='station'?vStation(): v==='shoot'?vShoot(): v==='export'?vExport():'';
@@ -699,8 +702,10 @@ function vHome(){
       </div>`}).join('') : `<div class="card empty-state muted">Nie masz jeszcze żadnej stacji. Dodaj pierwszą: numer, data, wykonawca i zakres raportów.</div>`}
   </div>
   <div class="stack" style="margin-top:22px">
-    <div class="eyebrow">Ustawienia zdjęć</div>
+    <div class="eyebrow">Ustawienia</div>
     <div class="card stack">
+      <div class="cfgrow"><div><b>Wielkość tekstu</b><div class="muted small">Większa = lepiej widać w słońcu i w rękawiczkach. Szybko zmienisz też przyciskiem Aa u góry.</div></div>
+        <div class="seg" role="group" aria-label="Wielkość tekstu">${TXT.map(([v,l])=>`<button data-act="txt" data-v="${v}" aria-pressed="${(+S.txt||1)===v}">${l}</button>`).join('')}</div></div>
       <div class="cfgrow"><div><b>Rozdzielczość zapisu</b><div class="muted small">Dłuższy bok. Wytyczne: min. 1200×1600, pionowo 3:4.</div></div>
         <div class="seg" role="group" aria-label="Rozdzielczość">${[1600,2400,3200].map(q=>`<button data-act="quality" data-v="${q}" aria-pressed="${S.quality===q}">${q}</button>`).join('')}</div></div>
       <p class="muted small">Zdjęcia są obracane zgodnie z orientacją telefonu przed zapisem, więc w Excelu nie wejdą bokiem.</p>
@@ -814,6 +819,7 @@ function vStation(){
     <div class="tb-row"><button class="btn-ghost tb-btn" data-act="home" aria-label="Stacje" title="Stacje">←</button>
       <div style="min-width:0;flex:1"><div class="tb-title">${esc(p.nr)} ${esc(p.nazwa||'')}</div><div class="muted tb-sub">${esc(p.data)}${p.firma?' · '+esc(p.firma):''}${p.zakres?' · '+esc(p.zakres):''} · ${TPL[tplOf(p)].name}</div></div>
       <div class="num" style="font-size:18px;white-space:nowrap">${s.done}/${s.total}</div>
+      <button class="btn-ghost tb-btn" data-act="txt-cycle" aria-label="Wielkość tekstu" title="Wielkość tekstu" style="font-size:15px;font-weight:600">Aa</button>
       <button class="btn-ghost tb-btn" data-act="edit" aria-label="Edytuj dane" title="Edytuj dane">✎</button></div>
     <div class="progress" style="height:5px"><i style="width:${pct}%"></i></div>
     <div class="tabs tabs-sm" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.total&&st.done>=st.total?'✓':st.total?st.done+"/"+st.total:itemsFor(p,r,{all:true}).filter(it=>isDone(p,r,it.n)).length}</span></button>`}).join('')}</div>
@@ -877,7 +883,7 @@ function vShoot(){
   const conf = S.confirm;
   return `
   <div class="topbar spread"><button class="btn-ghost" data-act="back-station">← Lista</button>
-    <span class="eyebrow">${S.mode==='przed'?'Przed pracami':S.mode==='po'?'Po pracach':esc(RMAP[f].short)} · ${idx+1} z ${seq.length}</span><span style="width:60px"></span></div>
+    <span class="eyebrow">${S.mode==='przed'?'Przed pracami':S.mode==='po'?'Po pracach':esc(RMAP[f].short)} · ${idx+1} z ${seq.length}</span><button class="btn-ghost tb-btn" data-act="txt-cycle" aria-label="Wielkość tekstu" title="Wielkość tekstu" style="font-size:15px;font-weight:600">Aa</button></div>
   <div class="stack">
     <div class="marker ${sl.chosen||pend.length?'done':''}">
       <div class="big">${n}</div>
@@ -1224,7 +1230,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='2.9-TEST minimal';
+const APP_VERSION='2.10-TEST tekst';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -1310,6 +1316,8 @@ document.addEventListener('click',async ev=>{
     case 'import': S.importNew=false; document.getElementById('zipfile').click(); break;
     case 'import-new': S.importNew=true; document.getElementById('zipfile').click(); break;
     case 'do-export': if(!S.exporting) doExport(); break;
+    case 'txt': S.txt=+d.v; ls.set('txt',S.txt); applyTxt(); keepScroll(render); break;
+    case 'txt-cycle': { const i=TXT.findIndex(([v])=>v===(+S.txt||1)); S.txt=TXT[(i+1)%TXT.length][0]; ls.set('txt',S.txt); applyTxt(); keepScroll(render); toast('Tekst: '+TXT.find(([v])=>v===S.txt)[1]); break; }
     case 'autonext': S.autoNext=d.v==='true'; ls.set('autoNext',S.autoNext); keepScroll(render); break;
     case 'backupq': S.backupQ=+d.v; ls.set('backupQ',S.backupQ); applyBackupQ(); keepScroll(render); break;
     case 'quality': S.quality=+d.v; ls.set('quality',S.quality); keepScroll(render); showStorage(); break;
