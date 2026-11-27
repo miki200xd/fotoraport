@@ -144,6 +144,45 @@ select.secsel{font:inherit;font-size:15px;min-height:44px;padding:8px;border:1px
 .busy div{background:var(--surface);color:var(--ink);padding:18px 22px;border-radius:12px;font-weight:600}
 .empty-state{text-align:center;padding:28px 8px}
 @media (prefers-reduced-motion:no-preference){ .item,.take,button{transition:background-color .15s,border-color .15s} }
+/* ===== TEST: styl minimalistyczny (mniejsze litery, bez wersalików i wąskiej czcionki) ===== */
+body{font-size:14.5px;line-height:1.4}
+h1,h2,h3{font-family:var(--body);font-weight:650;letter-spacing:0;line-height:1.2}
+h1{font-size:22px} h2{font-size:18px} h3{font-size:15.5px}
+.small{font-size:13px}
+.eyebrow{font-family:var(--body);font-weight:500;font-size:12px;letter-spacing:0;text-transform:none}
+button,.btn{font-weight:500;min-height:42px;padding:8px 14px;border-radius:9px}
+.btn-big{min-height:50px;font-size:15.5px;font-family:var(--body);font-weight:600;letter-spacing:0;text-transform:none}
+.card{border-radius:10px;padding:12px}
+.tag{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;padding:1px 7px;border-radius:5px}
+.chip{min-height:34px;padding:4px 11px;font-size:13.5px;font-weight:500}
+.chips.chips-row .chip{min-height:30px;padding:2px 10px;font-size:12.5px}
+.tab{min-height:38px;padding:4px 12px;font-weight:500}
+.tabs-sm .tab{min-height:30px;padding:2px 9px;font-size:13px}
+.tab .cnt,.tabs-sm .tab .cnt{font-family:var(--body);font-size:12px}
+.num{font-family:var(--body);font-weight:600}
+.tb-row .num{font-size:14px!important}
+.tb-title{font-family:var(--body);font-weight:600;font-size:15px}
+.tb-sub{font-size:11.5px}
+.btn-ghost.tb-btn{min-height:32px;min-width:32px;font-size:17px}
+.btn-ghost.mini{min-height:30px;font-size:13px}
+.item{grid-template-columns:34px 1fr 46px;gap:10px;padding:7px 10px;min-height:54px}
+.plate{width:34px;height:34px;border-radius:7px;font-family:var(--body);font-weight:600;font-size:15px}
+.item .t{font-weight:500;font-size:14px;line-height:1.3}
+.item .d{font-size:12px;-webkit-line-clamp:1}
+.thumb{width:46px;height:46px;border-radius:6px}
+.marker{gap:12px}
+.marker .big{font-family:var(--body);font-weight:650;font-size:30px;min-width:56px;height:56px;padding:0 8px;border-radius:10px}
+.preview .ph{font-size:13.5px}
+.seg button{min-height:38px;font-family:var(--body);font-size:14.5px}
+label.field{font-size:13px;font-weight:500}
+input[type=text],input[type=date],textarea{font-size:15px;padding:9px 11px;min-height:42px}
+select.secsel{font-size:14px;min-height:40px}
+.facts{font-size:13px}
+.st h3{font-size:16px}
+.notice{font-size:13px;padding:8px 10px}
+.toast{font-weight:500;font-size:14px;padding:10px 14px}
+.next-hint{font-size:12px}
+.missing{font-family:var(--body);font-size:14px;letter-spacing:0}
 </style>
 
 <style>
@@ -808,8 +847,8 @@ function vStation(){
         return `<button class="item ${done?'done':''} ${skip?'skip':''}" data-act="shoot" data-f="${esc(f)}" data-n="${it.n}">
           <span class="plate">${it.n}</span>
           <span style="min-width:0"><span class="t">${esc(it.title)}</span>
-            ${it.desc?`<span class="d">${esc(it.desc)}</span>`:''}
-            <span class="row" style="gap:4px;margin-top:4px">${next&&next.f===f&&next.n===it.n?'<span class="tag acc">▶ następne</span>':''}${it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it.share&&p.reports.length>1?'<span class="tag acc">wspólne dla raportów</span>':''}${it.ser?`<span class="tag">ujęcie ${it.ser.k} z ${it.ser.m}</span>`:''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${skip?'<span class="tag warn">pominięte</span>':''}</span></span>
+            ${it.desc&&norm(it.desc).slice(0,18)!==norm(it.title).slice(0,18)?`<span class="d">${esc(it.desc)}</span>`:''}
+            <span class="row" style="gap:4px;margin-top:3px">${next&&next.f===f&&next.n===it.n?'<span class="tag acc">▶ następne</span>':''}${it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed':'po'}</span>`:''}${it.share&&p.reports.length>1?'<span class="tag acc" title="wspólne dla raportów">wspólne</span>':''}${it.ser?`<span class="tag" title="ujęcie ${it.ser.k} z ${it.ser.m}">${it.ser.k}/${it.ser.m}</span>`:''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${skip?'<span class="tag warn">pominięte</span>':''}</span></span>
           <span>${pd.length?`<img class="thumb" alt="" src="${pd[pd.length-1].url}">`:done?`<img class="thumb" alt="" src="${photoURL(sl.chosen)}">`:`<span class="thumb empty"></span>`}${sl.takes.length>1?`<div class="cnt-badge">${sl.takes.length} ujęcia</div>`:''}</span>
         </button>`}).join(''):`<div class="empty-state muted stack" style="align-items:center;gap:8px">Brak pozycji w tym filtrze.${S.filter!=='all'||(S.zone&&S.zone!=='all')?'<button data-act="resetf">Pokaż wszystko</button>':''}</div>`}
     </div>
@@ -848,7 +887,7 @@ function vShoot(){
       </div>
     </div>
     ${it&&it.ser?`<p class="notice info" style="font-weight:600">Ujęcie ${it.ser.k} z ${it.ser.m} tego samego elementu (nr ${n-it.ser.k+1}–${n-it.ser.k+it.ser.m}).</p>`:''}
-    ${it&&it.desc?`<p style="font-size:17px">${esc(it.desc)}</p>`:''}
+    ${it&&it.desc?`<p style="font-size:14.5px">${esc(it.desc)}</p>`:''}
     ${shootG5(p,f,it)}
     <div class="row" style="gap:6px">${it&&it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it&&it.doc?'<span class="tag">skan dokumentu</span>':'<span class="tag">pionowo 3:4</span>'}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${sl.skip?'<span class="tag warn">pominięte</span>':''}${it&&it.share&&p.reports.length>1?`<span class="tag acc">zapisze się w każdym folderze jako ${n}.jpg</span>`:''}</div>
     <div class="preview">${pendLast?`<img alt="Zapisywane zdjęcie ${n}" src="${pendLast.url}"><span class="pendtag">Zapisuję w tle…</span>`:chosen?`<img alt="Wybrane ujęcie zdjęcia ${n}" src="${photoURL(sl.chosen,false)}">`:`<div class="ph">Brak zdjęcia.<br>Zrób je aparatem albo wybierz z galerii. Zapisze się jako <b>${esc(f)}/${n}.jpg</b>.</div>`}</div>
@@ -1185,7 +1224,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='2.8-TEST sektory';
+const APP_VERSION='2.9-TEST minimal';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
