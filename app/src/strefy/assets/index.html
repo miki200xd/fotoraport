@@ -768,7 +768,8 @@ function vForm(){
       </div>
       <label class="field">Nazwa obiektu Networks<input type="text" id="f_nazwa" value="${esc(p.nazwa)}" placeholder="np. PŁOCK 2"></label>
       <label class="field">Nazwa obiektu OPL / TMPL<input type="text" id="f_nazwaOp" value="${esc(p.nazwaOp||'')}" placeholder="np. 11646 WYCZÓŁKI"></label>
-      <label class="field">Wykonawca / firma instalacyjna<input type="text" id="f_firma" value="${esc(p.firma)}" placeholder="np. ECS"></label>
+      <div class="stack" style="gap:6px"><label class="field">Wykonawca / firma instalacyjna<input type="text" id="f_firma" value="${esc(p.firma)}" placeholder="ECS, ATEM, HAVAC…"></label>
+        <div class="chips chips-row">${['ECS','ATEM','HAVAC'].map(x=>`<button type="button" class="chip" data-act="firma" data-v="${x}" aria-pressed="${(p.firma||'').toUpperCase()===x}">${x}</button>`).join('')}</div></div>
       <label class="field">Zakres prac<input type="text" id="f_zakres" value="${esc(p.zakres)}" placeholder="np. Swap GU9+F0 18/21"></label>
       <label class="field">Numer zamówienia <span class="hint">Opcjonalnie. Trafi do nazwy ZIP, np. 74050_20210130_4201229474</span><input type="text" id="f_zam" inputmode="numeric" value="${esc(p.zam)}"></label>
     </div>
@@ -1252,7 +1253,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='2.12-TEST foto raport';
+const APP_VERSION='2.13-TEST foto raport';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -1302,6 +1303,7 @@ document.addEventListener('click',async ev=>{
     case 'g5clear': syncDraft(); S.draft.g5=null; S.draft.cfg=normCfg({...S.draft.cfg,map:null}); keepScroll(render); toast('G5 wyczyszczone'); break;
     case 'rep': { syncDraft(); const r=S.draft.reports; const i=r.indexOf(d.f); if(i>=0) r.splice(i,1); else r.push(d.f); S.draft.reports=REPORTS.map(x=>x.f).filter(x=>r.includes(x)); keepScroll(render); break; }
     case 'cfg': syncDraft(); S.draft.cfg[d.k]=+d.v; keepScroll(render); break;
+    case 'firma': syncDraft(); S.draft.firma=d.v; keepScroll(render); break;
     case 'tpl': syncDraft(); S.draft.tpl=d.v; ls.set('tpl',d.v); keepScroll(render); break;
     case 'cfgs': syncDraft(); S.draft.cfg[d.k][+d.i]=+d.v; keepScroll(render); break;
     case 'open': openProject(d.id); break;
