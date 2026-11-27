@@ -64,6 +64,12 @@ button:disabled{opacity:.45;cursor:default}
 .btn-ghost.mini{min-height:34px;padding:0 6px;font-size:14px;flex:0 0 auto}
 .chips.chips-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px;padding-bottom:2px}
 .chips.chips-row::-webkit-scrollbar{display:none}
+.chips.chips-row.more-r{-webkit-mask-image:linear-gradient(to right,#000 82%,transparent);mask-image:linear-gradient(to right,#000 82%,transparent)}
+.chips.chips-row.more-l{-webkit-mask-image:linear-gradient(to left,#000 82%,transparent);mask-image:linear-gradient(to left,#000 82%,transparent)}
+.chips.chips-row.more-l.more-r{-webkit-mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent)}
+@keyframes flashItem{0%,40%{background:color-mix(in srgb,var(--acc) 22%,transparent)}100%{background:transparent}}
+.item.flash{animation:flashItem 1.6s ease-out}
+.next-hint{font-size:13.5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chips.chips-row .chip{min-height:32px;padding:3px 11px;font-size:13.5px;gap:5px;flex:0 0 auto}
 label.field{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
 label.field span.hint{font-weight:400;color:var(--muted)}
@@ -590,9 +596,22 @@ function render(){
   if(S.view!=='shoot') releaseFullURLs();
   const v = S.view;
   $app.innerHTML = v==='home'?vHome(): v==='form'?vForm(): v==='station'?vStation(): v==='shoot'?vShoot(): v==='export'?vExport():'';
+  const prev=S._lastView; S._lastView=v;
   window.scrollTo && S._scrollTop!==false && window.scrollTo(0,0);
   if(v==='shoot') setCaptureTarget();
+  if(v==='station' && prev==='shoot' && S.cur){
+    const el=$app.querySelector(`.item[data-f="${CSS.escape(S.cur.f)}"][data-n="${S.cur.n}"]`);
+    if(el){ el.scrollIntoView({block:'center'}); el.classList.add('flash'); }
+  }
+  edgeFades();
 }
+function edgeFades(){
+  for(const r of $app.querySelectorAll('.chips-row')){
+    const upd=()=>{ const max=r.scrollWidth-r.clientWidth; r.classList.toggle('more-r', max>2 && r.scrollLeft<max-2); r.classList.toggle('more-l', max>2 && r.scrollLeft>2); };
+    upd(); if(!r._fade){ r._fade=1; r.addEventListener('scroll',upd,{passive:true}); }
+  }
+}
+window.addEventListener('resize',()=>edgeFades());
 
 function vHome(){
   const list = S.projects.slice().sort((a,b)=>b.updated-a.updated);
@@ -745,7 +764,7 @@ function vStation(){
       <div class="num" style="font-size:18px;white-space:nowrap">${s.done}/${s.total}</div>
       <button class="btn-ghost tb-btn" data-act="edit" aria-label="Edytuj dane" title="Edytuj dane">✎</button></div>
     <div class="progress" style="height:5px"><i style="width:${pct}%"></i></div>
-    <div class="tabs tabs-sm" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.total?st.done+"/"+st.total:itemsFor(p,r,{all:true}).filter(it=>isDone(p,r,it.n)).length}</span></button>`}).join('')}</div>
+    <div class="tabs tabs-sm" role="tablist">${p.reports.map(r=>{const st=stats(p,r);return `<button class="tab" role="tab" data-act="tab" data-f="${esc(r)}" aria-selected="${r===f}">${esc(RMAP[r].short)} <span class="cnt">${st.total&&st.done>=st.total?'✓':st.total?st.done+"/"+st.total:itemsFor(p,r,{all:true}).filter(it=>isDone(p,r,it.n)).length}</span></button>`}).join('')}</div>
   </div>
   <div class="stack">
     <div class="row" style="gap:6px;flex-wrap:nowrap">
@@ -776,9 +795,9 @@ function vStation(){
           <span class="plate">${it.n}</span>
           <span style="min-width:0"><span class="t">${esc(it.title)}</span>
             ${it.desc?`<span class="d">${esc(it.desc)}</span>`:''}
-            <span class="row" style="gap:4px;margin-top:4px">${it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it.share&&p.reports.length>1?'<span class="tag acc">wspólne dla raportów</span>':''}${it.ser?`<span class="tag">ujęcie ${it.ser.k} z ${it.ser.m}</span>`:''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${skip?'<span class="tag warn">pominięte</span>':''}</span></span>
+            <span class="row" style="gap:4px;margin-top:4px">${next&&next.f===f&&next.n===it.n?'<span class="tag acc">▶ następne</span>':''}${it.phase?`<span class="tag ${it.phase==='przed'?'warn':'ok'}">${it.phase==='przed'?'przed pracami':'po pracach'}</span>`:''}${it.share&&p.reports.length>1?'<span class="tag acc">wspólne dla raportów</span>':''}${it.ser?`<span class="tag">ujęcie ${it.ser.k} z ${it.ser.m}</span>`:''}${isOpt(p,it)?'<span class="tag">opcja</span>':''}${skip?'<span class="tag warn">pominięte</span>':''}</span></span>
           <span>${pd.length?`<img class="thumb" alt="" src="${pd[pd.length-1].url}">`:done?`<img class="thumb" alt="" src="${photoURL(sl.chosen)}">`:`<span class="thumb empty"></span>`}${sl.takes.length>1?`<div class="cnt-badge">${sl.takes.length} ujęcia</div>`:''}</span>
-        </button>`}).join(''):`<div class="empty-state muted">Brak pozycji w tym filtrze.</div>`}
+        </button>`}).join(''):`<div class="empty-state muted stack" style="align-items:center;gap:8px">Brak pozycji w tym filtrze.${S.filter!=='all'||(S.zone&&S.zone!=='all')?'<button data-act="resetf">Pokaż wszystko</button>':''}</div>`}
     </div>
     ${f==='Inne'?`<div class="card stack"><h3>Dodaj zdjęcie do „Inne”</h3>
       <p class="muted small">Elementy niestandardowe i zauważone usterki. Opis trafi do pliku opisy.txt w ZIP, żeby przepisać go nad zdjęciem.</p>
@@ -834,6 +853,7 @@ function vShoot(){
       <label for="cam" class="btn ${(sl.takes.length||pend.length)?'':'btn-primary'} btn-big" style="flex:2" role="button" tabindex="0">${(sl.takes.length||pend.length)?'Zrób jeszcze raz':'Zrób zdjęcie'}</label>
       <label for="gal" class="btn btn-big" style="flex:1;font-size:16px" role="button" tabindex="0">Galeria</label>
     </div>
+    ${seq[idx+1]?(()=>{const nx=seq[idx+1], ni=findItem(p,nx.f,nx.n); return `<div class="muted next-hint">Dalej: nr ${nx.n}${nx.f!==f?' ('+esc(RMAP[nx.f].short)+')':''} · ${esc(ni?ni.title:'')} <span aria-hidden="true">· przesuń palcem ⇆</span></div>`;})():''}
     <div class="navrow">
       <button data-act="prev" ${idx<=0?'disabled':''}>← Wstecz</button>
       <button data-act="skip">${sl.skip?'Przywróć':'Pomiń'}</button>
@@ -1151,7 +1171,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='2.5-TEST strefy';
+const APP_VERSION='2.7-TEST ergonomia';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -1176,6 +1196,11 @@ async function openProject(id){
   S.tab=p.reports[0]; S.filter='all'; S.view='station'; render();
 }
 function go(f,n){ S.cur={f,n}; S.confirm=null; S.lastError=null; S.view='shoot'; render(); }
+(function(){ let x0=null,y0=0,t0=0;
+  document.addEventListener('touchstart',e=>{ if(S.view!=='shoot'||e.touches.length!==1||e.target.closest('.takes,.chips-row,input,label')){ x0=null; return; } x0=e.touches[0].clientX; y0=e.touches[0].clientY; t0=Date.now(); },{passive:true});
+  document.addEventListener('touchend',e=>{ if(x0===null||S.view!=='shoot') return; const t=e.changedTouches[0]; const dx=t.clientX-x0, dy=t.clientY-y0; x0=null;
+    if(Date.now()-t0<700 && Math.abs(dx)>80 && Math.abs(dy)<Math.abs(dx)*0.5) step(dx<0?1:-1); },{passive:true});
+})();
 function step(dir){
   const seq=sequence(S.p); const k=slotKey(S.cur.f,S.cur.n);
   const i=seq.findIndex(x=>slotKey(x.f,x.n)===k)+dir;
@@ -1209,6 +1234,7 @@ document.addEventListener('click',async ev=>{
     case 'tab': S.tab=d.f; keepScroll(render); break;
     case 'filter': S.filter=d.v; keepScroll(render); break;
     case 'zone': S.zone=d.v; ls.set('zone',d.v); keepScroll(render); break;
+    case 'resetf': S.filter='all'; S.zone='all'; ls.set('zone','all'); keepScroll(render); break;
     case 'shoot': go(d.f,+d.n); break;
     case 'go-next': { S.mode=null; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)&&!isOpt(S.p,findItem(S.p,x.f,x.n))); if(nx){S.tab=nx.f; go(nx.f,nx.n);} break; }
     case 'go-po': { S.mode='po'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
