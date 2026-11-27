@@ -944,14 +944,14 @@ function vExport(){
     </div>
     <div class="card stack">
       <b>Co jest w środku</b>
-      <p class="small muted" style="font-family:ui-monospace,Menlo,monospace;line-height:1.6">${esc(zipName(p))}/<br>${p.reports.map(f=>f==='Azymuty'?`&nbsp;&nbsp;${AZ_DIR}/${esc(String(p.nr||'stacja'))}_Sec1_Ant1_1.jpg… (poza raportem)`:`&nbsp;&nbsp;${esc(f)}/1.jpg, 2.jpg…`).join('<br>')}<br>&nbsp;&nbsp;info.txt${p.reports.includes('Inne')?'<br>&nbsp;&nbsp;Inne/opisy.txt':''}${S.includeAlt?'<br>&nbsp;&nbsp;_inne_ujecia/…':''}</p>
+      <p class="small muted" style="font-family:ui-monospace,Menlo,monospace;line-height:1.6">${esc(zipName(p))}/<br>${p.reports.map(f=>f==='Azymuty'?`&nbsp;&nbsp;${AZ_DIR}/${esc(String(p.nr||'stacja'))}_Sec1_Ant1_1.jpg… (poza raportem)`:`&nbsp;&nbsp;${esc(f)}/1.jpg, 2.jpg…`).join('<br>')}<br>${tplOf(p)==='v3'?'&nbsp;&nbsp;<b>'+esc(raportName(p))+'</b> (Foto raport V3.1, Site info wypełnione)<br>':''}&nbsp;&nbsp;info.txt${p.reports.includes('Inne')?'<br>&nbsp;&nbsp;Inne/opisy.txt':''}${S.includeAlt?'<br>&nbsp;&nbsp;_inne_ujecia/…':''}</p>
       <label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="alt" ${S.includeAlt?'checked':''} style="width:22px;height:22px"> Dołącz niewybrane ujęcia (${alt})</label>
       <p class="muted small">Niewybrane ujęcia trafiają do osobnego folderu _inne_ujecia, więc makro ich nie wstawi.</p>
     </div>
     <div class="card stack">
       <b>Na komputerze</b>
       <ol class="small" style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
-        <li>Rozpakuj ZIP.</li><li>Wrzuć Foto_raport.xlsm do folderu ${esc(zipName(p))}.</li><li>Uzupełnij „Site info” danymi z info.txt.</li><li>Kliknij „Wstaw zdjęcia”, potem „Utwórz PDF”.</li>
+        ${tplOf(p)==='v3'?`<li>Rozpakuj ZIP (cały folder ${esc(zipName(p))}).</li><li>Otwórz <b>${esc(raportName(p))}</b> i włącz makra. Site info jest już wypełnione.</li><li>Kliknij „Wstaw zdjęcia”, potem „Utwórz PDF”.</li><li class="muted">Gdy Excel blokuje makra: prawy przycisk na pliku → Właściwości → zaznacz „Odblokuj”.</li>`:`<li>Rozpakuj ZIP.</li><li>Wrzuć Foto_raport.xlsm do folderu ${esc(zipName(p))}.</li><li>Uzupełnij „Site info” danymi z info.txt.</li><li>Kliknij „Wstaw zdjęcia”, potem „Utwórz PDF”.</li>`}
       </ol>
     </div>
     <p id="expMsg" class="notice info" hidden></p>
@@ -1137,6 +1137,26 @@ async function exportAzymuty(p,dir){
     const ph=S.photos.get(sl.chosen); if(ph) az.file(azName(p,it),await under500k(ph.blob));
   }
 }
+/* Foto raport V3.1 w ZIP-ie: szablon z assets, wypełnione Site info (D6–D12), makra zostają.
+   Plik leży w katalogu głównym paczki obok folderów BTS, System Antenowy… – makro szuka zdjęć w folderze pliku. */
+const RAPORT_TPL='Foto_raport_V3.1.xlsm';
+function xmlEsc(v){ return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function raportName(p){ return ([p.nr,p.nazwa].filter(Boolean).join(' ')||'Foto_raport').replace(/[\\/:*?"<>|]+/g,'_').trim()+'.xlsm'; }
+async function fotoRaportXlsm(p){
+  const r=await fetch(RAPORT_TPL); if(!r.ok) throw new Error('brak szablonu ('+r.status+')');
+  const z=await JSZip.loadAsync(await r.arrayBuffer());
+  const wb=await z.file('xl/workbook.xml').async('string'), rels=await z.file('xl/_rels/workbook.xml.rels').async('string');
+  const rid=(wb.match(/<sheet [^>]*name="Site info"[^>]*r:id="([^"]+)"/)||[])[1];
+  const tgt=rid&&(rels.match(new RegExp('<Relationship [^>]*Id="'+rid+'"[^>]*Target="([^"]+)"'))||rels.match(new RegExp('<Relationship [^>]*Target="([^"]+)"[^>]*Id="'+rid+'"'))||[])[1];
+  if(!tgt) throw new Error('brak arkusza Site info');
+  const path='xl/'+tgt.replace(/^\/?xl\//,''); let x=await z.file(path).async('string');
+  const nm=[p.nr,p.nazwa].filter(Boolean).join(' ');
+  const vals={D6:p.nazwaOp,D7:nm,D8:nm,D9:p.firma,D10:p.zakres,D12:p.data};
+  for(const [c,v] of Object.entries(vals)){ if(!v) continue;
+    x=x.replace(new RegExp('<c r="'+c+'"((?: s="\\d+")?)\\s*/>'),(m,st)=>`<c r="${c}"${st} t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`); }
+  z.file(path,x);
+  return z.generateAsync({type:'uint8array',compression:'DEFLATE'});
+}
 async function doExport(){
   const p=S.p; const msg=document.getElementById('expMsg');
   const show=t=>{ if(msg){msg.hidden=false; msg.textContent=t;} };
@@ -1167,6 +1187,7 @@ async function doExport(){
     ].filter(Boolean).join('\r\n'));
     dir.file('_fotoraport_dane.json',JSON.stringify({app:'fotoraport',v:1,project:{nr:p.nr,nazwa:p.nazwa,nazwaOp:p.nazwaOp,data:p.data,firma:p.firma,zakres:p.zakres,zam:p.zam,reports:p.reports,cfg:p.cfg,g5:p.g5||null,tpl:tplOf(p),inne:p.inne||[]},skip:Object.keys(p.slots).filter(k=>p.slots[k].skip)}));
     if(p.reports.includes('Inne') && (p.inne||[]).length) dir.folder('Inne').file('opisy.txt',p.inne.map(x=>`Zdjęcie ${x.n}: ${x.opis}`).join('\r\n'));
+    if(tplOf(p)==='v3'){ busy(true,'Przygotowuję Foto raport V3.1…'); try{ dir.file(raportName(p),await fotoRaportXlsm(p)); }catch(e){ toast('Foto raport nie dodany: '+e.message+'. ZIP bez pliku Excel.'); } }
     if(NATIVE){
       const path=await nativeSaveZip(zip,root);
       busy(false); toast('ZIP zapisany');
@@ -1230,7 +1251,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='2.10-TEST tekst';
+const APP_VERSION='2.11-TEST foto raport';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
