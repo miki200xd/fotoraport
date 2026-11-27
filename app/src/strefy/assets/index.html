@@ -559,6 +559,17 @@ function stats(p,f){
   const done = req.filter(it=>isDone(p,f,it.n)||isSkip(p,f,it.n)).length;
   return {done,total:req.length};
 }
+function secOf(it){ return it&&it.tags&&it.tags.sec?+it.tags.sec:0; }
+function secMatch(f,it){ if(S.zone!=='gora'||!S.sec) return true; return S.sec==='x'?!secOf(it):secOf(it)===+S.sec; }
+function secChips(p,f){
+  const all=itemsFor(p,f).filter(it=>(it.zone||zoneOf(f,it))==='gora'); if(!all.length) return '';
+  const secs=[...new Set(all.map(secOf).filter(Boolean))].sort((a,b)=>a-b); if(!secs.length) return '';
+  const cnt=list=>{ const req=list.filter(it=>!isOpt(p,it)); const base=req.length?req:list; return `${base.filter(it=>isDone(p,f,it.n)||isSkip(p,f,it.n)).length}/${base.length}`; };
+  const az=i=>{ const g=p.g5&&g5Sector(p,i-1); return g&&g.az!==undefined&&g.az!==''?` · ${esc(g.az)}°`:''; };
+  const opts=[['','Sektory',all]].concat(secs.map(i=>[String(i),'S'+i+az(i),all.filter(it=>secOf(it)===i)]));
+  const rest=all.filter(it=>!secOf(it)); if(rest.length) opts.push(['x','Wspólne',rest]);
+  return `<div class="chips chips-row" role="group" aria-label="Sektor">${opts.map(([k,l,list])=>`<button class="chip" data-act="sec" data-v="${k}" aria-pressed="${(S.sec||'')===k}">${l} <span class="num">${cnt(list)}</span></button>`).join('')}</div>`;
+}
 function zoneStats(p,f,z){
   const all = itemsFor(p,f).filter(it=>z==='all'||(it.zone||zoneOf(f,it))===z);
   const req = all.filter(it=>!isOpt(p,it));
@@ -575,6 +586,7 @@ function sequence(p){
   const seen=new Set(), out=[];
   for(const f of p.reports) for(const it of itemsFor(p,f)){
     if(S.zone && S.zone!=='all' && (it.zone||zoneOf(f,it))!==S.zone) continue;
+    if(!secMatch(f,it)) continue;
     if((S.mode==='przed'||S.mode==='po') && it.phase!==S.mode) continue;
     const k=slotKey(f,it.n,p); if(seen.has(k)) continue; seen.add(k); out.push({f,n:it.n});
   }
@@ -750,6 +762,7 @@ function vStation(){
   const f=S.tab; const s=totalStats(p); const pct=s.total?Math.round(100*s.done/s.total):0;
   let items=itemsFor(p,f);
   if(S.zone&&S.zone!=='all') items=items.filter(it=>(it.zone||zoneOf(f,it))===S.zone);
+  items=items.filter(it=>secMatch(f,it));
   if(S.filter==='todo') items=items.filter(it=>!isDone(p,f,it.n)&&!isSkip(p,f,it.n));
   if(S.filter==='done') items=items.filter(it=>isDone(p,f,it.n));
   if(S.filter==='przed') items=items.filter(it=>it.phase==='przed');
@@ -784,6 +797,7 @@ function vStation(){
         ${(p.g5.bbu||[]).map(b=>`<dt>${esc(b.name)}</dt><dd>${esc(b.type)}: ${b.slots.map(s=>`slot ${s.slot} ${esc(s.card)}${s.action==='No action'?'':' ('+esc(s.action.toLowerCase())+')'}`).join(', ')}</dd>`).join('')}
       </dl></div>`:''}
     <div class="chips chips-row" role="group" aria-label="Strefa">${ZONES.map(([k,l])=>{const zs=zoneStats(p,f,k);return `<button class="chip" data-act="zone" data-v="${k}" aria-pressed="${S.zone===k}">${l} <span class="num">${zs.done}/${zs.total}</span></button>`;}).join('')}</div>
+    ${S.zone==='gora'?secChips(p,f):''}
     <div class="row" style="gap:6px;flex-wrap:nowrap">
       <div class="chips chips-row" style="flex:1;min-width:0">${[['all','Wszystkie'],['todo','Brakujące'],['przed','Przed'],['po','Po'],['done','Zrobione']].map(([k,l])=>`<button class="chip" data-act="filter" data-v="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
       <label class="row small muted" style="gap:4px;flex:0 0 auto;font-size:13px"><input type="checkbox" id="extra" ${S.showExtra?'checked':''} style="width:18px;height:18px"> Dodatkowe</label>
@@ -829,7 +843,7 @@ function vShoot(){
     <div class="marker ${sl.chosen||pend.length?'done':''}">
       <div class="big">${n}</div>
       <div style="min-width:0;gap:4px" class="stack">
-        <div class="eyebrow">Zdjęcie ${n} · <span class="tag">${esc(ZONE_LBL[it&&it.zone||zoneOf(f,it)])}</span> · ${esc(it&&it.share&&p.reports.length>1?'wszystkie raporty':RMAP[f].name)}</div>
+        <div class="eyebrow">Zdjęcie ${n} · <span class="tag">${esc(ZONE_LBL[it&&it.zone||zoneOf(f,it)])}${secOf(it)?' · S'+secOf(it):''}</span> · ${esc(it&&it.share&&p.reports.length>1?'wszystkie raporty':RMAP[f].name)}</div>
         <h2>${esc(it?it.title:'')}</h2>
       </div>
     </div>
@@ -1171,7 +1185,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='2.7-TEST ergonomia';
+const APP_VERSION='2.8-TEST sektory';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -1233,8 +1247,9 @@ document.addEventListener('click',async ev=>{
     case 'back-station': S.mode=null; S.view='station'; render(); break;
     case 'tab': S.tab=d.f; keepScroll(render); break;
     case 'filter': S.filter=d.v; keepScroll(render); break;
-    case 'zone': S.zone=d.v; ls.set('zone',d.v); keepScroll(render); break;
-    case 'resetf': S.filter='all'; S.zone='all'; ls.set('zone','all'); keepScroll(render); break;
+    case 'zone': S.zone=d.v; S.sec=''; ls.set('zone',d.v); keepScroll(render); break;
+    case 'sec': S.sec=d.v; keepScroll(render); break;
+    case 'resetf': S.filter='all'; S.zone='all'; S.sec=''; ls.set('zone','all'); keepScroll(render); break;
     case 'shoot': go(d.f,+d.n); break;
     case 'go-next': { S.mode=null; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)&&!isOpt(S.p,findItem(S.p,x.f,x.n))); if(nx){S.tab=nx.f; go(nx.f,nx.n);} break; }
     case 'go-po': { S.mode='po'; const nx=sequence(S.p).find(x=>!isDone(S.p,x.f,x.n)&&!isSkip(S.p,x.f,x.n)); if(nx){S.tab=nx.f; go(nx.f,nx.n);} else S.mode=null; break; }
