@@ -942,6 +942,7 @@ function vExport(){
       <div class="spread"><b>Zdjęć w paczce</b><span class="num" style="font-size:24px">${count}</span></div>
       ${miss.map(([f,m])=>`<div><div class="spread"><span>${esc(RMAP[f].name)}</span>${m.length?`<span class="tag warn">brakuje ${m.length}</span>`:'<span class="tag ok">komplet</span>'}</div>${m.length?`<div class="missing muted">nr ${m.join(', ')}</div>`:''}</div>`).join('')}
     </div>
+    ${tplOf(p)==='v3'&&[['firma','firma instalacyjna'],['nazwaOp','nazwa OPL / TMP'],['zakres','zakres prac']].some(([k])=>!p[k])?`<div class="notice stack" style="gap:6px">W danych stacji brakuje: ${[['firma','firma instalacyjna'],['nazwaOp','nazwa OPL / TMP'],['zakres','zakres prac']].filter(([k])=>!p[k]).map(([,l])=>l).join(', ')}. To pole w Site info raportu będzie puste.<button data-act="edit">✎ Uzupełnij dane stacji</button></div>`:''}
     <div class="card stack">
       <b>Co jest w środku</b>
       <p class="small muted" style="font-family:ui-monospace,Menlo,monospace;line-height:1.6">${esc(zipName(p))}/<br>${p.reports.map(f=>f==='Azymuty'?`&nbsp;&nbsp;${AZ_DIR}/${esc(String(p.nr||'stacja'))}_Sec1_Ant1_1.jpg… (poza raportem)`:`&nbsp;&nbsp;${esc(f)}/1.jpg, 2.jpg…`).join('<br>')}<br>${tplOf(p)==='v3'?'&nbsp;&nbsp;<b>'+esc(raportName(p))+'</b> (Foto raport V3.1, Site info wypełnione)<br>':''}&nbsp;&nbsp;info.txt${p.reports.includes('Inne')?'<br>&nbsp;&nbsp;Inne/opisy.txt':''}${S.includeAlt?'<br>&nbsp;&nbsp;_inne_ujecia/…':''}</p>
@@ -1251,7 +1252,7 @@ function nativeSaveZip(zip,root){
 }
 function backupDir(p){ return [p.nr, p.nazwa].filter(Boolean).join('_').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60) || 'stacja'; }
 function backupName(p,f,n){ const k=slotKey(f,n,p); if(k==='common/prad') return 'Wspolne_prad_poboru'; if(k.startsWith('common/')) return 'Wspolne_'+n; return (RMAP[f]?RMAP[f].short:f).replace(/\s+/g,'')+'_'+n; }
-const APP_VERSION='2.11-TEST foto raport';
+const APP_VERSION='2.12-TEST foto raport';
 function applyBackupQ(){ if(NATIVE && typeof AndroidBridge.setBackupQuality==='function'){ try{ AndroidBridge.setBackupQuality(S.backupQ); }catch(e){} } }
 function setCaptureTarget(){ if(NATIVE && S.p && S.cur){ try{ AndroidBridge.setCaptureTarget(backupDir(S.p), backupName(S.p,S.cur.f,S.cur.n)); }catch(e){} } }
 window.onAndroidBack=function(){
@@ -1446,6 +1447,7 @@ document.getElementById('zipfile').addEventListener('change',async ev=>{
   if(S.importNew || !S.p){
     const pr=(meta&&meta.project)||null;
     if(!pr){ busy(false); toast('W tym ZIP-ie nie ma danych stacji. Załóż stację i użyj „Wczytaj ZIP” w jej widoku.'); return; }
+    if(!pr.firma){ const infoName=names.find(n=>/(^|\/)info\.txt$/i.test(n)); if(infoName){ try{ const m=(await zip.files[infoName].async('string')).match(/Firma instalacyjna:[ \t]*([^\r\n]+)/); if(m) pr.firma=m[1].trim(); }catch(e){} } }
     const p={id:uid(),...pr,cfg:normCfg(pr.cfg),slots:{},created:Date.now(),updated:Date.now()};
     for(const k of (meta.skip||[])) p.slots[k]={takes:[],chosen:null,skip:true};
     await DB.put('projects',p); S.projects.push(p); await openProject(p.id);
